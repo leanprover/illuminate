@@ -1,0 +1,599 @@
+import Tests.Helpers
+
+set_option linter.missingDocs false
+
+open Illuminate
+
+-- ══════════════════════════════════════════════════════════════════
+-- #diagram previews — hover to see SVG in the infoview
+-- ══════════════════════════════════════════════════════════════════
+
+-- Rounded rectangle
+#diagram Diagram.roundedRect 80 40 8
+  (fill := some { color := { r := 220, g := 235, b := 255 } })
+  (stroke := some { color := Color.black, width := 1.5 })
+
+-- Frame around text
+#diagram (Diagram.pad 6 (.text "framed" (some { fontSize := 14 }))).frame
+  (stroke := some { color := Color.black, width := 1 }) (padding := 2)
+
+-- Horizontal concatenation
+#diagram Diagram.hcat [
+  Diagram.circle 15 (fill := some { color := Color.red }),
+  Diagram.rect 30 30 (fill := some { color := Color.green }),
+  Diagram.circle 15 (fill := some { color := Color.blue })
+]
+
+-- Vertical concatenation
+#diagram Diagram.vcat [
+  .text "Top" (some { fontSize := 12 }),
+  .rect 60 2 (fill := some { color := Color.black }),
+  .text "Bottom" (some { fontSize := 12 })
+]
+
+-- Grid layout
+#diagram Diagram.grid #[
+  #[some (Diagram.circle 10 (fill := some { color := Color.red })),
+   some (Diagram.circle 10 (fill := some { color := Color.green }))],
+  #[some (Diagram.circle 10 (fill := some { color := Color.blue })),
+   none]
+]
+
+open Diagram in
+open Lean in
+def labelDia (name : Name) (pull : Float) : Diagram Empty :=
+  let start := roundedRect 25 15 0.4 (fill := some { color := {r := 100, g := 30, b := 132} }) (name := `start)
+  let stop := roundedRect 20 15 0.4 (fill := some { color := {r := 33, g := 128, b := 5} }) (name := `stop)
+  let d := hsep 5 [start, stop] |>.named `boxes
+  let angle := pi / 2
+  d
+    |>.connect
+      { point := `boxes.start.north, pull, angle, arrowhead := some { type := .latex } }
+      { point := `boxes.stop.north, pull, angle := some (- angle), arrowhead := some {} }
+    |>.named name
+
+def arrowBends : Diagram Empty := Id.run do
+  let diagrams :=
+    List.range 19 |>.map fun (i : Nat) =>
+      let n := `v ++ .num .anonymous i
+      labelDia n (i.toFloat / 10.0)
+  let len := diagrams.length
+  let cols := max 1 len.toFloat.sqrt.toInt64.toNatClampNeg
+  let rows := len / cols + (if cols ∣ len then 0 else 1)
+  let mut out := []
+  for i in 0...cols do
+    let mut r := []
+    for j in 0...rows do
+      let n := j * cols + i
+      if let some d := diagrams[n]? then
+        r := d :: r
+      else break
+    out := Diagram.hsep 3 r.reverse :: out
+  Diagram.vsep 5 out.reverse
+
+#diagram arrowBends
+
+
+open Diagram in
+def arrowDemo (arrowhead : Arrowhead) : Diagram Empty :=
+  vsep 10 <|
+  List.range 7 |>.map fun l =>
+    let length := l.toFloat * 0.3
+    hsep 5 <|
+    List.range 5 |>.map fun w =>
+      let width := w.toFloat * 0.3
+      let c1 := circle 0 (name := `c1)
+      let c2 := circle 0 (name := `c2)
+      hsep 15 [c1, c2]
+        |>.connect `c1 { point := `c2, arrowhead := some { arrowhead with length, width } }
+        |>.named (Lean.Name.mkSimple s!"{length}x{width}")
+
+#diagram arrowDemo {}
+
+#diagram arrowDemo { type := .stealth }
+
+#diagram arrowDemo { type := .circle }
+
+#diagram arrowDemo { type := .triangle }
+
+#diagram
+  fun (rad : Slider "radius" 0 20 3)
+      (sep : Slider "separation" 1 40 5)
+      (red : Slider "red" 0 1 0.5)
+      (green : Slider "green" 0 1 0.5)
+      (blue : Slider "blue" 0 1 0.5)
+      (count : Slider "count" 0 30 1) =>
+    let red : Float := red
+    let green : Float := green
+    let blue : Float := blue
+    let count : Float := count
+    let r : UInt8 := (255.0 * red).toUInt8
+    let g : UInt8 := (255.0 * green).toUInt8
+    let b : UInt8 := (255.0 * blue).toUInt8
+    let n : Nat := count.toUInt64.toNat
+    let cols := n.toFloat.sqrt.ceil.toUInt64.toNat |> max 1
+    let rows := (n + cols - 1) / cols
+    .vsep sep <|
+      List.range rows |>.map fun row =>
+        let rowCount := min cols (n - row * cols)
+        .hsep sep <| List.range rowCount |>.map fun _ =>
+          .circle rad (fill := some {color := { r, g, b } })
+
+-- ══════════════════════════════════════════════════════════════════
+-- RoundedRect visual test
+-- ══════════════════════════════════════════════════════════════════
+
+def roundedRectsDiagram (pos : Slider "pos" 0 1 0.5) (pull : Slider "pull" 0 1 0.5) : Diagram Empty :=
+  let d := Diagram.hsep gap [node `left "Input", node `right "Output"]
+  -- Forward arrow: left.north → right.north, arching upward
+  let d := d.connect
+    { point := `left.north,  angle := some (pi / 2), pull }
+    { point := `right.north, angle := some (-(pi / 2)), pull,
+      arrowhead := some {} }
+    (label := some { label := .text "forward" (some { fontSize := 11 }), pos })
+  -- Backward arrow: right.south → left.south, arching downward
+  let d := d.connect
+    { point := `right.south, angle := some (-(pi / 2)), pull }
+    { point := `left.south, angle := some (pi / 2), pull,
+      arrowhead := some {} }
+    (label := some { label := .text "backward" (some { fontSize := 11 }), pos })
+  d
+where
+  gap := 50
+  node (name : Lean.Name) (label : String) : Diagram Empty :=
+    Diagram.atop
+      (Diagram.roundedRect 80 40 8 (fill := some { color := { r := 220, g := 235, b := 255 } })
+        (stroke := some { color := Color.black, width := 1.5 }) (name := name))
+      (.text label (some { fontSize := 14 }))
+
+#diagram roundedRectsDiagram
+
+def testVisual_roundedRects : IO Unit :=
+  testVisualWrite "roundedrects.svg" (roundedRectsDiagram (0.5 : Float) (0.5 : Float))
+
+-- ══════════════════════════════════════════════════════════════════
+-- Pipeline overview (from Lean reference manual)
+-- ══════════════════════════════════════════════════════════════════
+
+/-- Lean compilation pipeline: Code.lean → Syntax Tree → Core Type Theory → Executable -/
+def pipelineDiagram : Diagram Empty :=
+  let result :=
+    Diagram.hsep (align := .bottom) 10 [.withTextColor .green (.text "✓"), .text "/", .text "✗"]
+      |>.withFontBold true
+      |>.withFontSize 20
+      |>.pad 8
+      |>.namedWithAnchors `result
+  Diagram.grid (hSpacing := 70) (vSpacing := 50) #[
+    #[some (box `source "Code.lean"),       none],
+    #[some (box `stx "Syntax Tree"),        none],
+    #[some (box `core "Core Type\nTheory"),  some (box `kernel "Core Type\nTheory\n(no recursion)")],
+    #[some (box `exe "Executable"),         some result]
+  ]
+  -- Arrows (stealth arrowheads and upright labels set via config)
+    |>.connect `source.south `stx.north
+      (label := lbl "Parsing")
+    |>.connect `stx.south `core.north
+      (label := lbl "Elaboration")
+    |>.connect `core.south `exe.north
+      (label := lbl "Compilation")
+    |>.connect `core.east `kernel.west
+      (label := lbl "Recursion\nElimination")
+  -- Self-loop on Syntax Tree for macro expansion (left side)
+    |>.connect
+      { point := `stx.west, shift := ⟨0, -10⟩, angle := some (pi + pi / 4), pull := 2.5 }
+      { point := `stx.west, shift := ⟨0, 10⟩, angle := some (0 - pi / 4), pull := 2.5 }
+      (label := lbl "Macro\nExpansion")
+  -- Kernel check arrow
+    |>.connect `kernel.south `result.north
+      (label := lbl "Kernel Check")
+    |>.withArrowhead { type := .stealth } |>.withLabelUpright
+where
+  labelStyle : TextStyle :=
+    { fontSize := 10 }
+  lbl (s : String) : Option (Label Empty) :=
+    some { label := .text s labelStyle }
+  boxStyle : Stroke :=
+    { color := Color.black, width := 1 }
+  box (name : Lean.Name) (label : String) : Diagram Empty :=
+    Diagram.text label (some { fontSize := 12 })
+      |>.pad 12
+      |>.frame (stroke := some boxStyle) (cornerRadius := 6)
+      |>.withFillColor .white
+      |>.namedWithAnchors name
+
+#diagram pipelineDiagram
+
+#diagram Diagram.text "a\nabcdef\nqf\nabcd\nabcdefg" |>.showEnvelope
+
+def testVisual_pipeline : IO Unit :=
+  testVisualWrite "pipeline.svg" pipelineDiagram (padding := 20)
+
+-- ══════════════════════════════════════════════════════════════════
+-- String memory layout (from Lean reference manual)
+-- ══════════════════════════════════════════════════════════════════
+
+/-- Memory layout of lean_string: m_header | m_size | m_capacity | m_length | m_data | '\0' -/
+def stringLayoutDiagram : Diagram Empty :=
+  let braceDepth := 12
+  let braceGap := 4
+  -- Build each field with its brace as a vertical unit, then hcat them
+  let headerCol := fieldWithBrace `header "m_header" 90 braceDepth braceGap
+    (txt "Lean object header")
+  let sizeCol := fieldWithBrace `size "m_size" 70 braceDepth braceGap
+    (twoLine "Byte count" (mono "size_t"))
+  let capCol := fieldWithBrace `cap "m_capacity" 85 braceDepth braceGap
+    (twoLine "Allocated space" (mono "size_t"))
+  let lenCol := fieldWithBrace `len "m_length" 75 braceDepth braceGap
+    (twoLine "Characters" (mono "size_t"))
+  let dataCol := fieldWithBrace `data "m_data" 90 braceDepth braceGap
+    (twoLine "String data" (Diagram.hsep 3 [mono "char", txt "array"]))
+  let nulCol := field `nul "'\\0'" 30
+  Diagram.hsep 0 [headerCol, sizeCol, capCol, lenCol, dataCol, nulCol] (align := .top)
+where
+  txt (s : String) : Diagram Empty :=
+    .text s (some { fontSize := 8 })
+  mono (s : String) : Diagram Empty :=
+    .text s (some { fontSize := 8, fontFamily := "monospace" })
+  /-- Stacks a description line above a type line. -/
+  twoLine (description : String) (typeLine : Diagram Empty) : Diagram Empty :=
+    Diagram.vsep 1 [txt description, typeLine]
+  field (name : Lean.Name) (label : String) (w : Float) : Diagram Empty :=
+    Diagram.atop
+      (Diagram.rect w 28
+        (stroke := some { color := Color.black, width := 1 })
+        (fill := some { color := .white })
+        (name := name))
+      (.text label (some { fontSize := 10, fontFamily := "monospace" }))
+  /-- Builds a field box with a curly brace and label below it. -/
+  fieldWithBrace (name : Lean.Name) (label : String) (w : Float)
+      (braceDepth braceGap : Float) (braceLabel : Diagram Empty) : Diagram Empty :=
+    let box := field name label w
+    let brace := Diagram.transform (Matrix.translate 0 (-14 - braceGap))
+      (Diagram.curlyBrace w (depth := braceDepth) (label := some braceLabel))
+    Diagram.compose box brace
+
+#diagram stringLayoutDiagram
+
+def testVisual_stringLayout : IO Unit :=
+  testVisualWrite "string-layout.svg" stringLayoutDiagram
+
+
+-- ══════════════════════════════════════════════════════════════════
+-- Lake workspace (from Lean reference manual)
+-- ══════════════════════════════════════════════════════════════════
+
+/-- Lake workspace hierarchy from the Lean reference manual. -/
+def lakeWorkspaceDiagram : Diagram Empty :=
+  let toolchain := mono "lean-toolchain"
+  let rootPkg := borderedBox "Root package" <|
+    items [
+      "Package configuration file (lakefile.lean)",
+      "Libraries",
+      "Executables",
+      "Manifest (lake-manifest.json)"
+    ]
+  let dep1 := borderedBox "Dependency 1" (items [
+      "Package configuration file",
+      "Libraries",
+      "Executables",
+      "Artifacts"
+    ] 8) 9 6
+  let dep2 := borderedBox "Dependency 2" (items [
+      "Package configuration file",
+      "Libraries",
+      "Executables",
+      "Artifacts"
+    ] 8) 9 6
+  let dots : Diagram Empty := .text "⋯" (some { fontSize := 14 })
+  let packages := borderedBox "Packages" <|
+    Diagram.vsep 8 [Diagram.hsep 12 [dep1, dep2], dots] (align := .left)
+  let artifacts := borderedBox "Artifacts" <|
+    items ["Built libraries", "Built executables"]
+  let lakeDir := borderedBox "Lake Directory (.lake)" <|
+    Diagram.vsep 10 [packages, artifacts] (align := .left)
+  borderedBox "Workspace" <|
+    Diagram.vsep 10 [toolchain, rootPkg, lakeDir] (align := .left)
+where
+  txt (s : String) (size : Float := 10) : Diagram Empty :=
+    .text s (some { fontSize := size, anchor := .start })
+  bold (s : String) (size : Float := 11) : Diagram Empty :=
+    .text s (some { fontSize := size, bold := true, anchor := .start })
+  mono (s : String) (size : Float := 10) : Diagram Empty :=
+    .text s (some { fontSize := size, fontFamily := "monospace", anchor := .start })
+  items (ss : List String) (size : Float := 10) : Diagram Empty :=
+    Diagram.vsep 3 (ss.map fun s => txt s size) (align := .left)
+  borderedBox (title : String) (content : Diagram Empty)
+      (titleSize : Float := 11) (pad : Float := 8) : Diagram Empty :=
+    let titleDiag := bold title titleSize
+    let inner := Diagram.vsep 4 [titleDiag, content] (align := .left)
+    let padded := Diagram.pad pad inner
+    padded.frame (padding := 2) (cornerRadius := 4)
+
+#diagram lakeWorkspaceDiagram
+
+def testVisual_lakeWorkspace : IO Unit :=
+  testVisualWrite "lake-workspace.svg" lakeWorkspaceDiagram
+
+-- ══════════════════════════════════════════════════════════════════
+-- Coercion chain (from Lean reference manual)
+-- ══════════════════════════════════════════════════════════════════
+
+/-- Coercion chain diagram from the Lean reference manual (coe-chain.tex). -/
+def coeChainDiagram : Diagram Empty :=
+  let spacing := 16
+  -- Build from inside out: hcat items spanned by each brace, then vsep brace below
+  -- Level 1: Coe* with CoeTC brace
+  let level1 := Diagram.braceBelow (mono "Coe*") (mono "CoeTC")
+  -- Level 2: add CoeOut* on the left, CoeOTC brace below
+  let level2 := Diagram.braceBelow
+    (Diagram.hsep spacing [mono "CoeOut*", level1] (align := .top))
+    (mono "CoeOTC")
+  -- Level 3: add CoeHead? on the left, CoeHTC brace below
+  let level3 := Diagram.braceBelow
+    (Diagram.hsep spacing [mono "CoeHead?", level2] (align := .top))
+    (mono "CoeHTC")
+  -- Level 4: add CoeTail? on the right, CoeHTCT brace below (named)
+  let level4 := Diagram.braceBelow
+    (Diagram.hsep spacing [level3, mono "CoeTail?"] (align := .top))
+    (mono "CoeHTCT" |>.padBottom 3 |>.namedWithAnchors `CoeHTCT)
+  -- CoeDep at same level as CoeHTCT label (bottom-aligned, named)
+  let withCoeDep := Diagram.hsep 30
+    [level4, mono "CoeDep" |>.padBottom 3 |>.namedWithAnchors `CoeDep] (align := .bottom)
+  -- "or" and CoeT below, named for anchor resolution
+  let orLabel : Diagram Empty :=
+    Diagram.text "or" (some { fontSize := 10, italic := true }) |>.pad 3 |>.namedWithAnchors `or
+  let coeTLabel : Diagram Empty := mono "CoeT" (name := `CoeT)
+  let lineStroke : Stroke := { color := Color.black, width := 1 }
+  Diagram.vsep 12 [withCoeDep, orLabel, coeTLabel]
+    |>.connectL `CoeHTCT.south `or.west (stroke := lineStroke)
+    |>.connectL `CoeDep.south `or.east (stroke := lineStroke)
+    |>.connectL `or.south `CoeT.north (stroke := lineStroke)
+where
+  mono (s : String) (name : Option Lean.Name := none) : Diagram Empty :=
+    .text s (some { fontSize := 10, fontFamily := "monospace" }) (name := name)
+
+#diagram coeChainDiagram
+
+def testVisual_coeChain : IO Unit :=
+  testVisualWrite "coe-chain.svg" coeChainDiagram
+
+#diagram (Diagram.circle 20 (fill := some {color := .transparent})).showEnvelope
+
+#diagram (Diagram.rect 20 30 (fill := some { color := .transparent } )).showEnvelope
+
+#diagram (Diagram.roundedRect 20 30 3 (fill := some { color := .transparent } )).showEnvelope
+
+#diagram (Diagram.text "foo").showEnvelope
+
+#diagram Diagram.hsep 30 [.circle 30, .rect 10 50] |>.withFillColor ⟨0, 0, 0, 0⟩ |>.showEnvelope |>.showOrigin
+
+#diagram Diagram.polygon 5 10
+
+-- ══════════════════════════════════════════════════════════════════
+-- Stars with different point counts and dash patterns
+-- ══════════════════════════════════════════════════════════════════
+
+/-- Grid of stars: rows = point counts (1,2,3,5,6), columns = dash patterns. -/
+def starsDiagram : Diagram Empty :=
+  let pointCounts := [1, 2, 3, 5, 6]
+  let dashes : List StrokeDash := [.solid, .dashed, .dotted, .dashDot]
+  let dashLabels := ["solid", "dashed", "dotted", "dashDot"]
+  let outerR := 20.0
+  let innerR := 10.0
+  let fill : Fill := { color := { r := 255, g := 230, b := 100 } }
+  -- Column headers
+  let headers := Diagram.hsep 20 (dashLabels.map fun l =>
+    Diagram.withEnvelope (Envelope.ofRect 25 8)
+      (.text l (some { fontSize := 9 })))
+  -- Row label + stars for each point count
+  let rows := pointCounts.map fun n =>
+    let label := Diagram.withEnvelope (Envelope.ofRect 12 25)
+      (Diagram.text s!"{n}pt" (some { fontSize := 9 }))
+    let cells := dashes.map fun dash =>
+      Diagram.withEnvelope (Envelope.ofRect 25 25)
+        (Diagram.star n outerR innerR
+          (fill := some fill)
+          (stroke := some { color := Color.black, width := 1.5, dash }))
+    Diagram.hsep 20 (label :: cells)
+  -- Combine header row with star rows
+  let headerRow := Diagram.hsep 20
+    [Diagram.withEnvelope (Envelope.ofRect 12 8) .empty,
+     headers]
+  Diagram.vsep 15 (headerRow :: rows)
+
+#diagram starsDiagram
+
+def testVisual_stars : IO Unit :=
+  testVisualWrite "stars.svg" starsDiagram
+    (checks := [("stroke-dasharray", "has dashed strokes")])
+
+/-- Three stars (7, 10, 13 points) with point5 of each connected by arrows. -/
+def starAnchorsDiagram : Diagram Empty :=
+  let fill : Fill := { color := { r := 255, g := 230, b := 100 } }
+  let stroke : Stroke := { color := Color.black, width := 1.5 }
+  let s7 := Diagram.star 7 30 15 (fill := some fill) (stroke := some stroke) (name := some `star7)
+  let s10 := Diagram.star 10 30 15 (fill := some fill) (stroke := some stroke) (name := some `star10)
+  let s13 := Diagram.star 13 30 15 (fill := some fill) (stroke := some stroke) (name := some `star13)
+  let stealth := some { type := ArrowType.stealth : Arrowhead }
+  Diagram.hsep 40 [s7, s10, s13]
+    |>.connect
+      { point := `star7.point5, angle := some 0.3, pull := 1 }
+      { point := `star10.point3, arrowhead := stealth, angle := some 0, pull := 0.25 }
+    |>.connect
+      { point := `star10.point5, angle := some (3 * pi / 2), pull := 1 }
+      { point := `star13.point3, arrowhead := stealth, angle := some 0, pull := 0.5 }
+
+#diagram starAnchorsDiagram
+
+def testVisual_starAnchors : IO Unit :=
+  testVisualWrite "star-anchors.svg" starAnchorsDiagram
+
+-- ══════════════════════════════════════════════════════════════════
+-- Ellipse
+-- ══════════════════════════════════════════════════════════════════
+
+/-- Ellipses with various aspect ratios. -/
+def ellipseDiagram : Diagram Empty :=
+  let fill : Fill := { color := { r := 180, g := 210, b := 255 } }
+  let stroke : Stroke := { color := Color.black, width := 1.5 }
+  Diagram.hsep 15 [
+    Diagram.ellipse 30 15 (fill := some fill) (stroke := some stroke),
+    Diagram.ellipse 15 30 (fill := some fill) (stroke := some stroke),
+    Diagram.ellipse 25 25 (fill := some fill) (stroke := some stroke),
+    Diagram.ellipse 35 10 (fill := some fill) (stroke := some { stroke with dash := .dashed })
+  ]
+
+#diagram ellipseDiagram
+
+def testVisual_ellipse : IO Unit :=
+  testVisualWrite "ellipse.svg" ellipseDiagram
+
+-- ══════════════════════════════════════════════════════════════════
+-- Transforms: scale, rotate, hflip, vflip
+-- ══════════════════════════════════════════════════════════════════
+
+/-- A labeled arrow shape used to show transform effects. -/
+private def arrowShape : Diagram Empty :=
+  let path := PathData.empty
+    |>.moveTo ⟨-15, -8⟩
+    |>.lineTo ⟨5, -8⟩
+    |>.lineTo ⟨5, -15⟩
+    |>.lineTo ⟨15, 0⟩
+    |>.lineTo ⟨5, 15⟩
+    |>.lineTo ⟨5, 8⟩
+    |>.lineTo ⟨-15, 8⟩
+    |>.close
+  Diagram.fromPath path
+    (fill := some { color := { r := 100, g := 180, b := 100 } })
+    (stroke := some { color := Color.black, width := 1 })
+
+/-- Demonstrates scale, rotate, hflip, vflip on an arrow shape. -/
+def transformsDiagram : Diagram Empty :=
+  let label (s : String) : Diagram Empty :=
+    .text s (some { fontSize := 9 })
+  Diagram.hsep 20 [
+    Diagram.vsep 5 [label "original", arrowShape],
+    Diagram.vsep 5 [label "scale 1.5", Diagram.scale 1.5 arrowShape],
+    Diagram.vsep 5 [label "rotate 45°", Diagram.rotate (pi / 4) arrowShape],
+    Diagram.vsep 5 [label "hflip", Diagram.hflip arrowShape],
+    Diagram.vsep 5 [label "vflip", Diagram.vflip arrowShape],
+    Diagram.vsep 5 [label "scaleXY 1.5 0.5", Diagram.scaleXY 1.5 0.5 arrowShape]
+  ] (align := .top)
+
+#diagram transformsDiagram
+
+def testVisual_transforms : IO Unit :=
+  testVisualWrite "transforms.svg" transformsDiagram
+    (checks := [("matrix(", "has transform matrices")])
+
+-- ══════════════════════════════════════════════════════════════════
+-- Ghost and refocus
+-- ══════════════════════════════════════════════════════════════════
+
+/-- Demonstrates ghost and refocus. -/
+def ghostRefocusDiagram : Diagram Empty :=
+  let red := some { color := Color.red : Fill }
+  let blue := some { color := Color.blue : Fill }
+  let green := some { color := { r := 0, g := 160, b := 0, a := 0.8 } : Fill }
+  let label (s : String) : Diagram Empty :=
+    .text s (some { fontSize := 9 })
+  -- Row 1: normal vs ghost — ghost reserves space but draws nothing
+  let box := Diagram.rect 30 30 (fill := red)
+  let circ := Diagram.circle 15 (fill := blue)
+  let normal := Diagram.hsep 5 [box, circ, box]
+  let withGhost := Diagram.hsep 5 [box, Diagram.ghost circ, box]
+  -- Row 2: refocus — combined diagram uses sub-diagram's envelope
+  let big := Diagram.rect 60 40 (fill := green)
+  let small := Diagram.circle 10 (fill := red)
+  let combined := Diagram.atop big small
+  let refocused := Diagram.refocus small combined
+  Diagram.vsep 20 [
+    Diagram.hsep 30 [
+      Diagram.vsep 5 [label "normal", normal],
+      Diagram.vsep 5 [label "ghost middle", withGhost]
+    ],
+    Diagram.hsep 30 [
+      Diagram.vsep 5 [label "combined", combined |>.showEnvelope],
+      Diagram.vsep 5 [label "refocus small", refocused |>.showEnvelope]
+    ]
+  ]
+
+#diagram ghostRefocusDiagram
+
+def testVisual_ghostRefocus : IO Unit :=
+  testVisualWrite "ghost-refocus.svg" ghostRefocusDiagram
+
+-- ══════════════════════════════════════════════════════════════════
+-- Cellophane, clip, pinOver, pinUnder
+-- ══════════════════════════════════════════════════════════════════
+
+/-- Demonstrates cellophane (opacity), clip, pinOver, and pinUnder. -/
+def cellophaneClipDiagram : Diagram Empty :=
+  let label (s : String) : Diagram Empty :=
+    .text s (some { fontSize := 9 })
+  let red := some { color := Color.red : Fill }
+  let blue := some { color := Color.blue : Fill }
+  let green := some ({ color := { r := 0, g := 160, b := 0 } } : Fill)
+  -- Row 1: cellophane at different opacities
+  let box := Diagram.rect 40 30 (fill := red)
+  let cello1 := Diagram.cellophane 1.0 box
+  let cello05 := Diagram.cellophane 0.5 box
+  let cello02 := Diagram.cellophane 0.2 box
+  let celloRow := Diagram.hsep 15 [
+    Diagram.vsep 5 [label "opacity 1.0", cello1],
+    Diagram.vsep 5 [label "opacity 0.5", cello05],
+    Diagram.vsep 5 [label "opacity 0.2", cello02]
+  ] (align := .top)
+  -- Row 2: clip
+  let checker := Diagram.atop
+    (Diagram.rect 60 60 (fill := blue))
+    (Diagram.transform (Matrix.translate 10 10)
+      (Diagram.rect 40 40 (fill := green)))
+  let clipped := Diagram.clipCircle 25 checker
+  let clipRow := Diagram.hsep 30 [
+    Diagram.vsep 5 [label "unclipped", checker],
+    Diagram.vsep 5 [label "clip circle r=25", clipped]
+  ] (align := .top)
+  -- Row 3: pinOver and pinUnder
+  let base1 := Diagram.hsep 40 [
+    Diagram.circle 20 (fill := blue) (name := some `left),
+    Diagram.circle 20 (fill := green) (name := some `right)
+  ]
+  let dot := Diagram.circle 5 (fill := red)
+  let pinned := base1
+    |> Diagram.pinOver `left dot
+    |> Diagram.pinOver `right dot
+  let semiBlue := some ({ color := { r := 0, g := 0, b := 255, a := 0.5 } } : Fill)
+  let semiGreen := some ({ color := { r := 0, g := 160, b := 0, a := 0.5 } } : Fill)
+  let base2 := Diagram.hsep 40 [
+    Diagram.circle 20 (fill := semiBlue) (name := some `left2),
+    Diagram.circle 20 (fill := semiGreen) (name := some `right2)
+  ]
+  let underDot := Diagram.circle 12 (fill := some { color := { r := 255, g := 200, b := 0 } })
+  let pinnedUnder := base2
+    |> Diagram.pinUnder `left2 underDot
+  let pinRow := Diagram.hsep 30 [
+    Diagram.vsep 5 [label "pinOver (red dots)", pinned],
+    Diagram.vsep 5 [label "pinUnder (yellow)", pinnedUnder]
+  ] (align := .top)
+  Diagram.vsep 25 [celloRow, clipRow, pinRow]
+
+#diagram cellophaneClipDiagram
+
+def testVisual_cellophaneClip : IO Unit :=
+  testVisualWrite "cellophane-clip.svg" cellophaneClipDiagram
+    (checks := [("opacity", "has opacity attributes"), ("clipPath", "has clip paths")])
+
+def visualTests : List (String × IO Unit) := [
+  ("Visual/roundedRects", testVisual_roundedRects),
+  ("Visual/pipeline", testVisual_pipeline),
+  ("Visual/stringLayout", testVisual_stringLayout),
+  ("Visual/lakeWorkspace", testVisual_lakeWorkspace),
+  ("Visual/coeChain", testVisual_coeChain),
+  ("Visual/stars", testVisual_stars),
+  ("Visual/starAnchors", testVisual_starAnchors),
+  ("Visual/ellipse", testVisual_ellipse),
+  ("Visual/transforms", testVisual_transforms),
+  ("Visual/ghostRefocus", testVisual_ghostRefocus),
+  ("Visual/cellophaneClip", testVisual_cellophaneClip)
+]

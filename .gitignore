@@ -1,0 +1,8 @@
+# Lake build artifacts
+.lake/
+
+# Generated SVGs from lake test
+*.svg
+
+# Visual test actuals (expected PNGs are committed)
+visual_tests/*.actual.png

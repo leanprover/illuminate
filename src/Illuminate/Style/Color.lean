@@ -1,0 +1,40 @@
+namespace Illuminate
+
+
+/-- An RGBA color with 8-bit channels and a floating-point alpha. -/
+structure Color where
+  /-- Red channel (0–255). -/
+  r : UInt8
+  /-- Green channel (0–255). -/
+  g : UInt8
+  /-- Blue channel (0–255). -/
+  b : UInt8
+  /-- Alpha (opacity), from 0.0 (transparent) to 1.0 (opaque). -/
+  a : Float := 1.0
+deriving Repr, BEq, Inhabited
+
+namespace Color
+
+/-- Opaque black. -/
+def black : Color := { r := 0, g := 0, b := 0 }
+/-- Opaque white. -/
+def white : Color := { r := 255, g := 255, b := 255 }
+/-- Opaque red. -/
+def red : Color := { r := 255, g := 0, b := 0 }
+/-- Opaque green. -/
+def green : Color := { r := 0, g := 128, b := 0 }
+/-- Opaque blue. -/
+def blue : Color := { r := 0, g := 0, b := 255 }
+/-- Light gray. -/
+def lightGray : Color := { r := 211, g := 211, b := 211 }
+/-- Fully transparent black. -/
+def transparent : Color := { r := 0, g := 0, b := 0, a := 0.0 }
+
+end Color
+
+/-- Fill style for closed paths. -/
+structure Fill where
+  /-- Fill color. -/
+  color : Color := Color.black
+deriving Repr, BEq, Inhabited
+
