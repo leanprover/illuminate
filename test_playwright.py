@@ -8,7 +8,7 @@
 # ]
 # ///
 """
-Playwright visual and structural tests for Illuminate SVG output.
+Playwright structural tests and rsvg-convert visual regression tests for Illuminate SVG output.
 
 Run with:
     uv run test_playwright.py
@@ -20,8 +20,10 @@ To update expected baselines:
     UPDATE_BASELINES=1 uv run test_playwright.py
 """
 import os
+import shutil
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
 # ---------------------------------------------------------------------------
@@ -46,6 +48,7 @@ def ensure_browsers():
 
 ROOT = Path(__file__).resolve().parent
 VISUAL_DIR = ROOT / "visual_tests"
+FONTS_DIR = VISUAL_DIR / "fonts"
 UPDATE_BASELINES = os.environ.get("UPDATE_BASELINES", "").lower() in ("1", "true", "yes")
 
 
@@ -65,31 +68,58 @@ def generate_svgs():
 
 
 # ---------------------------------------------------------------------------
-# Visual test helpers
+# rsvg-convert visual test helpers
 # ---------------------------------------------------------------------------
 
-FONTS_DIR = VISUAL_DIR / "fonts"
+def _create_fontconfig():
+    """Create a temporary fontconfig configuration that maps generic families to bundled fonts."""
+    fonts_abs = FONTS_DIR.resolve()
+    config = f"""<?xml version="1.0"?>
+<!DOCTYPE fontconfig SYSTEM "urn:fontconfig:fonts.dtd">
+<fontconfig>
+  <dir>{fonts_abs}</dir>
+  <match target="pattern">
+    <test name="family"><string>sans-serif</string></test>
+    <edit name="family" mode="prepend" binding="strong">
+      <string>DejaVu Sans</string>
+    </edit>
+  </match>
+  <match target="pattern">
+    <test name="family"><string>monospace</string></test>
+    <edit name="family" mode="prepend" binding="strong">
+      <string>DejaVu Sans Mono</string>
+    </edit>
+  </match>
+</fontconfig>
+"""
+    tmpdir = tempfile.mkdtemp(prefix="illuminate-fonts-")
+    config_path = Path(tmpdir) / "fonts.conf"
+    config_path.write_text(config)
+    return config_path, tmpdir
 
-def _screenshot_svg(page, svg_name: str) -> bytes:
-    """Load an SVG in an HTML wrapper with bundled fonts and return its screenshot bytes."""
+
+_fontconfig_path, _fontconfig_tmpdir = _create_fontconfig()
+
+
+def _render_svg_to_png(svg_name: str) -> bytes:
+    """Render an SVG to PNG using rsvg-convert with bundled fonts."""
     svg_path = ROOT / svg_name
     assert svg_path.exists(), f"{svg_name} not found — run lake test first"
-    svg_content = svg_path.read_text()
-    # Rewrite generic font families to bundled DejaVu fonts
-    svg_content = svg_content.replace('font-family="sans-serif"', 'font-family="DejaVu Sans"')
-    svg_content = svg_content.replace('font-family="monospace"', 'font-family="DejaVu Sans Mono"')
-    sans_font = (FONTS_DIR / "DejaVuSans.ttf").resolve().as_uri()
-    mono_font = (FONTS_DIR / "DejaVuSansMono.ttf").resolve().as_uri()
-    html = f"""<!DOCTYPE html>
-<html><head><style>
-@font-face {{ font-family: 'DejaVu Sans'; src: url('{sans_font}'); }}
-@font-face {{ font-family: 'DejaVu Sans Mono'; src: url('{mono_font}'); }}
-</style></head><body style="margin:0;padding:0">{svg_content}</body></html>"""
-    page.set_content(html)
-    page.wait_for_load_state("networkidle")
-    screenshot = page.screenshot(full_page=True)
-    assert len(screenshot) > 1000, f"Screenshot too small: {len(screenshot)} bytes"
-    return screenshot
+    rsvg = shutil.which("rsvg-convert")
+    assert rsvg is not None, (
+        "rsvg-convert not found. Install librsvg: "
+        "brew install librsvg (macOS) or apt install librsvg2-bin (Linux)"
+    )
+    env = {**os.environ, "FONTCONFIG_FILE": str(_fontconfig_path)}
+    result = subprocess.run(
+        [rsvg, "--format=png", str(svg_path)],
+        capture_output=True,
+        env=env,
+    )
+    assert result.returncode == 0, f"rsvg-convert failed: {result.stderr.decode()}"
+    png_data = result.stdout
+    assert len(png_data) > 100, f"rsvg-convert produced empty output for {svg_name}"
+    return png_data
 
 
 def pixel_diff_ratio(img1_bytes: bytes, img2_bytes: bytes) -> float:
@@ -114,18 +144,18 @@ def pixel_diff_ratio(img1_bytes: bytes, img2_bytes: bytes) -> float:
     return diff / total
 
 
-def _run_visual_test(page, svg_name: str, test_name: str):
-    """Screenshot an SVG, write actual PNG, compare against expected, optionally update expected."""
+def _run_visual_test(svg_name: str, test_name: str):
+    """Render SVG via rsvg-convert, write actual PNG, compare against expected."""
     VISUAL_DIR.mkdir(exist_ok=True)
-    screenshot = _screenshot_svg(page, svg_name)
+    rendered = _render_svg_to_png(svg_name)
 
     actual_path = VISUAL_DIR / f"{test_name}.actual.png"
     expected_path = VISUAL_DIR / f"{test_name}.expected.png"
 
-    actual_path.write_bytes(screenshot)
+    actual_path.write_bytes(rendered)
 
     if UPDATE_BASELINES:
-        expected_path.write_bytes(screenshot)
+        expected_path.write_bytes(rendered)
 
     if not expected_path.exists():
         raise AssertionError(
@@ -134,7 +164,7 @@ def _run_visual_test(page, svg_name: str, test_name: str):
         )
 
     baseline = expected_path.read_bytes()
-    ratio = pixel_diff_ratio(screenshot, baseline)
+    ratio = pixel_diff_ratio(rendered, baseline)
     assert ratio < 0.001, (
         f"{test_name} visual regression: {ratio:.4%} pixels differ. "
         f"Compare {actual_path.name} vs {expected_path.name} in visual_tests/"
@@ -142,7 +172,7 @@ def _run_visual_test(page, svg_name: str, test_name: str):
 
 
 # ---------------------------------------------------------------------------
-# Structural tests
+# Structural tests (Playwright)
 # ---------------------------------------------------------------------------
 
 def test_smiley_structure(page):
@@ -241,45 +271,6 @@ def test_commdiag_node_positions(page):
         )
 
 
-# ---------------------------------------------------------------------------
-# Visual regression tests
-# ---------------------------------------------------------------------------
-
-def test_smiley_visual(page):
-    """Compare smiley screenshot against expected baseline."""
-    _run_visual_test(page, "smiley.svg", "smiley")
-
-
-def test_commdiag_visual(page):
-    """Compare commdiag screenshot against expected baseline."""
-    _run_visual_test(page, "commdiag.svg", "commdiag")
-
-
-def test_roundedrects_visual(page):
-    """Compare rounded-rects screenshot against expected baseline."""
-    _run_visual_test(page, "roundedrects.svg", "roundedrects")
-
-
-def test_pipeline_visual(page):
-    """Compare pipeline diagram screenshot against expected baseline."""
-    _run_visual_test(page, "pipeline.svg", "pipeline")
-
-
-def test_stringlayout_visual(page):
-    """Compare string layout diagram screenshot against expected baseline."""
-    _run_visual_test(page, "string-layout.svg", "stringlayout")
-
-
-def test_coechain_visual(page):
-    """Compare coe-chain diagram screenshot against expected baseline."""
-    _run_visual_test(page, "coe-chain.svg", "coechain")
-
-
-def test_lakeworkspace_visual(page):
-    """Compare lake workspace diagram screenshot against expected baseline."""
-    _run_visual_test(page, "lake-workspace.svg", "lakeworkspace")
-
-
 def test_stars_structure(page):
     """Stars SVG has path elements for each star and uses dash patterns."""
     svg_path = ROOT / "stars.svg"
@@ -296,31 +287,6 @@ def test_stars_structure(page):
     assert "stroke-dasharray" in svg_content, "Missing stroke-dasharray for dashed stars"
 
 
-def test_stars_visual(page):
-    """Compare stars screenshot against expected baseline."""
-    _run_visual_test(page, "stars.svg", "stars")
-
-
-def test_star_anchors_visual(page):
-    """Compare star-anchors screenshot against expected baseline."""
-    _run_visual_test(page, "star-anchors.svg", "star-anchors")
-
-
-def test_ellipse_visual(page):
-    """Compare ellipse screenshot against expected baseline."""
-    _run_visual_test(page, "ellipse.svg", "ellipse")
-
-
-def test_transforms_visual(page):
-    """Compare transforms screenshot against expected baseline."""
-    _run_visual_test(page, "transforms.svg", "transforms")
-
-
-def test_ghost_refocus_visual(page):
-    """Compare ghost-refocus screenshot against expected baseline."""
-    _run_visual_test(page, "ghost-refocus.svg", "ghost-refocus")
-
-
 def test_cellophane_clip_structure(page):
     """Cellophane/clip SVG has opacity groups and clipPath elements."""
     svg_path = ROOT / "cellophane-clip.svg"
@@ -330,9 +296,73 @@ def test_cellophane_clip_structure(page):
     assert "clipPath" in svg_content, "Missing clipPath element for clip"
 
 
-def test_cellophane_clip_visual(page):
-    """Compare cellophane-clip screenshot against expected baseline."""
-    _run_visual_test(page, "cellophane-clip.svg", "cellophane-clip")
+# ---------------------------------------------------------------------------
+# Visual regression tests (rsvg-convert)
+# ---------------------------------------------------------------------------
+
+def test_smiley_visual():
+    """Compare smiley rendering against expected baseline."""
+    _run_visual_test("smiley.svg", "smiley")
+
+
+def test_commdiag_visual():
+    """Compare commdiag rendering against expected baseline."""
+    _run_visual_test("commdiag.svg", "commdiag")
+
+
+def test_roundedrects_visual():
+    """Compare rounded-rects rendering against expected baseline."""
+    _run_visual_test("roundedrects.svg", "roundedrects")
+
+
+def test_pipeline_visual():
+    """Compare pipeline diagram rendering against expected baseline."""
+    _run_visual_test("pipeline.svg", "pipeline")
+
+
+def test_stringlayout_visual():
+    """Compare string layout diagram rendering against expected baseline."""
+    _run_visual_test("string-layout.svg", "stringlayout")
+
+
+def test_coechain_visual():
+    """Compare coe-chain diagram rendering against expected baseline."""
+    _run_visual_test("coe-chain.svg", "coechain")
+
+
+def test_lakeworkspace_visual():
+    """Compare lake workspace diagram rendering against expected baseline."""
+    _run_visual_test("lake-workspace.svg", "lakeworkspace")
+
+
+def test_stars_visual():
+    """Compare stars rendering against expected baseline."""
+    _run_visual_test("stars.svg", "stars")
+
+
+def test_star_anchors_visual():
+    """Compare star-anchors rendering against expected baseline."""
+    _run_visual_test("star-anchors.svg", "star-anchors")
+
+
+def test_ellipse_visual():
+    """Compare ellipse rendering against expected baseline."""
+    _run_visual_test("ellipse.svg", "ellipse")
+
+
+def test_transforms_visual():
+    """Compare transforms rendering against expected baseline."""
+    _run_visual_test("transforms.svg", "transforms")
+
+
+def test_ghost_refocus_visual():
+    """Compare ghost-refocus rendering against expected baseline."""
+    _run_visual_test("ghost-refocus.svg", "ghost-refocus")
+
+
+def test_cellophane_clip_visual():
+    """Compare cellophane-clip rendering against expected baseline."""
+    _run_visual_test("cellophane-clip.svg", "cellophane-clip")
 
 
 # ---------------------------------------------------------------------------
@@ -351,13 +381,18 @@ def main():
 
     from playwright.sync_api import sync_playwright
 
-    tests = [
+    structural_tests = [
         test_smiley_structure,
         test_smiley_bounding_box,
         test_commdiag_structure,
         test_commdiag_labels,
         test_commdiag_annotations,
         test_commdiag_node_positions,
+        test_stars_structure,
+        test_cellophane_clip_structure,
+    ]
+
+    visual_tests = [
         test_smiley_visual,
         test_commdiag_visual,
         test_roundedrects_visual,
@@ -365,23 +400,22 @@ def main():
         test_stringlayout_visual,
         test_coechain_visual,
         test_lakeworkspace_visual,
-        test_stars_structure,
         test_stars_visual,
         test_star_anchors_visual,
         test_ellipse_visual,
         test_transforms_visual,
         test_ghost_refocus_visual,
-        test_cellophane_clip_structure,
         test_cellophane_clip_visual,
     ]
 
     passed = 0
     failed = 0
 
+    # Run structural tests with Playwright
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True)
 
-        for test_fn in tests:
+        for test_fn in structural_tests:
             name = test_fn.__name__
             page = browser.new_page()
             try:
@@ -395,6 +429,20 @@ def main():
                 page.close()
 
         browser.close()
+
+    # Run visual regression tests with rsvg-convert
+    for test_fn in visual_tests:
+        name = test_fn.__name__
+        try:
+            test_fn()
+            print(f"  ✓ {name}")
+            passed += 1
+        except Exception as e:
+            print(f"  ✗ {name}: {e}")
+            failed += 1
+
+    # Clean up fontconfig tmpdir
+    shutil.rmtree(_fontconfig_tmpdir, ignore_errors=True)
 
     print(f"\n{passed} passed, {failed} failed")
     if failed > 0:
