@@ -94,24 +94,18 @@ def _ensure_docker_image():
 
 
 def _render_svg_to_png(svg_name: str) -> bytes:
-    """Render an SVG to PNG using rsvg-convert in Docker."""
+    """Render an SVG to PNG using Inkscape in Docker."""
     svg_path = ROOT / svg_name
     assert svg_path.exists(), f"{svg_name} not found — run lake test first"
     svg_data = svg_path.read_bytes()
     result = subprocess.run(
-        [
-            "docker", "run", "--rm", "-i",
-            DOCKER_IMAGE,
-            "--format=png",
-            "--zoom=4",
-            "/dev/stdin",
-        ],
+        ["docker", "run", "--rm", "-i", DOCKER_IMAGE],
         input=svg_data,
         capture_output=True,
     )
-    assert result.returncode == 0, f"rsvg-convert failed: {result.stderr.decode()}"
+    assert result.returncode == 0, f"inkscape failed: {result.stderr.decode()}"
     png_data = result.stdout
-    assert len(png_data) > 100, f"rsvg-convert produced empty output for {svg_name}"
+    assert len(png_data) > 100, f"inkscape produced empty output for {svg_name}"
     return png_data
 
 
