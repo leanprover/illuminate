@@ -75,15 +75,15 @@ def _screenshot_svg(page, svg_name: str) -> bytes:
     svg_path = ROOT / svg_name
     assert svg_path.exists(), f"{svg_name} not found — run lake test first"
     svg_content = svg_path.read_text()
+    # Rewrite generic font families to bundled DejaVu fonts
+    svg_content = svg_content.replace('font-family="sans-serif"', 'font-family="DejaVu Sans"')
+    svg_content = svg_content.replace('font-family="monospace"', 'font-family="DejaVu Sans Mono"')
     sans_font = (FONTS_DIR / "DejaVuSans.ttf").resolve().as_uri()
     mono_font = (FONTS_DIR / "DejaVuSansMono.ttf").resolve().as_uri()
     html = f"""<!DOCTYPE html>
 <html><head><style>
-@font-face {{ font-family: 'sans-serif'; src: url('{sans_font}'); }}
-@font-face {{ font-family: 'monospace'; src: url('{mono_font}'); }}
 @font-face {{ font-family: 'DejaVu Sans'; src: url('{sans_font}'); }}
 @font-face {{ font-family: 'DejaVu Sans Mono'; src: url('{mono_font}'); }}
-svg {{ font-family: 'DejaVu Sans', sans-serif; }}
 </style></head><body style="margin:0;padding:0">{svg_content}</body></html>"""
     page.set_content(html)
     page.wait_for_load_state("networkidle")
