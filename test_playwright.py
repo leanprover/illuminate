@@ -103,6 +103,7 @@ def _render_svg_to_png(svg_name: str) -> bytes:
             "docker", "run", "--rm", "-i",
             DOCKER_IMAGE,
             "--format=png",
+            "--zoom=4",
             "/dev/stdin",
         ],
         input=svg_data,
