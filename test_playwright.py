@@ -8,7 +8,10 @@
 # ]
 # ///
 """
-Playwright structural tests and rsvg-convert visual regression tests for Illuminate SVG output.
+Playwright structural tests and Docker-based visual regression tests for Illuminate SVG output.
+
+Visual tests render SVGs via rsvg-convert inside a Docker container to guarantee
+identical pixel output across macOS and Linux.
 
 Run with:
     uv run test_playwright.py
@@ -23,7 +26,6 @@ import os
 import shutil
 import subprocess
 import sys
-import tempfile
 from pathlib import Path
 
 # ---------------------------------------------------------------------------
@@ -48,8 +50,9 @@ def ensure_browsers():
 
 ROOT = Path(__file__).resolve().parent
 VISUAL_DIR = ROOT / "visual_tests"
-FONTS_DIR = VISUAL_DIR / "fonts"
 UPDATE_BASELINES = os.environ.get("UPDATE_BASELINES", "").lower() in ("1", "true", "yes")
+
+DOCKER_IMAGE = "illuminate-rsvg"
 
 
 def generate_svgs():
@@ -68,53 +71,42 @@ def generate_svgs():
 
 
 # ---------------------------------------------------------------------------
-# rsvg-convert visual test helpers
+# Docker-based rsvg-convert visual test helpers
 # ---------------------------------------------------------------------------
 
-def _create_fontconfig():
-    """Create a temporary fontconfig configuration that maps generic families to bundled fonts."""
-    fonts_abs = FONTS_DIR.resolve()
-    config = f"""<?xml version="1.0"?>
-<!DOCTYPE fontconfig SYSTEM "urn:fontconfig:fonts.dtd">
-<fontconfig>
-  <dir>{fonts_abs}</dir>
-  <match target="pattern">
-    <test name="family"><string>sans-serif</string></test>
-    <edit name="family" mode="prepend" binding="strong">
-      <string>DejaVu Sans</string>
-    </edit>
-  </match>
-  <match target="pattern">
-    <test name="family"><string>monospace</string></test>
-    <edit name="family" mode="prepend" binding="strong">
-      <string>DejaVu Sans Mono</string>
-    </edit>
-  </match>
-</fontconfig>
-"""
-    tmpdir = tempfile.mkdtemp(prefix="illuminate-fonts-")
-    config_path = Path(tmpdir) / "fonts.conf"
-    config_path.write_text(config)
-    return config_path, tmpdir
-
-
-_fontconfig_path, _fontconfig_tmpdir = _create_fontconfig()
+def _ensure_docker_image():
+    """Build the rsvg-convert Docker image if it doesn't exist."""
+    # Check if image exists
+    result = subprocess.run(
+        ["docker", "image", "inspect", DOCKER_IMAGE],
+        capture_output=True,
+    )
+    if result.returncode == 0:
+        return
+    print("  Building Docker image for visual tests...")
+    result = subprocess.run(
+        ["docker", "build", "-t", DOCKER_IMAGE, str(VISUAL_DIR)],
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode != 0:
+        raise RuntimeError(f"Docker build failed:\n{result.stderr}")
 
 
 def _render_svg_to_png(svg_name: str) -> bytes:
-    """Render an SVG to PNG using rsvg-convert with bundled fonts."""
+    """Render an SVG to PNG using rsvg-convert in Docker."""
     svg_path = ROOT / svg_name
     assert svg_path.exists(), f"{svg_name} not found — run lake test first"
-    rsvg = shutil.which("rsvg-convert")
-    assert rsvg is not None, (
-        "rsvg-convert not found. Install librsvg: "
-        "brew install librsvg (macOS) or apt install librsvg2-bin (Linux)"
-    )
-    env = {**os.environ, "FONTCONFIG_FILE": str(_fontconfig_path)}
+    svg_data = svg_path.read_bytes()
     result = subprocess.run(
-        [rsvg, "--format=png", str(svg_path)],
+        [
+            "docker", "run", "--rm", "-i",
+            DOCKER_IMAGE,
+            "--format=png",
+            "/dev/stdin",
+        ],
+        input=svg_data,
         capture_output=True,
-        env=env,
     )
     assert result.returncode == 0, f"rsvg-convert failed: {result.stderr.decode()}"
     png_data = result.stdout
@@ -145,8 +137,9 @@ def pixel_diff_ratio(img1_bytes: bytes, img2_bytes: bytes) -> float:
 
 
 def _run_visual_test(svg_name: str, test_name: str):
-    """Render SVG via rsvg-convert, write actual PNG, compare against expected."""
+    """Render SVG via Docker rsvg-convert, write actual PNG, compare against expected."""
     VISUAL_DIR.mkdir(exist_ok=True)
+    _ensure_docker_image()
     rendered = _render_svg_to_png(svg_name)
 
     actual_path = VISUAL_DIR / f"{test_name}.actual.png"
@@ -297,7 +290,7 @@ def test_cellophane_clip_structure(page):
 
 
 # ---------------------------------------------------------------------------
-# Visual regression tests (rsvg-convert)
+# Visual regression tests (Docker rsvg-convert)
 # ---------------------------------------------------------------------------
 
 def test_smiley_visual():
@@ -430,7 +423,7 @@ def main():
 
         browser.close()
 
-    # Run visual regression tests with rsvg-convert
+    # Run visual regression tests with Docker rsvg-convert
     for test_fn in visual_tests:
         name = test_fn.__name__
         try:
@@ -440,9 +433,6 @@ def main():
         except Exception as e:
             print(f"  ✗ {name}: {e}")
             failed += 1
-
-    # Clean up fontconfig tmpdir
-    shutil.rmtree(_fontconfig_tmpdir, ignore_errors=True)
 
     print(f"\n{passed} passed, {failed} failed")
     if failed > 0:

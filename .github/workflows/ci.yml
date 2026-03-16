@@ -26,9 +26,6 @@ jobs:
                   path: .playwright-browsers
                   key: playwright-${{ runner.os }}-${{ hashFiles('test_playwright.py') }}
 
-            - name: Install librsvg
-              run: sudo apt-get update && sudo apt-get install -y librsvg2-bin
-
             - uses: leanprover/lean-action@v1
 
             - name: Visual and structural tests
