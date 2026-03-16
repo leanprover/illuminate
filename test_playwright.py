@@ -68,13 +68,26 @@ def generate_svgs():
 # Visual test helpers
 # ---------------------------------------------------------------------------
 
+FONTS_DIR = VISUAL_DIR / "fonts"
+
 def _screenshot_svg(page, svg_name: str) -> bytes:
-    """Load an SVG and return its screenshot bytes."""
+    """Load an SVG in an HTML wrapper with bundled fonts and return its screenshot bytes."""
     svg_path = ROOT / svg_name
     assert svg_path.exists(), f"{svg_name} not found — run lake test first"
-    page.goto(f"file://{svg_path}")
+    svg_content = svg_path.read_text()
+    sans_font = (FONTS_DIR / "DejaVuSans.ttf").resolve().as_uri()
+    mono_font = (FONTS_DIR / "DejaVuSansMono.ttf").resolve().as_uri()
+    html = f"""<!DOCTYPE html>
+<html><head><style>
+@font-face {{ font-family: 'sans-serif'; src: url('{sans_font}'); }}
+@font-face {{ font-family: 'monospace'; src: url('{mono_font}'); }}
+@font-face {{ font-family: 'DejaVu Sans'; src: url('{sans_font}'); }}
+@font-face {{ font-family: 'DejaVu Sans Mono'; src: url('{mono_font}'); }}
+svg {{ font-family: 'DejaVu Sans', sans-serif; }}
+</style></head><body style="margin:0;padding:0">{svg_content}</body></html>"""
+    page.set_content(html)
     page.wait_for_load_state("networkidle")
-    screenshot = page.screenshot()
+    screenshot = page.screenshot(full_page=True)
     assert len(screenshot) > 1000, f"Screenshot too small: {len(screenshot)} bytes"
     return screenshot
 
