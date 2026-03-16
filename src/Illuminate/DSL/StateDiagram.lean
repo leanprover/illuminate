@@ -1,3 +1,9 @@
+/-
+Copyright (c) 2026 Lean FRO LLC. All rights reserved.
+Released under Apache 2.0 license as described in the file LICENSE.
+Author: David Thrane Christiansen
+-/
+
 import Illuminate.Geometry
 import Illuminate.Style
 import Illuminate.Diagram
@@ -137,4 +143,3 @@ end StateDiagramConfig
 /-- Overlays a list of diagrams into a single diagram. -/
 def overlay {β : Type} (ds : List (Diagram β)) : Diagram β :=
   ds.foldl Diagram.compose Diagram.empty
-

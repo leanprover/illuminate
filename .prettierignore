@@ -1,0 +1,4 @@
+.lake/
+visual_tests/
+*.svg
+*.lean

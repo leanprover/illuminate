@@ -1,0 +1,21 @@
+# Configuration file for trailing newline checker
+#
+# Lines starting with # are comments and will be ignored.
+# Empty lines are also ignored.
+
+# Extensions section: List file extensions to check (include the dot)
+[extensions]
+.lean
+.md
+.yml
+.yaml
+.txt
+.sh
+.toml
+.py
+.json
+
+# Skip section: List specific files or patterns to skip
+# Supports glob patterns (e.g., test-projects/*/output.txt)
+# Note: Only git-tracked files are checked, so build directories are automatically excluded
+[skip]

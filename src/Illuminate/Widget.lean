@@ -1,3 +1,9 @@
+/-
+Copyright (c) 2026 Lean FRO LLC. All rights reserved.
+Released under Apache 2.0 license as described in the file LICENSE.
+Author: David Thrane Christiansen
+-/
+
 import Lean
 import Illuminate.Diagram
 import Illuminate.Render
@@ -422,4 +428,3 @@ unsafe def elabDiagramCmd : CommandElab := fun stx => do
         ("initialSvg", .str svgStr),
         ("parameters", .arr gadgets)]
       savePanelWidgetInfo paramWidget.javascriptHash.val (pure props) stx
-

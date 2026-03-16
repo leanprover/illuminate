@@ -1,3 +1,9 @@
+/-
+Copyright (c) 2026 Lean FRO LLC. All rights reserved.
+Released under Apache 2.0 license as described in the file LICENSE.
+Author: David Thrane Christiansen
+-/
+
 import Illuminate.Geometry
 import Illuminate.Style
 import Illuminate.Diagram
@@ -417,4 +423,3 @@ Handles deferred node resolution automatically via fixed-point iteration.
 def renderDiagram {β : Type} [LayoutMeasure β Id] (d : Diagram β) (padding : Float := 2)
     (maxIter : Nat := 20) : String :=
   Id.run (renderDiagramM d (padding := padding) (maxIter := maxIter))
-

@@ -6,3 +6,4 @@
 
 # Visual test actuals (expected PNGs are committed)
 visual_tests/*.actual.png
+.DS_Store

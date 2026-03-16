@@ -1,3 +1,9 @@
+/-
+Copyright (c) 2026 Lean FRO LLC. All rights reserved.
+Released under Apache 2.0 license as described in the file LICENSE.
+Author: David Thrane Christiansen
+-/
+
 import Tests.Helpers
 
 set_option linter.missingDocs false
@@ -52,24 +58,15 @@ def labelDia (name : Name) (pull : Float) : Diagram Empty :=
       { point := `boxes.stop.north, pull, angle := some (- angle), arrowhead := some {} }
     |>.named name
 
-def arrowBends : Diagram Empty := Id.run do
-  let diagrams :=
-    List.range 19 |>.map fun (i : Nat) =>
-      let n := `v ++ .num .anonymous i
-      labelDia n (i.toFloat / 10.0)
+def arrowBends : Diagram Empty :=
+  let diagrams := List.range 19 |>.map fun i =>
+    labelDia (`v ++ .num .anonymous i) (i.toFloat / 10.0)
   let len := diagrams.length
   let cols := max 1 len.toFloat.sqrt.toInt64.toNatClampNeg
   let rows := len / cols + (if cols ∣ len then 0 else 1)
-  let mut out := []
-  for i in 0...cols do
-    let mut r := []
-    for j in 0...rows do
-      let n := j * cols + i
-      if let some d := diagrams[n]? then
-        r := d :: r
-      else break
-    out := Diagram.hsep 3 r.reverse :: out
-  Diagram.vsep 5 out.reverse
+  Diagram.vsep 5 <| List.range cols |>.map fun i =>
+    Diagram.hsep 3 <| List.range rows |>.filterMap fun j =>
+      diagrams[j * cols + i]?
 
 #diagram arrowBends
 
@@ -124,20 +121,19 @@ def arrowDemo (arrowhead : Arrowhead) : Diagram Empty :=
 -- ══════════════════════════════════════════════════════════════════
 
 def roundedRectsDiagram (pos : Slider "pos" 0 1 0.5) (pull : Slider "pull" 0 1 0.5) : Diagram Empty :=
-  let d := Diagram.hsep gap [node `left "Input", node `right "Output"]
-  -- Forward arrow: left.north → right.north, arching upward
-  let d := d.connect
-    { point := `left.north,  angle := some (pi / 2), pull }
-    { point := `right.north, angle := some (-(pi / 2)), pull,
-      arrowhead := some {} }
-    (label := some { label := .text "forward" (some { fontSize := 11 }), pos })
-  -- Backward arrow: right.south → left.south, arching downward
-  let d := d.connect
-    { point := `right.south, angle := some (-(pi / 2)), pull }
-    { point := `left.south, angle := some (pi / 2), pull,
-      arrowhead := some {} }
-    (label := some { label := .text "backward" (some { fontSize := 11 }), pos })
-  d
+  Diagram.hsep gap [node `left "Input", node `right "Output"]
+    -- Forward arrow: left.north → right.north, arching upward
+    |>.connect
+      { point := `left.north, angle := some (pi / 2), pull }
+      { point := `right.north, angle := some (-(pi / 2)), pull,
+        arrowhead := some {} }
+      (label := some { label := .text "forward" (some { fontSize := 11 }), pos })
+    -- Backward arrow: right.south → left.south, arching downward
+    |>.connect
+      { point := `right.south, angle := some (-(pi / 2)), pull }
+      { point := `left.south, angle := some (pi / 2), pull,
+        arrowhead := some {} }
+      (label := some { label := .text "backward" (some { fontSize := 11 }), pos })
 where
   gap := 50
   node (name : Lean.Name) (label : String) : Diagram Empty :=
@@ -188,16 +184,12 @@ def pipelineDiagram : Diagram Empty :=
       (label := lbl "Kernel Check")
     |>.withArrowhead { type := .stealth } |>.withLabelUpright
 where
-  labelStyle : TextStyle :=
-    { fontSize := 10 }
   lbl (s : String) : Option (Label Empty) :=
-    some { label := .text s labelStyle }
-  boxStyle : Stroke :=
-    { color := Color.black, width := 1 }
+    some { label := .text s (some { fontSize := 10 }) }
   box (name : Lean.Name) (label : String) : Diagram Empty :=
     Diagram.text label (some { fontSize := 12 })
       |>.pad 12
-      |>.frame (stroke := some boxStyle) (cornerRadius := 6)
+      |>.frame (stroke := some { color := Color.black, width := 1 }) (cornerRadius := 6)
       |>.withFillColor .white
       |>.namedWithAnchors name
 
@@ -250,7 +242,7 @@ where
     let box := field name label w
     let brace := Diagram.transform (Matrix.translate 0 (-14 - braceGap))
       (Diagram.curlyBrace w (depth := braceDepth) (label := some braceLabel))
-    Diagram.compose box brace
+    Diagram.atop box brace
 
 #diagram stringLayoutDiagram
 
@@ -272,18 +264,9 @@ def lakeWorkspaceDiagram : Diagram Empty :=
       "Executables",
       "Manifest (lake-manifest.json)"
     ]
-  let dep1 := borderedBox "Dependency 1" (items [
-      "Package configuration file",
-      "Libraries",
-      "Executables",
-      "Artifacts"
-    ] 8) 9 6
-  let dep2 := borderedBox "Dependency 2" (items [
-      "Package configuration file",
-      "Libraries",
-      "Executables",
-      "Artifacts"
-    ] 8) 9 6
+  let depItems := items ["Package configuration file", "Libraries", "Executables", "Artifacts"] 8
+  let dep1 := borderedBox "Dependency 1" depItems 9 6
+  let dep2 := borderedBox "Dependency 2" depItems 9 6
   let dots : Diagram Empty := .text "⋯" (some { fontSize := 14 })
   let packages := borderedBox "Packages" <|
     Diagram.vsep 8 [Diagram.hsep 12 [dep1, dep2], dots] (align := .left)
@@ -304,10 +287,8 @@ where
     Diagram.vsep 3 (ss.map fun s => txt s size) (align := .left)
   borderedBox (title : String) (content : Diagram Empty)
       (titleSize : Float := 11) (pad : Float := 8) : Diagram Empty :=
-    let titleDiag := bold title titleSize
-    let inner := Diagram.vsep 4 [titleDiag, content] (align := .left)
-    let padded := Diagram.pad pad inner
-    padded.frame (padding := 2) (cornerRadius := 4)
+    Diagram.vsep 4 [bold title titleSize, content] (align := .left)
+      |>.pad pad |>.frame (padding := 2) (cornerRadius := 4)
 
 #diagram lakeWorkspaceDiagram
 
@@ -414,7 +395,7 @@ def starAnchorsDiagram : Diagram Empty :=
   let s7 := Diagram.star 7 30 15 (fill := some fill) (stroke := some stroke) (name := some `star7)
   let s10 := Diagram.star 10 30 15 (fill := some fill) (stroke := some stroke) (name := some `star10)
   let s13 := Diagram.star 13 30 15 (fill := some fill) (stroke := some stroke) (name := some `star13)
-  let stealth := some { type := ArrowType.stealth : Arrowhead }
+  let stealth : Option Arrowhead := some { type := .stealth }
   Diagram.hsep 40 [s7, s10, s13]
     |>.connect
       { point := `star7.point5, angle := some 0.3, pull := 1 }
@@ -536,13 +517,10 @@ def cellophaneClipDiagram : Diagram Empty :=
   let green := some ({ color := { r := 0, g := 160, b := 0 } } : Fill)
   -- Row 1: cellophane at different opacities
   let box := Diagram.rect 40 30 (fill := red)
-  let cello1 := Diagram.cellophane 1.0 box
-  let cello05 := Diagram.cellophane 0.5 box
-  let cello02 := Diagram.cellophane 0.2 box
   let celloRow := Diagram.hsep 15 [
-    Diagram.vsep 5 [label "opacity 1.0", cello1],
-    Diagram.vsep 5 [label "opacity 0.5", cello05],
-    Diagram.vsep 5 [label "opacity 0.2", cello02]
+    Diagram.vsep 5 [label "opacity 1.0", Diagram.cellophane 1.0 box],
+    Diagram.vsep 5 [label "opacity 0.5", Diagram.cellophane 0.5 box],
+    Diagram.vsep 5 [label "opacity 0.2", Diagram.cellophane 0.2 box]
   ] (align := .top)
   -- Row 2: clip
   let checker := Diagram.atop
