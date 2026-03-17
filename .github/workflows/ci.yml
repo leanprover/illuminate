@@ -26,6 +26,15 @@ jobs:
                   path: .playwright-browsers
                   key: playwright-${{ runner.os }}-${{ hashFiles('test_playwright.py') }}
 
+            - name: Build Inkscape Docker image
+              uses: docker/build-push-action@v6
+              with:
+                  context: visual_tests
+                  tags: illuminate-inkscape
+                  load: true
+                  cache-from: type=gha
+                  cache-to: type=gha,mode=max
+
             - uses: leanprover/lean-action@v1
 
             - name: Visual and structural tests

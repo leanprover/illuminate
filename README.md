@@ -276,18 +276,21 @@ The root import `import Illuminate` re-exports all modules.
 
 Building requires [elan](https://github.com/leanprover/elan), which
 manages Lean toolchains automatically via the `lean-toolchain` file.
-The visual regression tests additionally require
-[uv](https://docs.astral.sh/uv/).
+The tests additionally require [uv](https://docs.astral.sh/uv/) and
+[Docker](https://docs.docker.com/get-docker/) (on macOS,
+[colima](https://github.com/abiosoft/colima) works).
 
 Build the library with `lake build`. The project enables the
 `missingDocs` linter, so all public declarations require docstrings
 and the build will fail if any are missing.
 
 The test suite has two layers. `lake test` runs Lean unit tests and
-writes SVG output files. `uv run test_playwright.py` then opens those
-SVGs in headless Chromium for structural DOM checks and pixel-level
-visual regression against committed baselines in `visual_tests/`. Both
-should pass before submitting changes:
+writes SVG output files. `uv run test_playwright.py` then runs two
+kinds of checks on those SVGs: structural DOM tests via Playwright
+(headless Chromium), and pixel-level visual regression tests that
+render each SVG via Inkscape inside a Docker container with pinned
+fonts (`visual_tests/Dockerfile`). Both should pass before submitting
+changes:
 
 ```sh
 lake test && uv run test_playwright.py

@@ -12,7 +12,10 @@ necessary. Never define your own or use other workarounds.
 
 - [elan](https://github.com/leanprover/elan) (manages Lean toolchains
   automatically via `lean-toolchain`)
-- [uv](https://docs.astral.sh/uv/) (for Playwright visual tests)
+- [uv](https://docs.astral.sh/uv/) (for Playwright structural tests
+  and visual regression runner)
+- [Docker](https://docs.docker.com/get-docker/) (for visual regression
+  tests; on macOS, [colima](https://github.com/abiosoft/colima) works)
 
 ## Building
 
@@ -38,15 +41,20 @@ This builds and runs the test executable. It also writes SVG files
 (`smiley.svg`, `commdiag.svg`, `roundedrects.svg`) used by the visual
 tests.
 
-### Playwright visual regression tests
+### Structural and visual regression tests
 
 ```sh
 uv run test_playwright.py
 ```
 
-Runs structural DOM tests and pixel-level visual regression tests
-using headless Chromium. Playwright browsers are auto-installed on
-first run.
+Runs two kinds of tests:
+
+- **Structural tests** use Playwright (headless Chromium) to inspect
+  SVG DOM elements (element counts, text content, bounding boxes).
+- **Visual regression tests** render SVGs to PNG via Inkscape inside a
+  Docker container (`visual_tests/Dockerfile`) with bundled DejaVu
+  fonts, then compare against committed baselines. The Docker image is
+  built automatically on first run.
 
 To update expected baselines after intentional visual changes:
 
@@ -58,6 +66,10 @@ Visual test files live in `visual_tests/`:
 
 - `*.expected.png` — committed baselines (the ground truth)
 - `*.actual.png` — generated each run, gitignored
+- `Dockerfile` — Inkscape + DejaVu fonts container for rendering
+- `fonts/` — bundled DejaVu Sans and DejaVu Sans Mono (v2.37)
+- `fonts.conf` — fontconfig rules mapping generic families to DejaVu
+- `render.sh` — stdin→stdout SVG-to-PNG wrapper for Inkscape
 
 **Important**: Never run `UPDATE_BASELINES=1` without explicit user
 approval. If visual tests fail, investigate and fix the underlying
@@ -82,7 +94,7 @@ src/Illuminate/          Library source
   Style.lean             Color, Fill, Stroke, TextStyle, FontSpec
   MathExpr.lean          Math expression tree (atom, frac, sup, sub, etc.)
   Diagram.lean           Core diagram type and smart constructors
-  Algebra.lean           Spatial composition (beside, hcat, vcat, grid, pad, frame)
+  Placement.lean         Spatial composition (beside, hcat, vcat, grid, pad, frame)
   Arrow.lean             General-purpose curved arrow routing (LineEnd, Arrowhead, connect)
   Render.lean            DrawCmd display list and SVG backend
   FontMetrics.lean       Font measurement interface
@@ -96,8 +108,8 @@ src/Illuminate/          Library source
   Widget.lean            #diagram command for Lean infoview
 src/Illuminate.lean      Root import (re-exports all modules)
 test/Main.lean           Unit tests and #diagram previews
-test_playwright.py       Playwright visual regression tests
-visual_tests/            Expected and actual screenshot PNGs
+test_playwright.py       Structural and visual regression tests
+visual_tests/            Baselines, Docker image, and bundled fonts
 lakefile.lean            Lake build configuration
 lean-toolchain           Lean 4 toolchain pin (v4.28.0)
 ```

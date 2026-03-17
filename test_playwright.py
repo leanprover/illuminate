@@ -10,8 +10,10 @@
 """
 Playwright structural tests and Docker-based visual regression tests for Illuminate SVG output.
 
-Visual tests render SVGs via rsvg-convert inside a Docker container to guarantee
-identical pixel output across macOS and Linux.
+Structural tests use Playwright (headless Chromium) to inspect SVG DOM elements.
+Visual regression tests render SVGs via Inkscape inside a Docker container
+(visual_tests/Dockerfile) with pinned fonts to guarantee identical pixel
+output across macOS and Linux.
 
 Run with:
     uv run test_playwright.py
@@ -52,7 +54,7 @@ ROOT = Path(__file__).resolve().parent
 VISUAL_DIR = ROOT / "visual_tests"
 UPDATE_BASELINES = os.environ.get("UPDATE_BASELINES", "").lower() in ("1", "true", "yes")
 
-DOCKER_IMAGE = "illuminate-rsvg"
+DOCKER_IMAGE = "illuminate-inkscape"
 
 
 def generate_svgs():
