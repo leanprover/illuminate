@@ -82,3 +82,4 @@ where
     | .compose a b => go b (go a acc)
     | .warning msg d => go d (acc ++ [msg])
     | .deferred _ _ => acc
+    | .deferredEnvelope d _ => go d acc
