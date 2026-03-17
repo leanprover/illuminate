@@ -16,8 +16,10 @@ lean_lib «Illuminate» where
 
 lean_lib «Tests» where
   srcDir := "test"
+  leanOptions := #[⟨`linter.missingDocs, false⟩]
 
 @[test_driver]
 lean_exe «illuminate-test» where
   srcDir := "test"
   root := `Main
+  leanOptions := #[⟨`linter.missingDocs, false⟩]

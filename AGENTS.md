@@ -20,12 +20,13 @@ necessary. Never define your own or use other workarounds.
 ## Building
 
 ```sh
-lake build
+lake build --wfail
 ```
 
 This compiles the library (`src/`) and all dependencies. The build
 must complete with **zero warnings** — `linter.missingDocs` is enabled
 in `lakefile.lean`, so all public declarations require docstrings.
+The `--wfail` flag ensures warnings are treated as errors.
 
 ## Testing
 
@@ -34,7 +35,7 @@ Always run tests after every change before reporting success.
 ### Lean unit tests
 
 ```sh
-lake test
+lake test --wfail
 ```
 
 This builds and runs the test executable. It also writes SVG files
@@ -79,7 +80,7 @@ intentional and the user has confirmed it.
 ### Running both
 
 ```sh
-lake test && uv run test_playwright.py
+lake test --wfail && uv run test_playwright.py
 ```
 
 ## Project structure
