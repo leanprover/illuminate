@@ -19,7 +19,7 @@ measurement strategies (e.g., heuristic, Harfbuzz, browser JS).
 -/
 class LayoutMeasure (β : Type) (m : Type → Type) where
   /-- Measures a text string with the given style. -/
-  measureText : String → TextStyle → m MeasuredBox
+  measureText : String → FullTextStyle → m MeasuredBox
   /-- Computes the envelope of a foreign primitive. -/
   measureForeign : β → m Envelope
 

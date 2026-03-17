@@ -135,7 +135,7 @@ def cellSpacing : Float := 60
 def nodePadding : Float := 8
 
 /-- Arrow stroke style. -/
-def arrowStroke : Stroke := { color := Color.black, width := 1.5 }
+def arrowStroke : FullStroke := { color := Color.black, width := 1.5, lineCap := .butt, lineJoin := .miter, dash := .solid }
 
 /-- Default arrowhead configuration for commutative diagram arrows. -/
 private def defaultArrowhead : Arrowhead := {}
@@ -199,8 +199,9 @@ private def buildDeferredArrow (morph : Morphism) : Diagram β :=
       let srcShrink := nodePadding + 2
       let tgtShrink := nodePadding + 2
       let (a, b) := shortenSegment srcPos tgtPos srcShrink tgtShrink
+      let arrowStrokeOverride : Stroke := { color := arrowStroke.color, width := arrowStroke.width, lineCap := arrowStroke.lineCap, lineJoin := arrowStroke.lineJoin, dash := arrowStroke.dash }
       if morph.bend == 0 then
-        let shaft := Diagram.fromStroke (PathData.line a b) (some arrowStroke)
+        let shaft := Diagram.fromStroke (PathData.line a b) arrowStrokeOverride
         let (head, _) := ArrowDraw.drawArrowhead defaultArrowhead b (Vec2.sub b a) arrowStroke
         let arrow := Diagram.atop shaft head
         let arrow := match morph.label with
@@ -210,7 +211,7 @@ private def buildDeferredArrow (morph : Morphism) : Diagram β :=
             let labelPos := Vec2.add mid offset
             let labelDiag := Diagram.transform
               (Matrix.translate labelPos.x labelPos.y)
-              (.text labelExpr (some { fontSize := 12 }))
+              (.text labelExpr { fontSize := (12 : Float) })
             Diagram.atop arrow labelDiag
           | none => arrow
         match morph.tag with
@@ -225,7 +226,7 @@ private def buildDeferredArrow (morph : Morphism) : Diagram β :=
         let c2 := b + (2 / 3 : Float) • (ctrl - b)
         let shaft := Diagram.fromStroke
           (PathData.empty |>.moveTo a |>.curveTo c1 c2 b)
-          (some arrowStroke)
+          arrowStrokeOverride
         let headDir := Vec2.sub b c2
         let (head, _) := ArrowDraw.drawArrowhead defaultArrowhead b headDir arrowStroke
         let arrow := Diagram.atop shaft head

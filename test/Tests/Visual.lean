@@ -16,40 +16,40 @@ open Illuminate
 
 -- Rounded rectangle
 #diagram Diagram.roundedRect 80 40 8
-  (fill := some { color := { r := 220, g := 235, b := 255 } })
-  (stroke := some { color := Color.black, width := 1.5 })
+  (fill := { color := some { r := 220, g := 235, b := 255 } })
+  (stroke := { color := Color.black, width := (1.5 : Float) })
 
 -- Frame around text
-#diagram (Diagram.pad 6 (.text "framed" (some { fontSize := 14 }))).frame
-  (stroke := some { color := Color.black, width := 1 }) (padding := 2)
+#diagram (Diagram.pad 6 (.text "framed" { fontSize := (14 : Float) })).frame
+  (stroke := { color := Color.black, width := (1 : Float) }) (padding := 2)
 
 -- Horizontal concatenation
 #diagram Diagram.hcat [
-  Diagram.circle 15 (fill := some { color := Color.red }),
-  Diagram.rect 30 30 (fill := some { color := Color.green }),
-  Diagram.circle 15 (fill := some { color := Color.blue })
+  Diagram.circle 15 (fill := { color := Color.red }),
+  Diagram.rect 30 30 (fill := { color := Color.green }),
+  Diagram.circle 15 (fill := { color := Color.blue })
 ]
 
 -- Vertical concatenation
 #diagram Diagram.vcat [
-  .text "Top" (some { fontSize := 12 }),
-  .rect 60 2 (fill := some { color := Color.black }),
-  .text "Bottom" (some { fontSize := 12 })
+  .text "Top" { fontSize := (12 : Float) },
+  .rect 60 2 (fill := { color := Color.black }),
+  .text "Bottom" { fontSize := (12 : Float) }
 ]
 
 -- Grid layout
 #diagram Diagram.grid #[
-  #[some (Diagram.circle 10 (fill := some { color := Color.red })),
-   some (Diagram.circle 10 (fill := some { color := Color.green }))],
-  #[some (Diagram.circle 10 (fill := some { color := Color.blue })),
+  #[some (Diagram.circle 10 (fill := { color := Color.red })),
+   some (Diagram.circle 10 (fill := { color := Color.green }))],
+  #[some (Diagram.circle 10 (fill := { color := Color.blue })),
    none]
 ]
 
 open Diagram in
 open Lean in
 def labelDia (name : Name) (pull : Float) : Diagram Empty :=
-  let start := roundedRect 25 15 0.4 (fill := some { color := {r := 100, g := 30, b := 132} }) (name := `start)
-  let stop := roundedRect 20 15 0.4 (fill := some { color := {r := 33, g := 128, b := 5} }) (name := `stop)
+  let start := roundedRect 25 15 0.4 (fill := { color := some {r := 100, g := 30, b := 132} }) (name := `start)
+  let stop := roundedRect 20 15 0.4 (fill := { color := some {r := 33, g := 128, b := 5} }) (name := `stop)
   let d := hsep 5 [start, stop] |>.named `boxes
   let angle := pi / 2
   d
@@ -114,7 +114,7 @@ def arrowDemo (arrowhead : Arrowhead) : Diagram Empty :=
       List.range rows |>.map fun row =>
         let rowCount := min cols (n - row * cols)
         .hsep sep <| List.range rowCount |>.map fun _ =>
-          .circle rad (fill := some {color := { r, g, b } })
+          .circle rad (fill := {color := some { r, g, b } })
 
 -- ══════════════════════════════════════════════════════════════════
 -- RoundedRect visual test
@@ -127,20 +127,20 @@ def roundedRectsDiagram (pos : Slider "pos" 0 1 0.5) (pull : Slider "pull" 0 1 0
       { point := `left.north, angle := some (pi / 2), pull }
       { point := `right.north, angle := some (-(pi / 2)), pull,
         arrowhead := some {} }
-      (label := some { label := .text "forward" (some { fontSize := 11 }), pos })
+      (label := some { label := .text "forward" { fontSize := (11 : Float) }, pos })
     -- Backward arrow: right.south → left.south, arching downward
     |>.connect
       { point := `right.south, angle := some (-(pi / 2)), pull }
       { point := `left.south, angle := some (pi / 2), pull,
         arrowhead := some {} }
-      (label := some { label := .text "backward" (some { fontSize := 11 }), pos })
+      (label := some { label := .text "backward" { fontSize := (11 : Float) }, pos })
 where
   gap := 50
   node (name : Lean.Name) (label : String) : Diagram Empty :=
     Diagram.atop
-      (Diagram.roundedRect 80 40 8 (fill := some { color := { r := 220, g := 235, b := 255 } })
-        (stroke := some { color := Color.black, width := 1.5 }) (name := name))
-      (.text label (some { fontSize := 14 }))
+      (Diagram.roundedRect 80 40 8 (fill := { color := some { r := 220, g := 235, b := 255 } })
+        (stroke := { color := Color.black, width := (1.5 : Float) }) (name := name))
+      (.text label { fontSize := (14 : Float) })
 
 #diagram roundedRectsDiagram
 
@@ -160,10 +160,10 @@ def pipelineDiagram : Diagram Empty :=
       |>.pad 8
       |>.namedWithAnchors `result
   Diagram.grid (hSpacing := 70) (vSpacing := 50) #[
-    #[some (box `source "Code.lean"),       none],
-    #[some (box `stx "Syntax Tree"),        none],
-    #[some (box `core "Core Type\nTheory"),  some (box `kernel "Core Type\nTheory\n(no recursion)")],
-    #[some (box `exe "Executable"),         some result]
+    #[some (box `source "Code.lean" (mono := true)), none],
+    #[some (box `stx "Syntax Tree"),                 none],
+    #[some (box `core "Core Type\nTheory"),          some (box `kernel "Core Type\nTheory\n(no recursion)")],
+    #[some (box `exe "Executable"),                  some result]
   ]
   -- Arrows (stealth arrowheads and upright labels set via config)
     |>.connect `source.south `stx.north
@@ -185,17 +185,19 @@ def pipelineDiagram : Diagram Empty :=
     |>.withArrowhead { type := .stealth } |>.withLabelUpright
 where
   lbl (s : String) : Option (Label Empty) :=
-    some { label := .text s (some { fontSize := 10 }) }
-  box (name : Lean.Name) (label : String) : Diagram Empty :=
-    Diagram.text label (some { fontSize := 12 })
+    some { label := .text s { fontSize := (10 : Float) } }
+  box (name : Lean.Name) (label : String) (mono := false) : Diagram Empty :=
+    Diagram.text label { fontSize := (12 : Float) }
+      |> (if mono then Diagram.withFontFamily "monospace" else id)
       |>.pad 12
-      |>.frame (stroke := some { color := Color.black, width := 1 }) (cornerRadius := 6)
+      |>.frame (stroke := { color := Color.black, width := (1 : Float) }) (cornerRadius := 6)
       |>.withFillColor .white
       |>.namedWithAnchors name
 
 #diagram pipelineDiagram
 
 #diagram Diagram.text "a\nabcdef\nqf\nabcd\nabcdefg" |>.showEnvelope
+
 
 def testVisual_pipeline : IO Unit :=
   testVisualWrite "pipeline.svg" pipelineDiagram (padding := 20)
@@ -223,19 +225,19 @@ def stringLayoutDiagram : Diagram Empty :=
   Diagram.hsep 0 [headerCol, sizeCol, capCol, lenCol, dataCol, nulCol] (align := .top)
 where
   txt (s : String) : Diagram Empty :=
-    .text s (some { fontSize := 8 })
+    .text s { fontSize := (8 : Float) }
   mono (s : String) : Diagram Empty :=
-    .text s (some { fontSize := 8, fontFamily := "monospace" })
+    .text s { fontSize := (8 : Float), fontFamily := "monospace" }
   /-- Stacks a description line above a type line. -/
   twoLine (description : String) (typeLine : Diagram Empty) : Diagram Empty :=
     Diagram.vsep 1 [txt description, typeLine]
   field (name : Lean.Name) (label : String) (w : Float) : Diagram Empty :=
     Diagram.atop
       (Diagram.rect w 28
-        (stroke := some { color := Color.black, width := 1 })
-        (fill := some { color := .white })
+        (stroke := { color := Color.black, width := (1 : Float) })
+        (fill := { color := Color.white })
         (name := name))
-      (.text label (some { fontSize := 10, fontFamily := "monospace" }))
+      (.text label { fontSize := (10 : Float), fontFamily := "monospace" })
   /-- Builds a field box with a curly brace and label below it. -/
   fieldWithBrace (name : Lean.Name) (label : String) (w : Float)
       (braceDepth braceGap : Float) (braceLabel : Diagram Empty) : Diagram Empty :=
@@ -267,7 +269,7 @@ def lakeWorkspaceDiagram : Diagram Empty :=
   let depItems := items ["Package configuration file", "Libraries", "Executables", "Artifacts"] 8
   let dep1 := borderedBox "Dependency 1" depItems 9 6
   let dep2 := borderedBox "Dependency 2" depItems 9 6
-  let dots : Diagram Empty := .text "⋯" (some { fontSize := 14 })
+  let dots : Diagram Empty := .text "⋯" { fontSize := (14 : Float) }
   let packages := borderedBox "Packages" <|
     Diagram.vsep 8 [Diagram.hsep 12 [dep1, dep2], dots] (align := .left)
   let artifacts := borderedBox "Artifacts" <|
@@ -278,11 +280,11 @@ def lakeWorkspaceDiagram : Diagram Empty :=
     Diagram.vsep 10 [toolchain, rootPkg, lakeDir] (align := .left)
 where
   txt (s : String) (size : Float := 10) : Diagram Empty :=
-    .text s (some { fontSize := size, anchor := .start })
+    .text s { fontSize := size, anchor := TextAnchor.start }
   bold (s : String) (size : Float := 11) : Diagram Empty :=
-    .text s (some { fontSize := size, bold := true, anchor := .start })
+    .text s { fontSize := size, bold := true, anchor := TextAnchor.start }
   mono (s : String) (size : Float := 10) : Diagram Empty :=
-    .text s (some { fontSize := size, fontFamily := "monospace", anchor := .start })
+    .text s { fontSize := size, fontFamily := "monospace", anchor := TextAnchor.start }
   items (ss : List String) (size : Float := 10) : Diagram Empty :=
     Diagram.vsep 3 (ss.map fun s => txt s size) (align := .left)
   borderedBox (title : String) (content : Diagram Empty)
@@ -322,27 +324,27 @@ def coeChainDiagram : Diagram Empty :=
     [level4, mono "CoeDep" |>.padBottom 3 |>.namedWithAnchors `CoeDep] (align := .bottom)
   -- "or" and CoeT below, named for anchor resolution
   let orLabel : Diagram Empty :=
-    Diagram.text "or" (some { fontSize := 10, italic := true }) |>.pad 3 |>.namedWithAnchors `or
+    Diagram.text "or" { fontSize := (10 : Float), italic := true } |>.pad 3 |>.namedWithAnchors `or
   let coeTLabel : Diagram Empty := mono "CoeT" (name := `CoeT)
-  let lineStroke : Stroke := { color := Color.black, width := 1 }
+  let lineStroke : FullStroke := { color := Color.black, width := 1, lineCap := .butt, lineJoin := .miter, dash := .solid }
   Diagram.vsep 12 [withCoeDep, orLabel, coeTLabel]
     |>.connectL `CoeHTCT.south `or.west (stroke := lineStroke)
     |>.connectL `CoeDep.south `or.east (stroke := lineStroke)
     |>.connectL `or.south `CoeT.north (stroke := lineStroke)
 where
   mono (s : String) (name : Option Lean.Name := none) : Diagram Empty :=
-    .text s (some { fontSize := 10, fontFamily := "monospace" }) (name := name)
+    .text s { fontSize := (10 : Float), fontFamily := "monospace" } (name := name)
 
 #diagram coeChainDiagram
 
 def testVisual_coeChain : IO Unit :=
   testVisualWrite "coe-chain.svg" coeChainDiagram
 
-#diagram (Diagram.circle 20 (fill := some {color := .transparent})).showEnvelope
+#diagram (Diagram.circle 20 (fill := {color := Color.transparent})).showEnvelope
 
-#diagram (Diagram.rect 20 30 (fill := some { color := .transparent } )).showEnvelope
+#diagram (Diagram.rect 20 30 (fill := { color := Color.transparent } )).showEnvelope
 
-#diagram (Diagram.roundedRect 20 30 3 (fill := some { color := .transparent } )).showEnvelope
+#diagram (Diagram.roundedRect 20 30 3 (fill := { color := Color.transparent } )).showEnvelope
 
 #diagram (Diagram.text "foo").showEnvelope
 
@@ -361,20 +363,20 @@ def starsDiagram : Diagram Empty :=
   let dashLabels := ["solid", "dashed", "dotted", "dashDot"]
   let outerR := 20.0
   let innerR := 10.0
-  let fill : Fill := { color := { r := 255, g := 230, b := 100 } }
+  let fill : Fill := { color := some { r := 255, g := 230, b := 100 } }
   -- Column headers
   let headers := Diagram.hsep 20 (dashLabels.map fun l =>
     Diagram.withEnvelope (Envelope.ofRect 25 8)
-      (.text l (some { fontSize := 9 })))
+      (.text l { fontSize := (9 : Float) }))
   -- Row label + stars for each point count
   let rows := pointCounts.map fun n =>
     let label := Diagram.withEnvelope (Envelope.ofRect 12 25)
-      (Diagram.text s!"{n}pt" (some { fontSize := 9 }))
+      (Diagram.text s!"{n}pt" { fontSize := (9 : Float) })
     let cells := dashes.map fun dash =>
       Diagram.withEnvelope (Envelope.ofRect 25 25)
         (Diagram.star n outerR innerR
-          (fill := some fill)
-          (stroke := some { color := Color.black, width := 1.5, dash }))
+          (fill := fill)
+          (stroke := { color := Color.black, width := (1.5 : Float), dash := some dash }))
     Diagram.hsep 20 (label :: cells)
   -- Combine header row with star rows
   let headerRow := Diagram.hsep 20
@@ -390,11 +392,11 @@ def testVisual_stars : IO Unit :=
 
 /-- Three stars (7, 10, 13 points) with point5 of each connected by arrows. -/
 def starAnchorsDiagram : Diagram Empty :=
-  let fill : Fill := { color := { r := 255, g := 230, b := 100 } }
-  let stroke : Stroke := { color := Color.black, width := 1.5 }
-  let s7 := Diagram.star 7 30 15 (fill := some fill) (stroke := some stroke) (name := some `star7)
-  let s10 := Diagram.star 10 30 15 (fill := some fill) (stroke := some stroke) (name := some `star10)
-  let s13 := Diagram.star 13 30 15 (fill := some fill) (stroke := some stroke) (name := some `star13)
+  let fill : Fill := { color := some { r := 255, g := 230, b := 100 } }
+  let stroke : Stroke := { color := Color.black, width := (1.5 : Float) }
+  let s7 := Diagram.star 7 30 15 (fill := fill) (stroke := stroke) (name := some `star7)
+  let s10 := Diagram.star 10 30 15 (fill := fill) (stroke := stroke) (name := some `star10)
+  let s13 := Diagram.star 13 30 15 (fill := fill) (stroke := stroke) (name := some `star13)
   let stealth : Option Arrowhead := some { type := .stealth }
   Diagram.hsep 40 [s7, s10, s13]
     |>.connect
@@ -415,13 +417,13 @@ def testVisual_starAnchors : IO Unit :=
 
 /-- Ellipses with various aspect ratios. -/
 def ellipseDiagram : Diagram Empty :=
-  let fill : Fill := { color := { r := 180, g := 210, b := 255 } }
-  let stroke : Stroke := { color := Color.black, width := 1.5 }
+  let fill : Fill := { color := some { r := 180, g := 210, b := 255 } }
+  let stroke : Stroke := { color := Color.black, width := (1.5 : Float) }
   Diagram.hsep 15 [
-    Diagram.ellipse 30 15 (fill := some fill) (stroke := some stroke),
-    Diagram.ellipse 15 30 (fill := some fill) (stroke := some stroke),
-    Diagram.ellipse 25 25 (fill := some fill) (stroke := some stroke),
-    Diagram.ellipse 35 10 (fill := some fill) (stroke := some { stroke with dash := .dashed })
+    Diagram.ellipse 30 15 (fill := fill) (stroke := stroke),
+    Diagram.ellipse 15 30 (fill := fill) (stroke := stroke),
+    Diagram.ellipse 25 25 (fill := fill) (stroke := stroke),
+    Diagram.ellipse 35 10 (fill := fill) (stroke := { stroke with dash := StrokeDash.dashed })
   ]
 
 #diagram ellipseDiagram
@@ -445,13 +447,13 @@ private def arrowShape : Diagram Empty :=
     |>.lineTo ⟨-15, 8⟩
     |>.close
   Diagram.fromPath path
-    (fill := some { color := { r := 100, g := 180, b := 100 } })
-    (stroke := some { color := Color.black, width := 1 })
+    (fill := { color := some { r := 100, g := 180, b := 100 } })
+    (stroke := { color := Color.black, width := (1 : Float) })
 
 /-- Demonstrates scale, rotate, hflip, vflip on an arrow shape. -/
 def transformsDiagram : Diagram Empty :=
   let label (s : String) : Diagram Empty :=
-    .text s (some { fontSize := 9 })
+    .text s { fontSize := (9 : Float) }
   Diagram.hsep 20 [
     Diagram.vsep 5 [label "original", arrowShape],
     Diagram.vsep 5 [label "scale 1.5", Diagram.scale 1.5 arrowShape],
@@ -473,11 +475,11 @@ def testVisual_transforms : IO Unit :=
 
 /-- Demonstrates ghost and refocus. -/
 def ghostRefocusDiagram : Diagram Empty :=
-  let red := some { color := Color.red : Fill }
-  let blue := some { color := Color.blue : Fill }
-  let green := some { color := { r := 0, g := 160, b := 0, a := 0.8 } : Fill }
+  let red : Fill := { color := Color.red }
+  let blue : Fill := { color := Color.blue }
+  let green : Fill := { color := some { r := 0, g := 160, b := 0, a := 0.8 } }
   let label (s : String) : Diagram Empty :=
-    .text s (some { fontSize := 9 })
+    .text s { fontSize := (9 : Float) }
   -- Row 1: normal vs ghost — ghost reserves space but draws nothing
   let box := Diagram.rect 30 30 (fill := red)
   let circ := Diagram.circle 15 (fill := blue)
@@ -511,10 +513,10 @@ def testVisual_ghostRefocus : IO Unit :=
 /-- Demonstrates cellophane (opacity), clip, pinOver, and pinUnder. -/
 def cellophaneClipDiagram : Diagram Empty :=
   let label (s : String) : Diagram Empty :=
-    .text s (some { fontSize := 9 })
-  let red := some { color := Color.red : Fill }
-  let blue := some { color := Color.blue : Fill }
-  let green := some ({ color := { r := 0, g := 160, b := 0 } } : Fill)
+    .text s { fontSize := (9 : Float) }
+  let red : Fill := { color := Color.red }
+  let blue : Fill := { color := Color.blue }
+  let green : Fill := { color := some { r := 0, g := 160, b := 0 } }
   -- Row 1: cellophane at different opacities
   let box := Diagram.rect 40 30 (fill := red)
   let celloRow := Diagram.hsep 15 [
@@ -541,13 +543,13 @@ def cellophaneClipDiagram : Diagram Empty :=
   let pinned := base1
     |> Diagram.pinOver `left dot
     |> Diagram.pinOver `right dot
-  let semiBlue := some ({ color := { r := 0, g := 0, b := 255, a := 0.5 } } : Fill)
-  let semiGreen := some ({ color := { r := 0, g := 160, b := 0, a := 0.5 } } : Fill)
+  let semiBlue : Fill := { color := some { r := 0, g := 0, b := 255, a := 0.5 } }
+  let semiGreen : Fill := { color := some { r := 0, g := 160, b := 0, a := 0.5 } }
   let base2 := Diagram.hsep 40 [
     Diagram.circle 20 (fill := semiBlue) (name := some `left2),
     Diagram.circle 20 (fill := semiGreen) (name := some `right2)
   ]
-  let underDot := Diagram.circle 12 (fill := some { color := { r := 255, g := 200, b := 0 } })
+  let underDot := Diagram.circle 12 (fill := { color := some { r := 255, g := 200, b := 0 } })
   let pinnedUnder := base2
     |> Diagram.pinUnder `left2 underDot
   let pinRow := Diagram.hsep 30 [

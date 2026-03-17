@@ -21,7 +21,7 @@ HarfBuzz-based implementations are used for canvas/PDF backends.
 -/
 structure FontMetrics where
   /-- Measures a text string and returns its bounding box. -/
-  measureText : String → TextStyle → MeasuredBox
+  measureText : String → FullTextStyle → MeasuredBox
 
 namespace FontMetrics
 

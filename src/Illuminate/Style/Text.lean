@@ -19,20 +19,36 @@ inductive TextAnchor where
   | «end»
 deriving Repr, BEq, Inhabited
 
-/-- Text rendering style: font family, size, weight, slant, and color. -/
+/-- Text style override. Fields set to `none` inherit from the draw config. -/
 structure TextStyle where
+  /-- CSS font family name. Inherits from config when `none`. Default: "sans-serif". -/
+  fontFamily : Option String := none
+  /-- Font size in diagram units. Inherits from config when `none`. Default: 16. -/
+  fontSize : Option Float := none
+  /-- Whether to render in bold weight. Inherits from config when `none`. Default: false. -/
+  bold : Option Bool := none
+  /-- Whether to render in italic style. Inherits from config when `none`. Default: false. -/
+  italic : Option Bool := none
+  /-- Text fill color. Inherits from config when `none`. Default: opaque black. -/
+  color : Option Color := none
+  /-- Horizontal anchor point for text layout. Default: middle. -/
+  anchor : Option TextAnchor := none
+deriving Repr, BEq, Inhabited
+
+/-- Resolved text style with all fields concrete. -/
+structure FullTextStyle where
   /-- CSS font family name. -/
-  fontFamily : String := "sans-serif"
+  fontFamily : String
   /-- Font size in diagram units. -/
-  fontSize : Float := 16
+  fontSize : Float
   /-- Whether to render in bold weight. -/
-  bold : Bool := false
+  bold : Bool
   /-- Whether to render in italic style. -/
-  italic : Bool := false
+  italic : Bool
   /-- Text fill color. -/
-  color : Color := Color.black
+  color : Color
   /-- Horizontal anchor point for text layout. -/
-  anchor : TextAnchor := .middle
+  anchor : TextAnchor
 deriving Repr, BEq, Inhabited
 
 /-- Estimates the advance width of a single character for a proportional sans-serif approximation. -/

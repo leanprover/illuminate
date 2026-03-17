@@ -13,11 +13,11 @@ namespace Illuminate
 /-- The display list: backend-agnostic drawing commands. -/
 inductive DrawCmd where
   /-- Fills a path with the given fill style. -/
-  | fillPath : PathData → Fill → DrawCmd
+  | fillPath : PathData → FullFill → DrawCmd
   /-- Strokes a path with the given stroke style. -/
-  | strokePath : PathData → Stroke → DrawCmd
+  | strokePath : PathData → FullStroke → DrawCmd
   /-- Draws a text string at the given position. -/
-  | drawTextRun : String → TextStyle → Vec2 → DrawCmd
+  | drawTextRun : String → FullTextStyle → Vec2 → DrawCmd
   /-- Pushes an affine transform onto the graphics state stack. -/
   | pushTransform : Matrix → DrawCmd
   /-- Pops the most recent transform from the graphics state stack. -/

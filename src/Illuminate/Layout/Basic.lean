@@ -122,10 +122,10 @@ def getEnvelopeM {m : Type → Type} [Monad m] [LayoutMeasure β m]
         | .curveTo c1 c2 ep => ep :: c2 :: c1 :: acc
         | .closePath => acc
       pure (Envelope.ofVertices pts)
-    | .core (.text s optStyle) =>
-      let style := optStyle.getD {}
-      let box ← (LayoutMeasure.measureText (β := β) s style : m MeasuredBox)
-      pure (envelopeOfMeasuredText box style.anchor)
+    | .core (.text s style) =>
+      let fullStyle := style.resolve ResolvedConfig.defaults
+      let box ← (LayoutMeasure.measureText (β := β) s fullStyle : m MeasuredBox)
+      pure (envelopeOfMeasuredText box fullStyle.anchor)
     | .core (.image ref) =>
       pure (Envelope.ofRect (ref.width / 2) (ref.height / 2))
     | .foreign f _ =>
@@ -193,15 +193,15 @@ where
     | .empty => acc
     | .prim p =>
       match p with
-      | .core (.path pd optFill optStroke) =>
-        let fill := optFill.getD rc.toFill
-        let stroke := optStroke.getD rc.toStroke
-        let acc := if fill.color.a > 0 then acc ++ [.fillPath pd fill] else acc
-        if stroke.width > 0 && stroke.color.a > 0 then acc ++ [.strokePath pd stroke]
+      | .core (.path pd fill stroke) =>
+        let fullFill := fill.resolve rc
+        let fullStroke := stroke.resolve rc
+        let acc := if fullFill.color.a > 0 then acc ++ [.fillPath pd fullFill] else acc
+        if fullStroke.width > 0 && fullStroke.color.a > 0 then acc ++ [.strokePath pd fullStroke]
         else acc
-      | .core (.text s optStyle) =>
-        let style := optStyle.getD rc.toTextStyle
-        acc ++ [.drawTextRun s style ⟨0, 0⟩]
+      | .core (.text s style) =>
+        let fullStyle := style.resolve rc
+        acc ++ [.drawTextRun s fullStyle ⟨0, 0⟩]
       | .core (.image _) => acc
       | .foreign _ (some cp) =>
         go (.prim (.core cp)) rc acc
