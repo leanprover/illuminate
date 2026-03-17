@@ -446,7 +446,9 @@ def vGap (height : Float) : Diagram β :=
 -- Frame
 -- ═══════════════════════════════════════════════════════════════
 
-/-- Draws a stroked rectangle around the envelope of a diagram. The border is drawn behind the content. -/
+/--
+Draws a stroked rectangle around the envelope of a diagram. The border is drawn behind the content.
+-/
 def frame (d : Diagram β) (stroke : Stroke := {})
     (padding : Float := 0) (cornerRadius : Float := 0) : Diagram β :=
   let env := d.getEnvelope
@@ -475,6 +477,40 @@ def frame (d : Diagram β) (stroke : Stroke := {})
           |>.lineTo bl
           |>.close)
         stroke
+  let halfStroke := (stroke.width.getD 1.0) / 2
+  Diagram.pad halfStroke (Diagram.compose border d)
+
+/--
+Draws a filled and stroked rectangle around the envelope of a diagram. The backdrop is drawn behind the content.
+-/
+def filledFrame (d : Diagram β) (fill : Fill := {}) (stroke : Stroke := {})
+    (padding : Float := 0) (cornerRadius : Float := 0) : Diagram β :=
+  let env := d.getEnvelope
+  let e := env Vec2.east + padding
+  let w := env Vec2.west + padding
+  let n := env Vec2.north + padding
+  let s := env Vec2.south + padding
+  let width := e + w
+  let height := n + s
+  let cx := (e - w) / 2
+  let cy := (n - s) / 2
+  let border :=
+    if cornerRadius > 0 then
+      Diagram.transform (Matrix.translate cx cy)
+        (Diagram.fromPath (PathData.roundedRect width height cornerRadius) fill stroke)
+    else
+      let tl : Vec2 := ⟨-w, n⟩
+      let tr : Vec2 := ⟨e, n⟩
+      let br : Vec2 := ⟨e, -s⟩
+      let bl : Vec2 := ⟨-w, -s⟩
+      Diagram.fromPath
+        (PathData.empty
+          |>.moveTo tl
+          |>.lineTo tr
+          |>.lineTo br
+          |>.lineTo bl
+          |>.close)
+        fill stroke
   let halfStroke := (stroke.width.getD 1.0) / 2
   Diagram.pad halfStroke (Diagram.compose border d)
 

@@ -201,7 +201,7 @@ where
     Diagram.text label { fontSize := (12 : Float) }
       |> (if mono then Diagram.withFontFamily "monospace" else id)
       |>.pad 12
-      |>.frame (stroke := { color := Color.black, width := (1 : Float) }) (cornerRadius := 6)
+      |>.filledFrame (stroke := { color := Color.black, width := (1 : Float) }) (cornerRadius := 6)
       |>.withFillColor .white
       |>.namedWithAnchors name
 
