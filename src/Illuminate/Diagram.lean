@@ -7,3 +7,4 @@ Author: David Thrane Christiansen
 import Illuminate.Diagram.Basic
 import Illuminate.Diagram.Placement
 import Illuminate.Diagram.Arrow
+import Illuminate.Diagram.Paper

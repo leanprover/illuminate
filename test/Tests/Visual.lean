@@ -154,16 +154,27 @@ def testVisual_roundedRects : IO Unit :=
 /-- Lean compilation pipeline: Code.lean → Syntax Tree → Core Type Theory → Executable -/
 def pipelineDiagram : Diagram Empty :=
   let result :=
-    Diagram.hsep (align := .bottom) 10 [.withTextColor .green (.text "✓"), .text "/", .text "✗"]
+    Diagram.hsep (align := .bottom) 8 [.withTextColor .green (.text "✔"), .text "/", .text "✖"]
       |>.withFontBold true
       |>.withFontSize 20
       |>.pad 8
       |>.namedWithAnchors `result
+  let codeLabel :=
+    Diagram.text "Code.lean"
+      (style := { fontFamily := "monospace", fontSize := some 12 })
+      |>.pad 12
+  let code :=
+    Diagram.paper
+      (name := `source)
+      (label := some codeLabel)
+      (width := some 80)
+      (height := some 100)
+      |>.withFillColor .white
   Diagram.grid (hSpacing := 70) (vSpacing := 50) #[
-    #[some (box `source "Code.lean" (mono := true)), none],
-    #[some (box `stx "Syntax Tree"),                 none],
-    #[some (box `core "Core Type\nTheory"),          some (box `kernel "Core Type\nTheory\n(no recursion)")],
-    #[some (box `exe "Executable"),                  some result]
+    #[some code,                            none],
+    #[some (box `stx "Syntax\nTree"),        none],
+    #[some (box `core "Core Type\nTheory"), some (box `kernel "Core Type\nTheory\n(no recursion)")],
+    #[some (box `exe "Executable"),         some result]
   ]
   -- Arrows (stealth arrowheads and upright labels set via config)
     |>.connect `source.south `stx.north
@@ -176,12 +187,12 @@ def pipelineDiagram : Diagram Empty :=
       (label := lbl "Recursion\nElimination")
   -- Self-loop on Syntax Tree for macro expansion (left side)
     |>.connect
-      { point := `stx.west, shift := ⟨0, -10⟩, angle := some (pi + pi / 4), pull := 2.5 }
-      { point := `stx.west, shift := ⟨0, 10⟩, angle := some (0 - pi / 4), pull := 2.5 }
+      { point := `stx.west, shift := ⟨0, -10⟩, angle := some (pi + pi / 7), pull := 3.5 }
+      { point := `stx.west, shift := ⟨0, 10⟩, angle := some (0 - pi / 7), pull := 3.5 }
       (label := lbl "Macro\nExpansion")
   -- Kernel check arrow
     |>.connect `kernel.south `result.north
-      (label := lbl "Kernel Check")
+      (label := lbl "Kernel\nCheck")
     |>.withArrowhead { type := .stealth } |>.withLabelUpright
 where
   lbl (s : String) : Option (Label Empty) :=
@@ -190,7 +201,7 @@ where
     Diagram.text label { fontSize := (12 : Float) }
       |> (if mono then Diagram.withFontFamily "monospace" else id)
       |>.pad 12
-      |>.frame (stroke := { color := Color.black, width := (1 : Float) }) (cornerRadius := 6)
+      |>.filledFrame (stroke := { color := Color.black, width := (1 : Float) }) (cornerRadius := 6)
       |>.withFillColor .white
       |>.namedWithAnchors name
 
@@ -351,6 +362,35 @@ def testVisual_coeChain : IO Unit :=
 #diagram Diagram.hsep 30 [.circle 30, .rect 10 50] |>.withFillColor ⟨0, 0, 0, 0⟩ |>.showEnvelope |>.showOrigin
 
 #diagram Diagram.polygon 5 10
+
+#diagram Diagram.paper (label := some <| Diagram.text "Code.lean" { fontSize := (12 : Float) })
+
+#diagram Diagram.paper (width := some 80)
+
+#diagram Diagram.paper (width := some 80) (height := some 60) |>.withFillColor .white
+
+open Diagram in
+def paperTest : Diagram Empty :=
+  vsep 20 [
+    hsep 20 [
+      paper (label := some <| text "Code"),
+      paper (width := some 30)
+    ],
+    hsep 20 [
+      withFillColor .white <|
+      paper (width := some 30) (height := some 20),
+      paper (width := some 20) (cornerFold := 0.75)
+    ]
+  ]
+
+#diagram paperTest
+
+/-- warning: #diagram: paper: cornerFold=1.500000 is outside 0–1, clamped to 1.000000 -/
+#guard_msgs in
+#diagram Diagram.paper (cornerFold := 1.5)
+
+#diagram fun (fold : Slider "fold" 0 1 0.25) =>
+  Diagram.paper (width := some 20) (cornerFold := fold)
 
 -- ══════════════════════════════════════════════════════════════════
 -- Stars with different point counts and dash patterns
