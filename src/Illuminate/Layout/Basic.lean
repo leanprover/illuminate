@@ -47,11 +47,19 @@ inductive LayoutDiagram (β : Type) where
   | cellophane : Float → LayoutDiagram β → LayoutDiagram β
   /-- Clips a sub-diagram to a path boundary. -/
   | clip : PathData → LayoutDiagram β → LayoutDiagram β
-  /-- A deferred node awaiting anchor resolution.
-      Stores the queried name, the callback, and optionally the resolved
-      position and cached result from a previous iteration. -/
-  | deferred : Lean.Name → (ResolvedConfig → Vec2 → LayoutDiagram β)
-      → Option (Vec2 × LayoutDiagram β) → LayoutDiagram β
+  /--
+  A deferred node awaiting anchor resolution.
+  Stores the queried name, the callback, and optionally the resolved
+  position and cached result from a previous iteration.
+  -/
+  | deferred : Lean.Name → (ResolvedConfig → Vec2 → LayoutDiagram β) →
+      Option (Vec2 × LayoutDiagram β) → LayoutDiagram β
+  /--
+  A deferred envelope node awaiting config-aware measurement.
+  Stores the inner diagram, the callback, and optionally the cached result.
+  -/
+  | deferredEnvelope : LayoutDiagram β → (ResolvedConfig → Envelope → LayoutDiagram β) →
+      Option (LayoutDiagram β) → LayoutDiagram β
 
 -- ═══════════════════════════════════════════════════════════════
 -- Convert Diagram → LayoutDiagram
@@ -71,6 +79,8 @@ def toLayout {β : Type} : Diagram β → LayoutDiagram β
   | .cellophane α d => .cellophane α (toLayout d)
   | .clip pd d => .clip pd (toLayout d)
   | .deferred name f => .deferred name (fun rc v => toLayout (f rc v)) none
+  | .deferredEnvelope d f =>
+    .deferredEnvelope (toLayout d) (fun rc env => toLayout (f rc env)) none
 
 -- ═══════════════════════════════════════════════════════════════
 -- LayoutDiagram envelope
@@ -80,22 +90,29 @@ namespace LayoutDiagram
 
 variable {β : Type}
 
-/-- Computes the envelope of a layout diagram. Deferred nodes use their cached value. -/
-def getEnvelope : LayoutDiagram β → Envelope
+/--
+Computes the envelope of a layout diagram. Threads the resolved draw config so
+that text nodes use the correct inherited font size. Deferred nodes use their cached value.
+-/
+def getEnvelope (d : LayoutDiagram β) (rc : ResolvedConfig := .defaults) : Envelope :=
+  match d with
   | .empty => Envelope.empty
-  | .prim p => p.toEnvelope
-  | .annotate _ d => d.getEnvelope
-  | .named _ d => d.getEnvelope
-  | .transform m d => Envelope.transform m d.getEnvelope
-  | .compose a b => Envelope.union a.getEnvelope b.getEnvelope
+  | .prim p => p.toEnvelope rc
+  | .annotate _ d => d.getEnvelope rc
+  | .named _ d => d.getEnvelope rc
+  | .transform m d => Envelope.transform m (d.getEnvelope rc)
+  | .compose a b => Envelope.union (a.getEnvelope rc) (b.getEnvelope rc)
   | .withEnv env _ => env
-  | .warning _ d => d.getEnvelope
-  | .withConfig _ d => d.getEnvelope
-  | .cellophane _ d => d.getEnvelope
-  | .clip _ d => d.getEnvelope
+  | .warning _ d => d.getEnvelope rc
+  | .withConfig cfg d => d.getEnvelope (cfg.resolve rc)
+  | .cellophane _ d => d.getEnvelope rc
+  | .clip _ d => d.getEnvelope rc
   | .deferred _ _ cache => match cache with
-    | some (_, result) => result.getEnvelope
+    | some (_, result) => result.getEnvelope rc
     | none => Envelope.empty
+  | .deferredEnvelope d _ cache => match cache with
+    | some result => result.getEnvelope rc
+    | none => d.getEnvelope rc
 
 /--
 Builds an envelope from a `MeasuredBox` and text anchor.
@@ -147,6 +164,9 @@ def getEnvelopeM {m : Type → Type} [Monad m] [LayoutMeasure β m]
   | .deferred _ _ cache => match cache with
     | some (_, result) => result.getEnvelopeM
     | none => pure Envelope.empty
+  | .deferredEnvelope d _ cache => match cache with
+    | some result => result.getEnvelopeM
+    | none => d.getEnvelopeM
 
 -- ═══════════════════════════════════════════════════════════════
 -- Collect names from LayoutDiagram
@@ -178,6 +198,9 @@ def collectNames (d : LayoutDiagram β) (xform : Matrix) (pfx : NamePath)
   | .clip _ d => collectNames d xform pfx acc
   | .deferred _ _ cache => match cache with
     | some (_, result) => collectNames result xform pfx acc
+    | none => acc
+  | .deferredEnvelope _ _ cache => match cache with
+    | some result => collectNames result xform pfx acc
     | none => acc
 
 -- ═══════════════════════════════════════════════════════════════
@@ -230,6 +253,9 @@ where
       acc ++ [.pushClip pd clipId] ++ inner ++ [.popClip]
     | .deferred _ _ cache => match cache with
       | some (_, result) => go result rc acc
+      | none => acc
+    | .deferredEnvelope _ _ cache => match cache with
+      | some result => go result rc acc
       | none => acc
 
 -- ═══════════════════════════════════════════════════════════════
@@ -304,6 +330,16 @@ private def resolveStep (d : LayoutDiagram β) (table : List (NamePath × Vec2))
         -- First resolution: call callback
         let newResult := f rc localPos
         (.deferred name f (some (localPos, newResult)), true)
+  | .deferredEnvelope inner f cache =>
+    let (inner', innerChanged) := resolveStep inner table xform rc
+    let env := inner'.getEnvelope rc
+    match cache with
+    | some oldResult =>
+      let (result', c) := resolveStep oldResult table xform rc
+      (.deferredEnvelope inner' f (some result'), innerChanged || c)
+    | none =>
+      let result := f rc env
+      (.deferredEnvelope inner' f (some result), true)
 
 /--
 Iteratively resolves all deferred nodes in a layout diagram.
@@ -350,6 +386,9 @@ private def collectEnvelopes (d : LayoutDiagram β) (acc : List (NamePath × Env
   | .deferred _ _ cache => match cache with
     | some (_, result) => collectEnvelopes result acc
     | none => acc
+  | .deferredEnvelope _ _ cache => match cache with
+    | some result => collectEnvelopes result acc
+    | none => acc
 
 /-- Collects named envelope entries using monadic measurement. -/
 private def collectEnvelopesM {m : Type → Type} [Monad m] [LayoutMeasure β m]
@@ -374,6 +413,9 @@ private def collectEnvelopesM {m : Type → Type} [Monad m] [LayoutMeasure β m]
   | .clip _ d => collectEnvelopesM d acc
   | .deferred _ _ cache => match cache with
     | some (_, result) => collectEnvelopesM result acc
+    | none => pure acc
+  | .deferredEnvelope _ _ cache => match cache with
+    | some result => collectEnvelopesM result acc
     | none => pure acc
 
 /-- Queries the envelope extent of a named sub-diagram in a given direction. -/

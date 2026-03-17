@@ -49,10 +49,11 @@ namespace CorePrimitive
 
 /--
 Computes the envelope of a core primitive.
-Text uses a placeholder size: `charCount * fontSize * 0.6` width, `fontSize` height.
-Real text sizes come from the measurement pass (Layer 5).
+Text uses a placeholder size based on the resolved config's font size.
+Real text sizes require the monadic measurement pass and are not available here.
 -/
-def toEnvelope : CorePrimitive → Envelope
+def toEnvelope (cp : CorePrimitive) (rc : ResolvedConfig := .defaults) : Envelope :=
+  match cp with
   | .path pd _ _ =>
     let pts := pd.commands.foldl (init := []) fun acc cmd =>
       match cmd with
@@ -62,7 +63,7 @@ def toEnvelope : CorePrimitive → Envelope
       | .closePath => acc
     Envelope.ofVertices pts
   | .text s style =>
-    let fontSize := style.fontSize.getD 16
+    let fontSize := style.fontSize.getD rc.fontSize
     let anchor := style.anchor.getD .middle
     let lines := s.splitOn "\n"
     let nLines := Max.max 1 lines.length
@@ -106,9 +107,10 @@ variable {β : Type}
 Computes the envelope of a primitive. Foreign primitives with a core fallback
 use the fallback's envelope; otherwise they have zero envelope.
 -/
-def toEnvelope : Primitive β → Envelope
-  | .core cp => cp.toEnvelope
-  | .foreign _ (some cp) => cp.toEnvelope
+def toEnvelope (p : Primitive β) (rc : ResolvedConfig := .defaults) : Envelope :=
+  match p with
+  | .core cp => cp.toEnvelope rc
+  | .foreign _ (some cp) => cp.toEnvelope rc
   | .foreign _ none => Envelope.empty
 
 end Primitive
@@ -121,20 +123,48 @@ variable {β : Type}
 -- Envelope extraction
 -- ═══════════════════════════════════════════════════════════════
 
-/-- Computes the envelope of a diagram by recursive traversal. -/
-def getEnvelope : Diagram β → Envelope
+/--
+Computes the envelope of a diagram by recursive traversal. Threads the resolved
+draw config so that text nodes use the correct inherited font size.
+-/
+def getEnvelope (d : Diagram β) (rc : ResolvedConfig := .defaults) : Envelope :=
+  match d with
   | .empty => Envelope.empty
-  | .prim p => p.toEnvelope
-  | .annotate _ d => d.getEnvelope
-  | .named _ d => d.getEnvelope
-  | .transform m d => Envelope.transform m d.getEnvelope
-  | .compose a b => Envelope.union a.getEnvelope b.getEnvelope
+  | .prim p => p.toEnvelope rc
+  | .annotate _ d => d.getEnvelope rc
+  | .named _ d => d.getEnvelope rc
+  | .transform m d => Envelope.transform m (d.getEnvelope rc)
+  | .compose a b => Envelope.union (a.getEnvelope rc) (b.getEnvelope rc)
   | .withEnv env _ => env
-  | .warning _ d => d.getEnvelope
-  | .withConfig _ d => d.getEnvelope
-  | .cellophane _ d => d.getEnvelope
-  | .clip _ d => d.getEnvelope
+  | .warning _ d => d.getEnvelope rc
+  | .withConfig cfg d => d.getEnvelope (cfg.resolve rc)
+  | .cellophane _ d => d.getEnvelope rc
+  | .clip _ d => d.getEnvelope rc
   | .deferred _ _ => Envelope.empty
+  | .deferredEnvelope d _ => d.getEnvelope rc
+
+/-- Checks whether a diagram contains text or foreign primitives that require measurement. -/
+def needsMeasurement : Diagram β → Bool
+  | .empty => false
+  | .prim (.core (.text ..)) => true
+  | .prim (.core _) => false
+  | .prim (.foreign ..) => true
+  | .annotate _ d | .named _ d | .transform _ d | .warning _ d
+  | .withConfig _ d | .cellophane _ d | .clip _ d => d.needsMeasurement
+  | .compose a b => a.needsMeasurement || b.needsMeasurement
+  | .withEnv _ _ => false
+  | .deferred _ _ => false
+  | .deferredEnvelope d _ => d.needsMeasurement
+
+/--
+Wraps a diagram so that `f` receives its measured envelope, computing eagerly
+when no text or foreign measurement is needed and deferring to layout time otherwise.
+-/
+def withComputedEnvelope (d : Diagram β) (f : Envelope → Diagram β) : Diagram β :=
+  if d.needsMeasurement then
+    .deferredEnvelope d (fun _rc env => f env)
+  else
+    f d.getEnvelope
 
 /-- Names a diagram and adds cardinal anchors derived from its envelope. -/
 def namedWithAnchors (n : Lean.Name) (d : Diagram β) : Diagram β :=

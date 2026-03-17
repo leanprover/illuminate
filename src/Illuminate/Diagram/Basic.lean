@@ -71,10 +71,18 @@ inductive Diagram (β : Type) where
   | cellophane : Float → Diagram β → Diagram β
   /-- Clips a sub-diagram to a path boundary. -/
   | clip : PathData → Diagram β → Diagram β
-  /-- Defers diagram construction until a named anchor position is resolved.
-      During the layout pass, the callback receives the resolved drawing
-      configuration and anchor position, and produces the diagram to insert. -/
+  /--
+  Defers diagram construction until a named anchor position is resolved.
+  During the layout pass, the callback receives the resolved drawing
+  configuration and anchor position, and produces the diagram to insert.
+  -/
   | deferred : Lean.Name → (ResolvedConfig → Vec2 → Diagram β) → Diagram β
+  /--
+  Defers envelope-dependent construction until the resolved config is available.
+  During layout, the inner diagram's envelope is computed with config-aware
+  measurement, then the callback produces the final diagram.
+  -/
+  | deferredEnvelope : Diagram β → (ResolvedConfig → Envelope → Diagram β) → Diagram β
 
 namespace Diagram
 

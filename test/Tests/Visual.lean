@@ -225,37 +225,38 @@ def stringLayoutDiagram : Diagram Empty :=
   let headerCol := fieldWithBrace `header "m_header" 90 braceDepth braceGap
     (txt "Lean object header")
   let sizeCol := fieldWithBrace `size "m_size" 70 braceDepth braceGap
-    (twoLine "Byte count" (mono "size_t"))
-  let capCol := fieldWithBrace `cap "m_capacity" 85 braceDepth braceGap
-    (twoLine "Allocated space" (mono "size_t"))
-  let lenCol := fieldWithBrace `len "m_length" 75 braceDepth braceGap
-    (twoLine "Characters" (mono "size_t"))
-  let dataCol := fieldWithBrace `data "m_data" 90 braceDepth braceGap
-    (twoLine "String data" (Diagram.hsep 3 [mono "char", txt "array"]))
+    (twoLine "Byte count" "size_t")
+  let capCol := fieldWithBrace `cap "m_capacity" 70 braceDepth braceGap
+    (twoLine "Allocated space" "size_t")
+  let lenCol := fieldWithBrace `len "m_length" 70 braceDepth braceGap
+    (twoLine "Characters" "size_t")
+  let dataCol := fieldWithBrace `data "m_data" 180 braceDepth braceGap
+    (Diagram.vsep 1 [txt "String data",
+      Diagram.hsep 3 [.text "char" { fontSize := (8 : Float) }, txt "array"]])
   let nulCol := field `nul "'\\0'" 30
-  Diagram.hsep 0 [headerCol, sizeCol, capCol, lenCol, dataCol, nulCol] (align := .top)
+  let styled := [headerCol, sizeCol, capCol, lenCol, dataCol, nulCol].map
+    (·|>.withFillColor .white |>.withFontFamily "monospace" |>.withFontSize 10)
+  Diagram.hsep 0 styled (align := .top)
 where
   txt (s : String) : Diagram Empty :=
-    .text s { fontSize := (8 : Float) }
-  mono (s : String) : Diagram Empty :=
-    .text s { fontSize := (8 : Float), fontFamily := "monospace" }
+    Diagram.text s { fontSize := (8 : Float) } |>.withFontFamily "sans-serif"
   /-- Stacks a description line above a type line. -/
-  twoLine (description : String) (typeLine : Diagram Empty) : Diagram Empty :=
-    Diagram.vsep 1 [txt description, typeLine]
+  twoLine (description typeLine : String) : Diagram Empty :=
+    Diagram.vsep 1 [txt description, .text typeLine { fontSize := (8 : Float) }]
   field (name : Lean.Name) (label : String) (w : Float) : Diagram Empty :=
     Diagram.atop
-      (Diagram.rect w 28
-        (stroke := { color := Color.black, width := (1 : Float) })
-        (fill := { color := Color.white })
-        (name := name))
-      (.text label { fontSize := (10 : Float), fontFamily := "monospace" })
+      (Diagram.rect w 28 (name := name))
+      (.text label)
   /-- Builds a field box with a curly brace and label below it. -/
   fieldWithBrace (name : Lean.Name) (label : String) (w : Float)
       (braceDepth braceGap : Float) (braceLabel : Diagram Empty) : Diagram Empty :=
     let box := field name label w
-    let brace := Diagram.transform (Matrix.translate 0 (-14 - braceGap))
-      (Diagram.curlyBrace w (depth := braceDepth) (label := some braceLabel))
-    Diagram.atop box brace
+    let brace := Diagram.curlyBrace (w - 8) (depth := braceDepth) (label := some braceLabel)
+      |>.withFontSize 8
+    let braceEnv := brace.getEnvelope
+    let excess := braceEnv Vec2.east - w / 2
+    let brace := if excess > 0 then brace |>.padLeft (-excess) |>.padRight (-excess) else brace
+    Diagram.vsep braceGap [box, brace]
 
 #diagram stringLayoutDiagram
 
