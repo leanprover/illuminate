@@ -8,7 +8,12 @@
 # ]
 # ///
 """
-Playwright visual and structural tests for Illuminate SVG output.
+Playwright structural tests and Docker-based visual regression tests for Illuminate SVG output.
+
+Structural tests use Playwright (headless Chromium) to inspect SVG DOM elements.
+Visual regression tests render SVGs via Inkscape inside a Docker container
+(visual_tests/Dockerfile) with pinned fonts to guarantee identical pixel
+output across macOS and Linux.
 
 Run with:
     uv run test_playwright.py
@@ -20,6 +25,7 @@ To update expected baselines:
     UPDATE_BASELINES=1 uv run test_playwright.py
 """
 import os
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -48,6 +54,8 @@ ROOT = Path(__file__).resolve().parent
 VISUAL_DIR = ROOT / "visual_tests"
 UPDATE_BASELINES = os.environ.get("UPDATE_BASELINES", "").lower() in ("1", "true", "yes")
 
+DOCKER_IMAGE = "illuminate-inkscape"
+
 
 def generate_svgs():
     """Run lake test to generate reference SVGs."""
@@ -65,18 +73,42 @@ def generate_svgs():
 
 
 # ---------------------------------------------------------------------------
-# Visual test helpers
+# Docker-based rsvg-convert visual test helpers
 # ---------------------------------------------------------------------------
 
-def _screenshot_svg(page, svg_name: str) -> bytes:
-    """Load an SVG and return its screenshot bytes."""
+def _ensure_docker_image():
+    """Build the rsvg-convert Docker image if it doesn't exist."""
+    # Check if image exists
+    result = subprocess.run(
+        ["docker", "image", "inspect", DOCKER_IMAGE],
+        capture_output=True,
+    )
+    if result.returncode == 0:
+        return
+    print("  Building Docker image for visual tests...")
+    result = subprocess.run(
+        ["docker", "build", "-t", DOCKER_IMAGE, str(VISUAL_DIR)],
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode != 0:
+        raise RuntimeError(f"Docker build failed:\n{result.stderr}")
+
+
+def _render_svg_to_png(svg_name: str) -> bytes:
+    """Render an SVG to PNG using Inkscape in Docker."""
     svg_path = ROOT / svg_name
     assert svg_path.exists(), f"{svg_name} not found — run lake test first"
-    page.goto(f"file://{svg_path}")
-    page.wait_for_load_state("networkidle")
-    screenshot = page.screenshot()
-    assert len(screenshot) > 1000, f"Screenshot too small: {len(screenshot)} bytes"
-    return screenshot
+    svg_data = svg_path.read_bytes()
+    result = subprocess.run(
+        ["docker", "run", "--rm", "-i", DOCKER_IMAGE],
+        input=svg_data,
+        capture_output=True,
+    )
+    assert result.returncode == 0, f"inkscape failed: {result.stderr.decode()}"
+    png_data = result.stdout
+    assert len(png_data) > 100, f"inkscape produced empty output for {svg_name}"
+    return png_data
 
 
 def pixel_diff_ratio(img1_bytes: bytes, img2_bytes: bytes) -> float:
@@ -101,18 +133,19 @@ def pixel_diff_ratio(img1_bytes: bytes, img2_bytes: bytes) -> float:
     return diff / total
 
 
-def _run_visual_test(page, svg_name: str, test_name: str):
-    """Screenshot an SVG, write actual PNG, compare against expected, optionally update expected."""
+def _run_visual_test(svg_name: str, test_name: str):
+    """Render SVG via Docker rsvg-convert, write actual PNG, compare against expected."""
     VISUAL_DIR.mkdir(exist_ok=True)
-    screenshot = _screenshot_svg(page, svg_name)
+    _ensure_docker_image()
+    rendered = _render_svg_to_png(svg_name)
 
     actual_path = VISUAL_DIR / f"{test_name}.actual.png"
     expected_path = VISUAL_DIR / f"{test_name}.expected.png"
 
-    actual_path.write_bytes(screenshot)
+    actual_path.write_bytes(rendered)
 
     if UPDATE_BASELINES:
-        expected_path.write_bytes(screenshot)
+        expected_path.write_bytes(rendered)
 
     if not expected_path.exists():
         raise AssertionError(
@@ -121,7 +154,7 @@ def _run_visual_test(page, svg_name: str, test_name: str):
         )
 
     baseline = expected_path.read_bytes()
-    ratio = pixel_diff_ratio(screenshot, baseline)
+    ratio = pixel_diff_ratio(rendered, baseline)
     assert ratio < 0.001, (
         f"{test_name} visual regression: {ratio:.4%} pixels differ. "
         f"Compare {actual_path.name} vs {expected_path.name} in visual_tests/"
@@ -129,7 +162,7 @@ def _run_visual_test(page, svg_name: str, test_name: str):
 
 
 # ---------------------------------------------------------------------------
-# Structural tests
+# Structural tests (Playwright)
 # ---------------------------------------------------------------------------
 
 def test_smiley_structure(page):
@@ -228,45 +261,6 @@ def test_commdiag_node_positions(page):
         )
 
 
-# ---------------------------------------------------------------------------
-# Visual regression tests
-# ---------------------------------------------------------------------------
-
-def test_smiley_visual(page):
-    """Compare smiley screenshot against expected baseline."""
-    _run_visual_test(page, "smiley.svg", "smiley")
-
-
-def test_commdiag_visual(page):
-    """Compare commdiag screenshot against expected baseline."""
-    _run_visual_test(page, "commdiag.svg", "commdiag")
-
-
-def test_roundedrects_visual(page):
-    """Compare rounded-rects screenshot against expected baseline."""
-    _run_visual_test(page, "roundedrects.svg", "roundedrects")
-
-
-def test_pipeline_visual(page):
-    """Compare pipeline diagram screenshot against expected baseline."""
-    _run_visual_test(page, "pipeline.svg", "pipeline")
-
-
-def test_stringlayout_visual(page):
-    """Compare string layout diagram screenshot against expected baseline."""
-    _run_visual_test(page, "string-layout.svg", "stringlayout")
-
-
-def test_coechain_visual(page):
-    """Compare coe-chain diagram screenshot against expected baseline."""
-    _run_visual_test(page, "coe-chain.svg", "coechain")
-
-
-def test_lakeworkspace_visual(page):
-    """Compare lake workspace diagram screenshot against expected baseline."""
-    _run_visual_test(page, "lake-workspace.svg", "lakeworkspace")
-
-
 def test_stars_structure(page):
     """Stars SVG has path elements for each star and uses dash patterns."""
     svg_path = ROOT / "stars.svg"
@@ -283,31 +277,6 @@ def test_stars_structure(page):
     assert "stroke-dasharray" in svg_content, "Missing stroke-dasharray for dashed stars"
 
 
-def test_stars_visual(page):
-    """Compare stars screenshot against expected baseline."""
-    _run_visual_test(page, "stars.svg", "stars")
-
-
-def test_star_anchors_visual(page):
-    """Compare star-anchors screenshot against expected baseline."""
-    _run_visual_test(page, "star-anchors.svg", "star-anchors")
-
-
-def test_ellipse_visual(page):
-    """Compare ellipse screenshot against expected baseline."""
-    _run_visual_test(page, "ellipse.svg", "ellipse")
-
-
-def test_transforms_visual(page):
-    """Compare transforms screenshot against expected baseline."""
-    _run_visual_test(page, "transforms.svg", "transforms")
-
-
-def test_ghost_refocus_visual(page):
-    """Compare ghost-refocus screenshot against expected baseline."""
-    _run_visual_test(page, "ghost-refocus.svg", "ghost-refocus")
-
-
 def test_cellophane_clip_structure(page):
     """Cellophane/clip SVG has opacity groups and clipPath elements."""
     svg_path = ROOT / "cellophane-clip.svg"
@@ -317,9 +286,73 @@ def test_cellophane_clip_structure(page):
     assert "clipPath" in svg_content, "Missing clipPath element for clip"
 
 
-def test_cellophane_clip_visual(page):
-    """Compare cellophane-clip screenshot against expected baseline."""
-    _run_visual_test(page, "cellophane-clip.svg", "cellophane-clip")
+# ---------------------------------------------------------------------------
+# Visual regression tests (Docker rsvg-convert)
+# ---------------------------------------------------------------------------
+
+def test_smiley_visual():
+    """Compare smiley rendering against expected baseline."""
+    _run_visual_test("smiley.svg", "smiley")
+
+
+def test_commdiag_visual():
+    """Compare commdiag rendering against expected baseline."""
+    _run_visual_test("commdiag.svg", "commdiag")
+
+
+def test_roundedrects_visual():
+    """Compare rounded-rects rendering against expected baseline."""
+    _run_visual_test("roundedrects.svg", "roundedrects")
+
+
+def test_pipeline_visual():
+    """Compare pipeline diagram rendering against expected baseline."""
+    _run_visual_test("pipeline.svg", "pipeline")
+
+
+def test_stringlayout_visual():
+    """Compare string layout diagram rendering against expected baseline."""
+    _run_visual_test("string-layout.svg", "stringlayout")
+
+
+def test_coechain_visual():
+    """Compare coe-chain diagram rendering against expected baseline."""
+    _run_visual_test("coe-chain.svg", "coechain")
+
+
+def test_lakeworkspace_visual():
+    """Compare lake workspace diagram rendering against expected baseline."""
+    _run_visual_test("lake-workspace.svg", "lakeworkspace")
+
+
+def test_stars_visual():
+    """Compare stars rendering against expected baseline."""
+    _run_visual_test("stars.svg", "stars")
+
+
+def test_star_anchors_visual():
+    """Compare star-anchors rendering against expected baseline."""
+    _run_visual_test("star-anchors.svg", "star-anchors")
+
+
+def test_ellipse_visual():
+    """Compare ellipse rendering against expected baseline."""
+    _run_visual_test("ellipse.svg", "ellipse")
+
+
+def test_transforms_visual():
+    """Compare transforms rendering against expected baseline."""
+    _run_visual_test("transforms.svg", "transforms")
+
+
+def test_ghost_refocus_visual():
+    """Compare ghost-refocus rendering against expected baseline."""
+    _run_visual_test("ghost-refocus.svg", "ghost-refocus")
+
+
+def test_cellophane_clip_visual():
+    """Compare cellophane-clip rendering against expected baseline."""
+    _run_visual_test("cellophane-clip.svg", "cellophane-clip")
 
 
 # ---------------------------------------------------------------------------
@@ -338,13 +371,18 @@ def main():
 
     from playwright.sync_api import sync_playwright
 
-    tests = [
+    structural_tests = [
         test_smiley_structure,
         test_smiley_bounding_box,
         test_commdiag_structure,
         test_commdiag_labels,
         test_commdiag_annotations,
         test_commdiag_node_positions,
+        test_stars_structure,
+        test_cellophane_clip_structure,
+    ]
+
+    visual_tests = [
         test_smiley_visual,
         test_commdiag_visual,
         test_roundedrects_visual,
@@ -352,23 +390,22 @@ def main():
         test_stringlayout_visual,
         test_coechain_visual,
         test_lakeworkspace_visual,
-        test_stars_structure,
         test_stars_visual,
         test_star_anchors_visual,
         test_ellipse_visual,
         test_transforms_visual,
         test_ghost_refocus_visual,
-        test_cellophane_clip_structure,
         test_cellophane_clip_visual,
     ]
 
     passed = 0
     failed = 0
 
+    # Run structural tests with Playwright
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True)
 
-        for test_fn in tests:
+        for test_fn in structural_tests:
             name = test_fn.__name__
             page = browser.new_page()
             try:
@@ -382,6 +419,17 @@ def main():
                 page.close()
 
         browser.close()
+
+    # Run visual regression tests with Docker rsvg-convert
+    for test_fn in visual_tests:
+        name = test_fn.__name__
+        try:
+            test_fn()
+            print(f"  ✓ {name}")
+            passed += 1
+        except Exception as e:
+            print(f"  ✗ {name}: {e}")
+            failed += 1
 
     print(f"\n{passed} passed, {failed} failed")
     if failed > 0:
