@@ -25,8 +25,8 @@ lake build --wfail
 
 This compiles the library (`src/`) and all dependencies. The build
 must complete with **zero warnings** — `linter.missingDocs` is enabled
-in `lakefile.lean`, so all public declarations require docstrings.
-The `--wfail` flag ensures warnings are treated as errors.
+in `lakefile.lean`, so all public declarations require docstrings. The
+`--wfail` flag ensures warnings are treated as errors.
 
 ## Testing
 
