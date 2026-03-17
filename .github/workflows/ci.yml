@@ -26,6 +26,9 @@ jobs:
                   path: .playwright-browsers
                   key: playwright-${{ runner.os }}-${{ hashFiles('test_playwright.py') }}
 
+            - name: Set up Docker Buildx
+              uses: docker/setup-buildx-action@v3
+
             - name: Build Inkscape Docker image
               uses: docker/build-push-action@v6
               with:
