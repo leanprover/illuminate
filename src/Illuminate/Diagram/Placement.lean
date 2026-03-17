@@ -390,13 +390,12 @@ def padLRTB (l r t b : Float) (d : Diagram β) : Diagram β :=
 def withEnvelope (env : Envelope) (d : Diagram β) : Diagram β :=
   .withEnv env d
 
-/-- Renders content but contributes zero envelope to layout (invisible to composition). The dual of `ghost`, which contributes envelope but renders nothing. -/
+/--
+Renders content but contributes zero envelope to layout (invisible to composition). The dual of
+`ghost`, which contributes envelope but renders nothing.
+-/
 def floating (d : Diagram β) : Diagram β :=
   .withEnv Envelope.empty d
-
-/-- Deprecated alias for `floating`. -/
-@[deprecated floating (since := "2025-03-15")]
-def phantom (d : Diagram β) : Diagram β := floating d
 
 /-- A blank diagram with the given envelope (invisible spacer). -/
 def strut (env : Envelope) : Diagram β :=
@@ -653,7 +652,10 @@ def vflip (d : Diagram β) : Diagram β :=
 -- Ghost and refocus
 -- ═══════════════════════════════════════════════════════════════
 
-/-- Contributes the diagram's envelope to layout but renders nothing (invisible spacer). The dual of `floating`, which renders but has zero envelope. -/
+/--
+Contributes the diagram's envelope to layout but renders nothing (invisible spacer). The dual of
+`floating`, which renders but has zero envelope.
+-/
 def ghost (d : Diagram β) : Diagram β :=
   strut d.getEnvelope
 

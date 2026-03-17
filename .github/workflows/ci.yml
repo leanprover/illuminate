@@ -39,6 +39,9 @@ jobs:
                   cache-to: type=gha,mode=max
 
             - uses: leanprover/lean-action@v1
+              with:
+                  build-args: --wfail
+                  test-args: --wfail
 
             - name: Visual and structural tests
               run: uv run test_playwright.py

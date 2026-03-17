@@ -14,17 +14,17 @@ namespace Illuminate
 /-- Configuration for a state diagram (DFA/NFA). -/
 structure StateDiagramConfig where
   /-- Radius of each state circle. -/
-  radius    : Float := 20
+  radius : Float := 20
   /-- Horizontal spacing between state centers. -/
-  spacing   : Float := 90
+  spacing : Float := 90
   /-- Fill color for normal states. -/
-  stateColor  : Color := { r := 230, g := 240, b := 255 }
+  stateColor : Color := { r := 230, g := 240, b := 255 }
   /-- Fill color for accepting states. -/
   acceptColor : Color := { r := 200, g := 255, b := 200 }
   /-- Stroke width for circles and arrows. -/
   lineWidth : Float := 1.5
   /-- Font size for state labels. -/
-  fontSize  : Float := 14
+  fontSize : Float := 14
   /-- Font size for transition labels. -/
   labelSize : Float := 12
 deriving Repr, BEq

@@ -30,11 +30,11 @@ deriving Repr, BEq, Inhabited
 /-- Internal representation of a node in the commutative diagram. -/
 structure CDNode where
   /-- Unique name for anchor lookup. -/
-  name  : Lean.Name
+  name : Lean.Name
   /-- Text displayed as the node label. -/
   label : String
   /-- Optional numeric tag for annotation. -/
-  tag   : Option Nat := none
+  tag : Option Nat := none
 deriving Repr, BEq
 
 /-- A reference to a node in the commutative diagram DSL. -/
@@ -78,13 +78,13 @@ deriving Repr, BEq
 /-- Accumulated state of the commutative diagram builder. -/
 structure CommDiagState where
   /-- Counter for generating unique node names. -/
-  nextId    : Nat
+  nextId : Nat
   /-- Registered nodes. -/
-  nodes     : Array CDNode
+  nodes : Array CDNode
   /-- Registered morphisms (arrows). -/
   morphisms : Array Morphism
   /-- Optional grid layout specification. -/
-  gridSpec  : Option (Array (Array (Option NodeRef)))
+  gridSpec : Option (Array (Array (Option NodeRef)))
 deriving Repr
 
 /-- The commutative diagram builder monad. -/
