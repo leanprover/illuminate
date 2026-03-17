@@ -298,22 +298,30 @@ def grid (rows : Array (Array (Option (Diagram β))))
     (hSpacing : Float := 0) (vSpacing : Float := 0) : Diagram β :=
   if rows.isEmpty then .empty
   else
-    -- Compute max width and height across all cells
-    let (maxW, maxH) := rows.foldl (init := (0.0, 0.0)) fun (mw, mh) row =>
-      row.foldl (init := (mw, mh)) fun (mw, mh) cell =>
+    let nCols := rows.foldl (init := 0) fun mx row => Max.max mx row.size
+    -- Per-column widths: max width of any cell in that column
+    let colWidths := Array.range nCols |>.map fun c =>
+      rows.foldl (init := 0.0) fun mx row =>
+        match row[c]? with
+        | some (some d) =>
+          let env := d.getEnvelope
+          Max.max mx (env Vec2.east + env Vec2.west)
+        | _ => mx
+    -- Per-row heights: max height of any cell in that row
+    let rowHeights := rows.map fun row =>
+      row.foldl (init := 0.0) fun mh cell =>
         match cell with
-        | none => (mw, mh)
         | some d =>
           let env := d.getEnvelope
-          let w := env Vec2.east + env Vec2.west
-          let h := env Vec2.north + env Vec2.south
-          (Max.max mw w, Max.max mh h)
+          Max.max mh (env Vec2.north + env Vec2.south)
+        | none => mh
     -- Build the grid row by row
-    let diagramRows := rows.map fun row =>
-      let cells := row.map fun cell =>
-        let d := cell.getD .empty
-        -- Place each cell in a uniform-size box
-        let cellEnv := Envelope.ofRect (maxW / 2) (maxH / 2)
+    let diagramRows := rows.mapIdx fun r row =>
+      let rh := rowHeights[r]?.getD 0
+      let cells := Array.range nCols |>.map fun c =>
+        let d := (row[c]?.getD none).getD .empty
+        let cw := colWidths[c]?.getD 0
+        let cellEnv := Envelope.ofRect (cw / 2) (rh / 2)
         Diagram.withEnv cellEnv d
       cells.toList
     let rowDiagrams := diagramRows.map fun cells =>
@@ -515,7 +523,7 @@ def showEnvelope (d : Diagram β) (samples : Nat := 64)
   let overlay : Diagram β := fromPath path
     (fill := { color := fillColor })
     (stroke := { width := (0 : Float) })
-  Diagram.compose overlay d
+  Diagram.compose d overlay
 
 /--
 Overlays a small red X at the origin of the diagram's coordinate system.
