@@ -83,7 +83,7 @@ def testValidate_emptyPath : IO Unit := do
   -- Build a LayoutDiagram containing a path prim with empty commands
   -- and a fill style so compile emits a fillPath command
   let ld : LayoutDiagram Empty :=
-    .prim (.core (.path emptyPd (some { color := { r := 0, g := 0, b := 0, a := 1 } }) none))
+    .prim (.core (.path emptyPd { color := (⟨0, 0, 0, 1⟩ : Color) } {}))
   match validate ld with
   | .ok () => throw <| IO.userError "expected malformed path error"
   | .error errs =>

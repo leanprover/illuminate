@@ -13,13 +13,13 @@ open Illuminate
 -- ══════════════════════════════════════════════════════════════════
 
 def testCorePrim_path : IO Unit := do
-  let p := CorePrimitive.path (PathData.rect 2 2) (some {}) (some {})
+  let p := CorePrimitive.path (PathData.rect 2 2) {} {}
   match p with
   | .path _ _ _ => pure ()
   | _ => throw <| IO.userError "expected path"
 
 def testCorePrim_text : IO Unit := do
-  let p := CorePrimitive.text "hello" (some {})
+  let p := CorePrimitive.text "hello" {}
   match p with
   | .text s _ => assertTrue (s == "hello") "text content"
   | _ => throw <| IO.userError "expected text"
@@ -31,9 +31,9 @@ def testCorePrim_image : IO Unit := do
   | _ => throw <| IO.userError "expected image"
 
 def testCorePrim_beq : IO Unit := do
-  let a := CorePrimitive.text "hi" (some {})
-  let b := CorePrimitive.text "hi" (some {})
-  let c := CorePrimitive.text "bye" (some {})
+  let a := CorePrimitive.text "hi" {}
+  let b := CorePrimitive.text "hi" {}
+  let c := CorePrimitive.text "bye" {}
   assertTrue (a == b) "same text eq"
   assertTrue (a != c) "diff text neq"
 
@@ -68,7 +68,7 @@ def testDiag_text : IO Unit := do
 def testDiag_line : IO Unit := do
   let d : Diagram Empty := Diagram.line ⟨0, 0⟩ ⟨1, 1⟩
   match d with
-  | .prim (.core (.path _ (some fill) _)) => assertTrue (fill.color == Color.transparent) "line has transparent fill"
+  | .prim (.core (.path _ fill _)) => assertTrue (fill.color == some Color.transparent) "line has transparent fill"
   | _ => throw <| IO.userError "expected prim/core/path"
 
 -- ══════════════════════════════════════════════════════════════════

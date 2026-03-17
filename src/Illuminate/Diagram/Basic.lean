@@ -23,10 +23,10 @@ deriving Repr, BEq, Inhabited
 
 /-- A backend-independent primitive that can be rendered by any backend. -/
 inductive CorePrimitive where
-  /-- Draws a filled and/or stroked path. `none` means inherit from config. -/
-  | path : PathData → Option Fill → Option Stroke → CorePrimitive
-  /-- Renders a text string. `none` means inherit style from config. -/
-  | text : String → Option TextStyle → CorePrimitive
+  /-- Draws a filled and/or stroked path. `none` fields inherit from config. -/
+  | path : PathData → Fill → Stroke → CorePrimitive
+  /-- Renders a text string. `none` fields inherit style from config. -/
+  | text : String → TextStyle → CorePrimitive
   /-- References an external image resource for raster or vector embedding. -/
   | image : ImageRef → CorePrimitive
 deriving Repr, BEq, Inhabited
@@ -99,30 +99,30 @@ def withNameAndAnchors (d : Diagram β) (n : Lean.Name)
 /-- The empty diagram — renders nothing, has zero envelope. -/
 def emptyDiagram : Diagram β := .empty
 
-/-- A filled and/or stroked path. `none` values inherit from the draw config. -/
-def fromPath (pd : PathData) (fill : Option Fill := none) (stroke : Option Stroke := none)
+/-- A filled and/or stroked path. `none` fields inherit from the draw config. -/
+def fromPath (pd : PathData) (fill : Fill := {}) (stroke : Stroke := {})
     : Diagram β :=
   .prim (.core (.path pd fill stroke))
 
-/-- A stroked path with no fill. `none` stroke inherits from the draw config. -/
-def fromStroke (pd : PathData) (stroke : Option Stroke := none) : Diagram β :=
-  .prim (.core (.path pd (some { color := Color.transparent }) stroke))
+/-- A stroked path with no fill. `none` stroke fields inherit from the draw config. -/
+def fromStroke (pd : PathData) (stroke : Stroke := {}) : Diagram β :=
+  .prim (.core (.path pd { color := Color.transparent } stroke))
 
-/-- A text node with the given string and style. `none` inherits from the draw config. -/
-def text (s : String) (style : Option TextStyle := none)
+/-- A text node with the given style overrides. `none` fields inherit from the draw config. -/
+def text (s : String) (style : TextStyle := {})
     (name : Option Lean.Name := none) : Diagram β :=
   let d : Diagram β := .prim (.core (.text s style))
   match name with
   | none => d
   | some n =>
-    let st := style.getD {}
+    let fs := style.fontSize.getD 16
     let lines := s.splitOn "\n"
-    let totalW := lines.foldl (fun acc line => Max.max acc (estimateTextWidth st.fontSize line)) 0
-    let lineHeight := st.fontSize * 1.2
+    let totalW := lines.foldl (fun acc line => Max.max acc (estimateTextWidth fs line)) 0
+    let lineHeight := fs * 1.2
     let nLines := Max.max 1 lines.length
-    let h := if nLines == 1 then st.fontSize / 2
+    let h := if nLines == 1 then fs / 2
              else lineHeight * nLines.toFloat / 2
-    let (left, right) : Float × Float := match st.anchor with
+    let (left, right) : Float × Float := match style.anchor.getD .middle with
       | .start  => (0, totalW)
       | .«end» => (-totalW, 0)
       | .middle => (-totalW / 2, totalW / 2)
@@ -135,17 +135,17 @@ def text (s : String) (style : Option TextStyle := none)
     ]
 
 /-- A line segment from `a` to `b`. -/
-def line (a b : Vec2) (stroke : Option Stroke := none) : Diagram β :=
+def line (a b : Vec2) (stroke : Stroke := {}) : Diagram β :=
   fromStroke (PathData.line a b) stroke
 
 /-- A filled rectangle centered at the origin. -/
-def rect (width height : Float) (fill : Option Fill := none) (stroke : Option Stroke := none)
+def rect (width height : Float) (fill : Fill := {}) (stroke : Stroke := {})
     (name : Option Lean.Name := none) : Diagram β :=
   let d : Diagram β := fromPath (PathData.rect width height) fill stroke
   match name with
   | none => d
   | some n =>
-    let sw := (stroke.map (·.width) |>.getD 0) / 2
+    let sw := stroke.width.getD 0 / 2
     let hw := width / 2 + sw
     let hh := height / 2 + sw
     withNameAndAnchors d n [
@@ -157,13 +157,13 @@ def rect (width height : Float) (fill : Option Fill := none) (stroke : Option St
 
 /-- A filled rounded rectangle centered at the origin. -/
 def roundedRect (width height : Float) (cornerRadius : Float)
-    (fill : Option Fill := none) (stroke : Option Stroke := none)
+    (fill : Fill := {}) (stroke : Stroke := {})
     (name : Option Lean.Name := none) : Diagram β :=
   let d : Diagram β := fromPath (PathData.roundedRect width height cornerRadius) fill stroke
   match name with
   | none => d
   | some n =>
-    let sw := (stroke.map (·.width) |>.getD 0) / 2
+    let sw := stroke.width.getD 0 / 2
     let hw := width / 2 + sw
     let hh := height / 2 + sw
     withNameAndAnchors d n [
@@ -174,14 +174,14 @@ def roundedRect (width height : Float) (cornerRadius : Float)
     ]
 
 /-- A filled circle centered at the origin. -/
-def circle (radius : Float) (fill : Option Fill := none) (stroke : Option Stroke := none)
+def circle (radius : Float) (fill : Fill := {}) (stroke : Stroke := {})
     (name : Option Lean.Name := none) : Diagram β :=
   let d : Diagram β := .withEnv (Envelope.ofCircle radius)
     (fromPath (PathData.circle radius) fill stroke)
   match name with
   | none => d
   | some n =>
-    let sw := (stroke.map (·.width) |>.getD 0) / 2
+    let sw := stroke.width.getD 0 / 2
     let r := radius + sw
     withNameAndAnchors d n [
       (`north, ⟨0, r⟩), (`south, ⟨0, -r⟩),
@@ -189,7 +189,7 @@ def circle (radius : Float) (fill : Option Fill := none) (stroke : Option Stroke
     ]
 
 /-- A filled ellipse centered at the origin with the given half-widths. -/
-def ellipse (rx ry : Float) (fill : Option Fill := none) (stroke : Option Stroke := none)
+def ellipse (rx ry : Float) (fill : Fill := {}) (stroke : Stroke := {})
     (name : Option Lean.Name := none) : Diagram β :=
   let d : Diagram β := .withEnv (Envelope.ofRect rx ry)
     (fromPath (PathData.ellipse rx ry) fill stroke)
@@ -204,8 +204,8 @@ def ellipse (rx ry : Float) (fill : Option Fill := none) (stroke : Option Stroke
 /-- A regular polygon centered at the origin with the given number of sides and circumradius.
     If `sides` is less than 3, uses 3 and attaches a validation warning. -/
 def polygon (sides : Nat) (radius : Float)
-    (fill : Option Fill := none)
-    (stroke : Option Stroke := none) : Diagram β :=
+    (fill : Fill := {})
+    (stroke : Stroke := {}) : Diagram β :=
   let (n, warn) := if sides < 3 then (3, true) else (sides, false)
   let step := 2 * pi / n.toFloat
   -- First vertex points up (90°)
@@ -232,8 +232,8 @@ Special cases for low point counts:
 - 3+ points: a star with `points` outer tips and `points` inner valleys.
 -/
 def star (points : Nat) (outerRadius innerRadius : Float)
-    (fill : Option Fill := none)
-    (stroke : Option Stroke := none)
+    (fill : Fill := {})
+    (stroke : Stroke := {})
     (name : Option Lean.Name := none) : Diagram β :=
   if points == 0 then
     .warning "star: 0 points, rendering nothing" .empty
@@ -293,7 +293,7 @@ Optionally attach a `label` diagram below the tip.
 -/
 def curlyBrace (width : Float) (depth : Float := 0)
     (roundness : Float := 0.25)
-    (stroke : Option Stroke := some { color := Color.black, width := 1 })
+    (stroke : Stroke := { color := Color.black, width := (1 : Float) })
     (label : Option (Diagram β) := none) : Diagram β :=
   let depth := if depth > 0 then depth else max 10 (width * 0.08)
   let hw := width / 2

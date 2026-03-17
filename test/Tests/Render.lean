@@ -62,13 +62,13 @@ def testSvg_fillPath : IO Unit := do
   assertContains svg "fill=\"rgb(255,0,0)\"" "fill has red"
 
 def testSvg_strokePath : IO Unit := do
-  let cmd := DrawCmd.strokePath (PathData.rect 4 4) { color := Color.blue, width := 2 }
+  let cmd := DrawCmd.strokePath (PathData.rect 4 4) { color := Color.blue, width := 2, lineCap := .butt, lineJoin := .miter, dash := .solid }
   let svg := Svg.renderCmd cmd
   assertContains svg "stroke=\"rgb(0,0,255)\"" "stroke has blue"
   assertContains svg "stroke-width=\"2\"" "stroke has width"
 
 def testSvg_text : IO Unit := do
-  let cmd := DrawCmd.drawTextRun "hello" {} ⟨0, 0⟩
+  let cmd := DrawCmd.drawTextRun "hello" default ⟨0, 0⟩
   let svg := Svg.renderCmd cmd
   assertContains svg ">hello</text>" "text content"
 
@@ -122,22 +122,22 @@ def smileyYellow : Color := { r := 255, g := 220, b := 50 }
 
 def smileyFace : Diagram Empty :=
   -- Face: yellow circle with black outline
-  let face := Diagram.circle 50 (fill := some { color := smileyYellow })
-    (stroke := some { color := Color.black, width := 3 })
+  let face := Diagram.circle 50 (fill := { color := smileyYellow })
+    (stroke := { color := Color.black, width := (3 : Float) })
   -- Left eye: small black circle at (-18, 15)
-  let leftEye := Diagram.circle 5 (fill := some { color := Color.black })
-    (stroke := some { color := Color.black, width := 0 })
+  let leftEye := Diagram.circle 5 (fill := { color := Color.black })
+    (stroke := { color := Color.black, width := (0 : Float) })
   let leftEye := Diagram.transform (Matrix.translate (-18) 15) leftEye
   -- Right eye: small black circle at (18, 15)
-  let rightEye := Diagram.circle 5 (fill := some { color := Color.black })
-    (stroke := some { color := Color.black, width := 0 })
+  let rightEye := Diagram.circle 5 (fill := { color := Color.black })
+    (stroke := { color := Color.black, width := (0 : Float) })
   let rightEye := Diagram.transform (Matrix.translate 18 15) rightEye
   -- Smile: a curved path (arc from left to right)
   let smile := Diagram.fromStroke
     (PathData.empty
       |>.moveTo ⟨-25, -10⟩
       |>.curveTo ⟨-15, -30⟩ ⟨15, -30⟩ ⟨25, -10⟩)
-    (some { color := Color.black, width := 3, lineCap := .round })
+    { color := Color.black, width := (3 : Float), lineCap := LineCap.round }
   -- Compose all parts
   .compose (.compose (.compose face leftEye) rightEye) smile
 
@@ -171,7 +171,7 @@ def testSmiley_writeSvg : IO Unit := do
 
 def testFM_monoPlausible : IO Unit := do
   let fm : FontMetrics := FontMetrics.monospace
-  let box : MeasuredBox := fm.measureText "hello" { fontSize := 12 }
+  let box : MeasuredBox := fm.measureText "hello" { fontSize := 12, fontFamily := "monospace", bold := false, italic := false, color := Color.black, anchor := .middle }
   -- 5 chars × 12 × 0.6 = 36
   assertApproxEq box.width 36 "mono hello width"
   assertApproxEq box.ascent 9.6 "mono hello ascent" (tol := 0.01)
@@ -179,19 +179,19 @@ def testFM_monoPlausible : IO Unit := do
 
 def testFM_scalesLinearly : IO Unit := do
   let fm : FontMetrics := FontMetrics.monospace
-  let box12 : MeasuredBox := fm.measureText "AB" { fontSize := 12 }
-  let box24 : MeasuredBox := fm.measureText "AB" { fontSize := 24 }
+  let box12 : MeasuredBox := fm.measureText "AB" { fontSize := 12, fontFamily := "monospace", bold := false, italic := false, color := Color.black, anchor := .middle }
+  let box24 : MeasuredBox := fm.measureText "AB" { fontSize := 24, fontFamily := "monospace", bold := false, italic := false, color := Color.black, anchor := .middle }
   assertApproxEq (box24.width / box12.width) 2 "width scales 2x" (tol := 0.01)
   assertApproxEq (box24.ascent / box12.ascent) 2 "ascent scales 2x" (tol := 0.01)
 
 def testFM_emptyString : IO Unit := do
   let fm : FontMetrics := FontMetrics.monospace
-  let box : MeasuredBox := fm.measureText "" { fontSize := 16 }
+  let box : MeasuredBox := fm.measureText "" { fontSize := 16, fontFamily := "monospace", bold := false, italic := false, color := Color.black, anchor := .middle }
   assertApproxEq box.width 0 "empty string zero width"
 
 def testFM_baselineCorrect : IO Unit := do
   let fm : FontMetrics := FontMetrics.monospace
-  let box : MeasuredBox := fm.measureText "X" { fontSize := 20 }
+  let box : MeasuredBox := fm.measureText "X" { fontSize := 20, fontFamily := "monospace", bold := false, italic := false, color := Color.black, anchor := .middle }
   -- baseline == ascent for mono
   assertApproxEq box.baseline box.ascent "baseline equals ascent"
   -- ascent + descent == fontSize
@@ -200,8 +200,8 @@ def testFM_baselineCorrect : IO Unit := do
 def testFM_monoVsFixedTable : IO Unit := do
   let fm1 : FontMetrics := FontMetrics.monospace
   let fm2 : FontMetrics := FontMetrics.fixedTable
-  let monoBox : MeasuredBox := fm1.measureText "Hello" { fontSize := 16 }
-  let fixedBox : MeasuredBox := fm2.measureText "Hello" { fontSize := 16 }
+  let monoBox : MeasuredBox := fm1.measureText "Hello" { fontSize := 16, fontFamily := "monospace", bold := false, italic := false, color := Color.black, anchor := .middle }
+  let fixedBox : MeasuredBox := fm2.measureText "Hello" { fontSize := 16, fontFamily := "monospace", bold := false, italic := false, color := Color.black, anchor := .middle }
   -- Both should have positive dimensions, but different widths
   assertTrue (monoBox.width > 0) "mono width positive"
   assertTrue (fixedBox.width > 0) "fixed width positive"

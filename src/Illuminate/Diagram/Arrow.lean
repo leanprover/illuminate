@@ -92,12 +92,13 @@ Draws an arrowhead at `tip` pointing in direction `dir`.
 Returns the arrowhead diagram and the amount the shaft should be shortened
 to avoid overlapping the head.
 -/
-def drawArrowhead (ah : Arrowhead) (tip dir : Vec2) (stroke : Stroke)
+def drawArrowhead (ah : Arrowhead) (tip dir : Vec2) (stroke : FullStroke)
     : Diagram β × Float :=
   let headLen := baseHeadLen * ah.length
   -- For filled arrowheads, enforce minimum angle so the arrowhead covers the shaft
   let halfAngle := max (headAngle * ah.width) (minHalfAngle ah stroke.width)
   let n := dir.normalize
+  let strokeOverride : Stroke := { color := stroke.color, width := stroke.width, lineCap := stroke.lineCap, lineJoin := stroke.lineJoin, dash := stroke.dash }
   match ah.type with
   | .latex =>
     let cosA := Float.cos halfAngle
@@ -108,7 +109,7 @@ def drawArrowhead (ah : Arrowhead) (tip dir : Vec2) (stroke : Stroke)
       |>.moveTo (tip + headLen • ld)
       |>.lineTo tip
       |>.lineTo (tip + headLen • rd)
-    (Diagram.fromStroke path (some stroke), 0)
+    (Diagram.fromStroke path strokeOverride, 0)
   | .stealth =>
     let cosA := Float.cos halfAngle
     let sinA := Float.sin halfAngle
@@ -121,7 +122,7 @@ def drawArrowhead (ah : Arrowhead) (tip dir : Vec2) (stroke : Stroke)
       |>.lineTo notch
       |>.lineTo (tip + headLen • rd)
       |>.close
-    (Diagram.fromPath path (fill := some { color := stroke.color }) (stroke := some stroke), headLen * 0.5)
+    (Diagram.fromPath path (fill := { color := stroke.color }) (stroke := strokeOverride), headLen * 0.5)
   | .triangle =>
     let cosA := Float.cos halfAngle
     let sinA := Float.sin halfAngle
@@ -132,12 +133,12 @@ def drawArrowhead (ah : Arrowhead) (tip dir : Vec2) (stroke : Stroke)
       |>.lineTo (tip + headLen • ld)
       |>.lineTo (tip + headLen • rd)
       |>.close
-    (Diagram.fromPath path (fill := some { color := stroke.color }) (stroke := some stroke), headLen * cosA)
+    (Diagram.fromPath path (fill := { color := stroke.color }) (stroke := strokeOverride), headLen * cosA)
   | .circle =>
     let r := headLen * 0.4
     let center := tip - r • n
     let d := Diagram.transform (Matrix.translate center.x center.y)
-      (Diagram.circle r (fill := some { color := stroke.color }) (stroke := some stroke))
+      (Diagram.circle r (fill := { color := stroke.color }) (stroke := strokeOverride))
     (d, r * 2)
 
 -- ═══════════════════════════════════════════════════════════════
@@ -188,7 +189,7 @@ Draws a line or arrow between two resolved points with the given endpoint specs.
 This is the low-level function that operates on concrete `Vec2` positions.
 -/
 def drawLine (srcPos tgtPos : Vec2)
-    (srcEnd tgtEnd : LineEnd) (stroke : Stroke := { color := Color.black, width := 1.5 })
+    (srcEnd tgtEnd : LineEnd) (stroke : FullStroke := { color := Color.black, width := 1.5, lineCap := .butt, lineJoin := .miter, dash := .solid })
     : Diagram β :=
   let straightAngle := angleBetween srcPos tgtPos
   let srcAngle := srcEnd.angle.getD straightAngle
@@ -231,12 +232,13 @@ def drawLine (srcPos tgtPos : Vec2)
   -- Determine if this is a straight line (default angles, no pull override making it curved)
   let isStraight := srcEnd.angle.isNone && tgtEnd.angle.isNone &&
     srcEnd.pull == 0.25 && tgtEnd.pull == 0.25
+  let strokeOverride : Stroke := { color := stroke.color, width := stroke.width, lineCap := stroke.lineCap, lineJoin := stroke.lineJoin, dash := stroke.dash }
   let shaft :=
     if isStraight then
-      Diagram.fromStroke (PathData.line shaftSrc shaftTgt) (some stroke)
+      Diagram.fromStroke (PathData.line shaftSrc shaftTgt) strokeOverride
     else
       Diagram.fromStroke
-        (PathData.empty |>.moveTo shaftSrc |>.curveTo sc1 sc2 shaftTgt) (some stroke)
+        (PathData.empty |>.moveTo shaftSrc |>.curveTo sc1 sc2 shaftTgt) strokeOverride
   -- Compose
   let result := shaft
   let result := match srcHead with | some h => Diagram.atop result h | none => result
@@ -255,7 +257,7 @@ Uses nested deferred nodes so that anchor resolution happens during
 the layout fixed-point pass rather than eagerly.
 -/
 def Diagram.connect {β : Type} (start stop : LineEnd)
-    (stroke : Stroke := { color := Color.black, width := 1.5 })
+    (stroke : FullStroke := { color := Color.black, width := 1.5, lineCap := .butt, lineJoin := .miter, dash := .solid })
     (label : Option (Label β) := none)
     (d : Diagram β) : Diagram β :=
   .compose d
@@ -331,8 +333,9 @@ horizontally or vertically first.
 -/
 def Diagram.connectL {β : Type} (start stop : LineEnd)
     (bend : BendDirection := .vertical)
-    (stroke : Stroke := { color := Color.black, width := 1.5 })
+    (stroke : FullStroke := { color := Color.black, width := 1.5, lineCap := .butt, lineJoin := .miter, dash := .solid })
     (d : Diagram β) : Diagram β :=
+  let strokeOverride : Stroke := { color := stroke.color, width := stroke.width, lineCap := stroke.lineCap, lineJoin := stroke.lineJoin, dash := stroke.dash }
   .compose d
     (.deferred start.point fun rc srcPos =>
       .deferred stop.point fun _rc2 tgtPos =>
@@ -343,8 +346,8 @@ def Diagram.connectL {β : Type} (start stop : LineEnd)
         let mid : Vec2 := match bend with
           | .vertical => ⟨src.x, tgt.y⟩
           | .horizontal => ⟨tgt.x, src.y⟩
-        let seg1 := Diagram.fromStroke (PathData.line src mid) stroke
-        let seg2 := Diagram.fromStroke (PathData.line mid tgt) stroke
+        let seg1 := Diagram.fromStroke (PathData.line src mid) strokeOverride
+        let seg2 := Diagram.fromStroke (PathData.line mid tgt) strokeOverride
         let heads := match startAh with
           | some ah =>
             let dir := (src - mid).normalize

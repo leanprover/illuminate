@@ -101,26 +101,49 @@ def defaults : ResolvedConfig where
   arrowhead := none
   labelUpright := false
 
-/-- Converts the resolved config to a `Stroke` value. -/
-def toStroke (rc : ResolvedConfig) : Stroke where
+/-- Converts the resolved config to a `FullStroke`. -/
+def toFullStroke (rc : ResolvedConfig) : FullStroke where
   color := rc.strokeColor
   width := rc.strokeWidth
   lineCap := rc.strokeLineCap
   lineJoin := rc.strokeLineJoin
+  dash := .solid
 
-/-- Converts the resolved config to a `Fill` value. -/
-def toFill (rc : ResolvedConfig) : Fill where
+/-- Converts the resolved config to a `FullFill`. -/
+def toFullFill (rc : ResolvedConfig) : FullFill where
   color := rc.fillColor
 
-/-- Converts the resolved config to a `TextStyle` value. -/
-def toTextStyle (rc : ResolvedConfig) : TextStyle where
+/-- Converts the resolved config to a `FullTextStyle`. -/
+def toFullTextStyle (rc : ResolvedConfig) : FullTextStyle where
   fontFamily := rc.fontFamily
   fontSize := rc.fontSize
   bold := rc.fontBold
   italic := rc.fontItalic
   color := rc.textColor
+  anchor := .middle
 
 end ResolvedConfig
+
+/-- Resolves a fill override against the draw config. `none` fields inherit from config. -/
+def Fill.resolve (f : Fill) (rc : ResolvedConfig) : FullFill where
+  color := f.color.getD rc.fillColor
+
+/-- Resolves a stroke override against the draw config. `none` fields inherit from config. -/
+def Stroke.resolve (s : Stroke) (rc : ResolvedConfig) : FullStroke where
+  color := s.color.getD rc.strokeColor
+  width := s.width.getD rc.strokeWidth
+  lineCap := s.lineCap.getD rc.strokeLineCap
+  lineJoin := s.lineJoin.getD rc.strokeLineJoin
+  dash := s.dash.getD .solid
+
+/-- Resolves a text style override against the draw config. `none` fields inherit from config. -/
+def TextStyle.resolve (ts : TextStyle) (rc : ResolvedConfig) : FullTextStyle where
+  fontFamily := ts.fontFamily.getD rc.fontFamily
+  fontSize := ts.fontSize.getD rc.fontSize
+  bold := ts.bold.getD rc.fontBold
+  italic := ts.italic.getD rc.fontItalic
+  color := ts.color.getD rc.textColor
+  anchor := ts.anchor.getD .middle
 
 namespace DrawConfig
 

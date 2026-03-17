@@ -61,31 +61,32 @@ def toEnvelope : CorePrimitive → Envelope
       | .curveTo c1 c2 ep => ep :: c2 :: c1 :: acc
       | .closePath => acc
     Envelope.ofVertices pts
-  | .text s optStyle =>
-    let style := optStyle.getD {}
+  | .text s style =>
+    let fontSize := style.fontSize.getD 16
+    let anchor := style.anchor.getD .middle
     let lines := s.splitOn "\n"
     let nLines := Max.max 1 lines.length
     if nLines == 1 then
-      let totalW := estimateTextWidth style.fontSize s
-      let h := (style.fontSize * 0.75 + style.fontSize * 0.25) / 2
-      match style.anchor with
+      let totalW := estimateTextWidth fontSize s
+      let h := (fontSize * 0.75 + fontSize * 0.25) / 2
+      match anchor with
       | .start => Envelope.ofBounds ⟨0, -h⟩ ⟨totalW, h⟩
       | .«end» => Envelope.ofBounds ⟨-totalW, -h⟩ ⟨0, h⟩
       | .middle => Envelope.ofRect (totalW / 2) h
     else
       -- Build a tight envelope as the union of per-line envelopes.
       -- Each line is centered at its own y offset, matching SVG tspan layout.
-      let lineHeight := style.fontSize * 1.2
+      let lineHeight := fontSize * 1.2
       let totalH := lineHeight * (nLines - 1).toFloat
-      let halfLine := style.fontSize / 2
+      let halfLine := fontSize / 2
       -- Collect corners of each line's bounding box and build the
       -- envelope from all vertices. Envelopes are intrinsically convex
       -- (they describe intersections of half-planes), so this gives the
       -- tightest convex bound on the stacked rectangles.
       let vertices := lines.mapIdx fun i line =>
-        let w := estimateTextWidth style.fontSize line
+        let w := estimateTextWidth fontSize line
         let cy := totalH / 2 - i.toFloat * lineHeight
-        let (left, right) := match style.anchor with
+        let (left, right) := match anchor with
           | .start => (0.0, w)
           | .«end» => (-w, 0.0)
           | .middle => (-w / 2, w / 2)
@@ -438,7 +439,7 @@ def vGap (height : Float) : Diagram β :=
 -- ═══════════════════════════════════════════════════════════════
 
 /-- Draws a stroked rectangle around the envelope of a diagram. The border is drawn behind the content. -/
-def frame (d : Diagram β) (stroke : Option Stroke := none)
+def frame (d : Diagram β) (stroke : Stroke := {})
     (padding : Float := 0) (cornerRadius : Float := 0) : Diagram β :=
   let env := d.getEnvelope
   let e := env Vec2.east + padding
@@ -466,7 +467,7 @@ def frame (d : Diagram β) (stroke : Option Stroke := none)
           |>.lineTo bl
           |>.close)
         stroke
-  let halfStroke := (stroke.map (·.width) |>.getD 1.0) / 2
+  let halfStroke := (stroke.width.getD 1.0) / 2
   Diagram.pad halfStroke (Diagram.compose border d)
 
 -- ═══════════════════════════════════════════════════════════════
@@ -510,9 +511,10 @@ def showEnvelope (d : Diagram β) (samples : Nat := 64)
       let pd := PathData.empty |>.moveTo p
       let pd := rest.foldl (fun acc pt => acc.lineTo pt) pd
       pd.close
+  let fillColor : Color := { color with a := alpha }
   let overlay : Diagram β := fromPath path
-    (fill := some { color := { color with a := alpha } })
-    (stroke := some { width := 0 })
+    (fill := { color := fillColor })
+    (stroke := { width := (0 : Float) })
   Diagram.compose overlay d
 
 /--
@@ -521,10 +523,10 @@ Useful for debugging layout and positioning.
 -/
 def showOrigin (d : Diagram β) (size : Float := 5)
     (color : Color := Color.red) : Diagram β :=
-  let stroke : Stroke := { color := color, width := 1.5 }
+  let stroke : Stroke := { color := color, width := (1.5 : Float) }
   let cross : Diagram β := Diagram.atop
-    (Diagram.fromStroke (PathData.line ⟨-size, -size⟩ ⟨size, size⟩) (some stroke))
-    (Diagram.fromStroke (PathData.line ⟨-size, size⟩ ⟨size, -size⟩) (some stroke))
+    (Diagram.fromStroke (PathData.line ⟨-size, -size⟩ ⟨size, size⟩) stroke)
+    (Diagram.fromStroke (PathData.line ⟨-size, size⟩ ⟨size, -size⟩) stroke)
   Diagram.atop d cross
 
 -- ═══════════════════════════════════════════════════════════════
