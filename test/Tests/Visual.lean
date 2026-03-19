@@ -147,6 +147,19 @@ where
 def testVisual_roundedRects : IO Unit :=
   testVisualWrite "roundedrects.svg" (roundedRectsDiagram (0.5 : Float) (0.5 : Float))
 
+def testVisual_roundedRects_2_5 : IO Unit :=
+  testVisualWrite "roundedrects_2_5.svg" (roundedRectsDiagram (0.2 : Float) (0.5 : Float))
+
+def testVisual_roundedRects_2_10 : IO Unit :=
+  testVisualWrite "roundedrects_2_10.svg" (roundedRectsDiagram (0.2 : Float) (1.0 : Float))
+
+def testVisual_roundedRects_7_5 : IO Unit :=
+  testVisualWrite "roundedrects_7_5.svg" (roundedRectsDiagram (0.7 : Float) (0.5 : Float))
+
+def testVisual_roundedRects_7_2 : IO Unit :=
+  testVisualWrite "roundedrects_7_2.svg" (roundedRectsDiagram (0.7 : Float) (0.2 : Float))
+
+
 -- ══════════════════════════════════════════════════════════════════
 -- Pipeline overview (from Lean reference manual)
 -- ══════════════════════════════════════════════════════════════════
@@ -606,6 +619,10 @@ def testVisual_cellophaneClip : IO Unit :=
 
 def visualTests : List (String × IO Unit) := [
   ("Visual/roundedRects", testVisual_roundedRects),
+  ("Visual/roundedRects_2_5", testVisual_roundedRects_2_5),
+  ("Visual/roundedRects_2_10", testVisual_roundedRects_2_10),
+  ("Visual/roundedRects_7_2", testVisual_roundedRects_7_2),
+  ("Visual/roundedRects_7_5", testVisual_roundedRects_7_5),
   ("Visual/pipeline", testVisual_pipeline),
   ("Visual/stringLayout", testVisual_stringLayout),
   ("Visual/lakeWorkspace", testVisual_lakeWorkspace),
