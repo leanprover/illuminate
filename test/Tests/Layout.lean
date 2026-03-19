@@ -126,7 +126,6 @@ def testConnect_explicitArrowhead : IO Unit := do
   assertTrue (fillCmds.length == 3)
     s!"explicit arrowhead should produce a fill (expected 3 fills, got {fillCmds.length})"
 
-
 def layoutTests : List (String × IO Unit) := [
   -- Name resolution (5)
   ("Layout/renderDiagram", testLayout_renderDiagram),
