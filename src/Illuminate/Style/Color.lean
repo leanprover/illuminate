@@ -43,3 +43,11 @@ structure Fill where
   /-- Fill color. -/
   color : Color := Color.black
 deriving Repr, BEq, Inhabited
+
+namespace FullFill
+
+/-- Converts a resolved fill back to an override fill (color set). -/
+def toFill (ff : FullFill) : Fill :=
+  { color := ff.color }
+
+end FullFill
