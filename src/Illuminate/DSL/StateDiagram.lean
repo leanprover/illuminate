@@ -132,7 +132,7 @@ def loop (cfg : StateDiagramConfig) (i : Nat) (label : String) : Diagram β :=
   let c1 : Vec2 := ⟨cx - loopR, top + loopR * 2.2⟩
   let c2 : Vec2 := ⟨cx + loopR, top + loopR * 2.2⟩
   -- Build shaft manually (self-loop geometry doesn't map to angle+pull)
-  let arrowStrokeOverride : Stroke := { color := cfg.arrowStroke.color, width := cfg.arrowStroke.width, lineCap := cfg.arrowStroke.lineCap, lineJoin := cfg.arrowStroke.lineJoin, dash := cfg.arrowStroke.dash }
+  let arrowStrokeOverride := cfg.arrowStroke.toStroke
   let shaft := Diagram.fromStroke
     (PathData.empty |>.moveTo a |>.curveTo c1 c2 b) arrowStrokeOverride
   let (head, _) := ArrowDraw.drawArrowhead cfg.defaultArrowhead b (b - c2) cfg.arrowStroke

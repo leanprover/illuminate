@@ -8,7 +8,6 @@ import Illuminate.Diagram.Placement
 import Illuminate.Render.DrawCmd
 import Illuminate.Render.Svg
 
-
 namespace Illuminate
 
 namespace Diagram

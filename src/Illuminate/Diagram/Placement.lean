@@ -211,6 +211,18 @@ where
     | .transform m d => go (Matrix.mul xform m) d
     | _ => Matrix.applyPoint xform Point.origin
 
+/--
+Resolves the `DrawConfig` from the outermost wrappers of a diagram, threading
+through transparent nodes like `warning` and `annotate`. Stops at the first
+non-config structural node and returns the accumulated resolved config.
+-/
+def resolveOuterConfig (d : Diagram β) (rc : ResolvedConfig := .defaults) : ResolvedConfig :=
+  match d with
+  | .withConfig cfg d => resolveOuterConfig d (cfg.resolve rc)
+  | .warning _ d => resolveOuterConfig d rc
+  | .annotate _ d => resolveOuterConfig d rc
+  | _ => rc
+
 /-- Names a diagram and adds cardinal anchors derived from its envelope. -/
 def namedWithAnchors (n : Lean.Name) (d : Diagram β) : Diagram β :=
   let env := d.getEnvelope

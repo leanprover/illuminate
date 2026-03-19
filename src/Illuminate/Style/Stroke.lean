@@ -68,3 +68,18 @@ structure FullStroke where
   /-- Dash pattern. -/
   dash : StrokeDash
 deriving Repr, BEq, Inhabited
+
+namespace FullStroke
+
+/-- Black stroke at the given width with butt cap, miter join, and solid dash. -/
+def ofWidth (w : Float) : FullStroke :=
+  { color := Color.black, width := w, lineCap := .butt, lineJoin := .miter, dash := .solid }
+
+/-- Default arrow/line stroke (black, width 1.5). -/
+def defaultArrow : FullStroke := ofWidth 1.5
+
+/-- Converts a resolved stroke back to an override stroke (all fields set). -/
+def toStroke (fs : FullStroke) : Stroke :=
+  { color := fs.color, width := fs.width, lineCap := fs.lineCap, lineJoin := fs.lineJoin, dash := fs.dash }
+
+end FullStroke

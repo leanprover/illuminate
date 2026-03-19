@@ -135,7 +135,7 @@ def cellSpacing : Float := 60
 def nodePadding : Float := 8
 
 /-- Arrow stroke style. -/
-def arrowStroke : FullStroke := { color := Color.black, width := 1.5, lineCap := .butt, lineJoin := .miter, dash := .solid }
+def arrowStroke : FullStroke := .defaultArrow
 
 /-- Default arrowhead configuration for commutative diagram arrows. -/
 private def defaultArrowhead : Arrowhead := {}
@@ -199,7 +199,7 @@ private def buildArrow (base : Diagram β) (morph : Morphism) : Diagram β :=
   let srcShrink := nodePadding + 2
   let tgtShrink := nodePadding + 2
   let (a, b) := shortenSegment srcPos tgtPos srcShrink tgtShrink
-  let arrowStrokeOverride : Stroke := { color := arrowStroke.color, width := arrowStroke.width, lineCap := arrowStroke.lineCap, lineJoin := arrowStroke.lineJoin, dash := arrowStroke.dash }
+  let arrowStrokeOverride := arrowStroke.toStroke
   if morph.bend == 0 then
     let shaft := Diagram.fromStroke (PathData.line a b) arrowStrokeOverride
     let (head, _) := ArrowDraw.drawArrowhead defaultArrowhead b (Vec2.sub b a) arrowStroke

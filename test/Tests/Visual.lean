@@ -338,7 +338,7 @@ def coeChainDiagram : Diagram Empty :=
   let orLabel : Diagram Empty :=
     Diagram.text "or" { fontSize := (10 : Float), italic := true } |>.pad 3 |>.namedWithAnchors `or
   let coeTLabel : Diagram Empty := mono "CoeT" (name := `CoeT)
-  let lineStroke : FullStroke := { color := Color.black, width := 1, lineCap := .butt, lineJoin := .miter, dash := .solid }
+  let lineStroke : FullStroke := .ofWidth 1
   Diagram.vsep 12 [withCoeDep, orLabel, coeTLabel]
     |>.connectL `CoeHTCT.south `or.west (stroke := lineStroke)
     |>.connectL `CoeDep.south `or.east (stroke := lineStroke)

@@ -98,7 +98,7 @@ def drawArrowhead (ah : Arrowhead) (tip dir : Vec2) (stroke : FullStroke)
   -- For filled arrowheads, enforce minimum angle so the arrowhead covers the shaft
   let halfAngle := max (headAngle * ah.width) (minHalfAngle ah stroke.width)
   let n := dir.normalize
-  let strokeOverride : Stroke := { color := stroke.color, width := stroke.width, lineCap := stroke.lineCap, lineJoin := stroke.lineJoin, dash := stroke.dash }
+  let strokeOverride := stroke.toStroke
   match ah.type with
   | .latex =>
     let cosA := Float.cos halfAngle
@@ -189,7 +189,7 @@ Draws a line or arrow between two resolved points with the given endpoint specs.
 This is the low-level function that operates on concrete `Vec2` positions.
 -/
 def drawLine (srcPos tgtPos : Vec2)
-    (srcEnd tgtEnd : LineEnd) (stroke : FullStroke := { color := Color.black, width := 1.5, lineCap := .butt, lineJoin := .miter, dash := .solid })
+    (srcEnd tgtEnd : LineEnd) (stroke : FullStroke := .defaultArrow)
     : Diagram β :=
   let straightAngle := angleBetween srcPos tgtPos
   let srcAngle := srcEnd.angle.getD straightAngle
@@ -232,7 +232,7 @@ def drawLine (srcPos tgtPos : Vec2)
   -- Determine if this is a straight line (default angles, no pull override making it curved)
   let isStraight := srcEnd.angle.isNone && tgtEnd.angle.isNone &&
     srcEnd.pull == 0.25 && tgtEnd.pull == 0.25
-  let strokeOverride : Stroke := { color := stroke.color, width := stroke.width, lineCap := stroke.lineCap, lineJoin := stroke.lineJoin, dash := stroke.dash }
+  let strokeOverride := stroke.toStroke
   let shaft :=
     if isStraight then
       Diagram.fromStroke (PathData.line shaftSrc shaftTgt) strokeOverride
@@ -256,7 +256,8 @@ Builds the arrow diagram between two concrete points with the given endpoint spe
 -/
 private def buildArrow {β : Type} (srcPos tgtPos : Vec2)
     (start stop : LineEnd) (stroke : FullStroke)
-    (label : Option (Label β) := none) : Diagram β :=
+    (label : Option (Label β) := none)
+    (labelUpright : Bool := false) : Diagram β :=
   let arrow := ArrowDraw.drawLine srcPos tgtPos start stop stroke
   match label with
   | none => arrow
@@ -277,7 +278,7 @@ private def buildArrow {β : Type} (srcPos tgtPos : Vec2)
                 else if (rawPerp.x * bulge.x + rawPerp.y * bulge.y) > 0 then rawPerp
                 else -rawPerp
     let labelEnv := lbl.label.getEnvelope
-    let isUpright := lbl.upright
+    let isUpright := lbl.upright || labelUpright
     let pos :=
       if isUpright then
         let extent := labelEnv (-perp)
@@ -299,32 +300,33 @@ private def buildArrow {β : Type} (srcPos tgtPos : Vec2)
 Draws a line or arrow between two points.
 -/
 def Diagram.connect' {β : Type} (srcPoint tgtPoint : Point) (start stop : LineEnd)
-    (stroke : FullStroke := { color := Color.black, width := 1.5, lineCap := .butt, lineJoin := .miter, dash := .solid })
+    (stroke : FullStroke := .defaultArrow)
     (arrowhead : Option Arrowhead := none)
     (label : Option (Label β) := none)
     (d : Diagram β) : Diagram β :=
-  let start' := start
-  let stop' := { stop with arrowhead := stop.arrowhead <|> arrowhead }
+  let rc := d.resolveOuterConfig
+  let stop' := { stop with arrowhead := stop.arrowhead <|> arrowhead <|> rc.arrowhead }
   let src := srcPoint.toVec2 + start.shift
   let tgt := tgtPoint.toVec2 + stop.shift
-  .compose d (buildArrow src tgt start' stop' stroke label)
+  .compose d (buildArrow src tgt start stop' stroke label rc.labelUpright)
 
 /--
 Draws a line or arrow between two named anchor points in a diagram.
-Resolves names eagerly using `find` and `origin`.
+Resolves names eagerly using `find` and `origin`. The diagram's outer
+`DrawConfig` is consulted for default arrowhead and label orientation.
 -/
 def Diagram.connect {β : Type} (start stop : LineEnd)
-    (stroke : FullStroke := { color := Color.black, width := 1.5, lineCap := .butt, lineJoin := .miter, dash := .solid })
+    (stroke : FullStroke := .defaultArrow)
     (arrowhead : Option Arrowhead := none)
     (label : Option (Label β) := none)
     (d : Diagram β) : Diagram β :=
-  let start' := start
-  let stop' := { stop with arrowhead := stop.arrowhead <|> arrowhead }
+  let rc := d.resolveOuterConfig
+  let stop' := { stop with arrowhead := stop.arrowhead <|> arrowhead <|> rc.arrowhead }
   let srcPoint := (d.find start.point).origin
   let tgtPoint := (d.find stop.point).origin
   let src := srcPoint.toVec2 + start.shift
   let tgt := tgtPoint.toVec2 + stop.shift
-  .compose d (buildArrow src tgt start' stop' stroke label)
+  .compose d (buildArrow src tgt start stop' stroke label rc.labelUpright)
 
 /-- Direction for the bend in an L-shaped connection. -/
 inductive BendDirection where
@@ -340,22 +342,25 @@ Draws an L-shaped (right-angle) line or arrow between two points.
 -/
 def Diagram.connectL' {β : Type} (srcPoint tgtPoint : Point) (start stop : LineEnd)
     (bend : BendDirection := .vertical)
-    (stroke : FullStroke := { color := Color.black, width := 1.5, lineCap := .butt, lineJoin := .miter, dash := .solid })
+    (stroke : FullStroke := .defaultArrow)
     (d : Diagram β) : Diagram β :=
-  let strokeOverride : Stroke := { color := stroke.color, width := stroke.width, lineCap := stroke.lineCap, lineJoin := stroke.lineJoin, dash := stroke.dash }
+  let rc := d.resolveOuterConfig
+  let strokeOverride := stroke.toStroke
   let src := srcPoint.toVec2 + start.shift
   let tgt := tgtPoint.toVec2 + stop.shift
+  let startAh := start.arrowhead <|> rc.arrowhead
+  let stopAh := stop.arrowhead <|> rc.arrowhead
   let mid : Vec2 := match bend with
     | .vertical => ⟨src.x, tgt.y⟩
     | .horizontal => ⟨tgt.x, src.y⟩
   let seg1 := Diagram.fromStroke (PathData.line src mid) strokeOverride
   let seg2 := Diagram.fromStroke (PathData.line mid tgt) strokeOverride
-  let heads := match start.arrowhead with
+  let heads := match startAh with
     | some ah =>
       let dir := (src - mid).normalize
       (ArrowDraw.drawArrowhead ah src dir stroke).1
     | none => .empty
-  let heads := match stop.arrowhead with
+  let heads := match stopAh with
     | some ah =>
       let dir := (tgt - mid).normalize
       Diagram.compose heads (ArrowDraw.drawArrowhead ah tgt dir stroke).1
@@ -365,10 +370,11 @@ def Diagram.connectL' {β : Type} (srcPoint tgtPoint : Point) (start stop : Line
 /--
 Draws an L-shaped (right-angle) line or arrow between two named anchor points.
 `bend` controls whether the line goes horizontally or vertically first.
+The diagram's outer `DrawConfig` is consulted for default arrowhead style.
 -/
 def Diagram.connectL {β : Type} (start stop : LineEnd)
     (bend : BendDirection := .vertical)
-    (stroke : FullStroke := { color := Color.black, width := 1.5, lineCap := .butt, lineJoin := .miter, dash := .solid })
+    (stroke : FullStroke := .defaultArrow)
     (d : Diagram β) : Diagram β :=
   let srcPoint := (d.find start.point).origin
   let tgtPoint := (d.find stop.point).origin

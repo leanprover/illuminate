@@ -110,6 +110,27 @@ def testValidate_pinOverDuplicateName : IO Unit := do
       | _ => false
     assertTrue hasDup "pinOver with colliding names triggers duplicateName"
 
+def testConnect_configArrowheadUsed : IO Unit := do
+  -- BUG: withArrowhead sets rc.arrowhead, but connect resolves eagerly and
+  -- never reads DrawConfig, so the configured arrowhead is silently ignored.
+  -- This test asserts the *desired* behavior: withArrowhead should cause
+  -- connect to produce an arrowhead. It will fail until the bug is fixed.
+  let d : Diagram Empty :=
+    Diagram.hsep 40 [
+      Diagram.circle 10 (name := some `A),
+      Diagram.circle 10 (name := some `B)
+    ]
+    |>.withArrowhead { type := .stealth }
+    |>.connect `A.east `B.west
+  -- Stealth arrowheads produce a filled polygon, which compiles to a fillPath.
+  -- The two circles each produce one fillPath (2 total). If the config arrowhead
+  -- is respected, there should be a third fillPath for the stealth head.
+  let fillCmds := d.compile.filter fun cmd => match cmd with
+    | .fillPath _ _ => true
+    | _ => false
+  assertTrue (fillCmds.length == 3)
+    s!"withArrowhead should make connect produce an arrowhead (expected 3 fills, got {fillCmds.length})"
+
 def layoutTests : List (String × IO Unit) := [
   -- Name resolution (5)
   ("Layout/renderDiagram", testLayout_renderDiagram),
@@ -123,5 +144,7 @@ def layoutTests : List (String × IO Unit) := [
   ("Validate/emptyPath", testValidate_emptyPath),
   ("Validate/idempotent", testValidate_idempotent),
   ("Validate/noErrors", testValidate_noErrors),
-  ("Validate/pinOverDuplicateName", testValidate_pinOverDuplicateName)
+  ("Validate/pinOverDuplicateName", testValidate_pinOverDuplicateName),
+  -- Connect config regression (issue 2)
+  ("Connect/configArrowheadUsed", testConnect_configArrowheadUsed)
 ]
