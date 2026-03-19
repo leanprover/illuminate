@@ -135,7 +135,7 @@ def cellSpacing : Float := 60
 def nodePadding : Float := 8
 
 /-- Arrow stroke style. -/
-def arrowStroke : FullStroke := .defaultArrow
+def arrowStroke : Stroke := .defaultArrow
 
 /-- Default arrowhead configuration for commutative diagram arrows. -/
 private def defaultArrowhead : Arrowhead := {}
@@ -199,9 +199,8 @@ private def buildArrow (base : Diagram β) (morph : Morphism) : Diagram β :=
   let srcShrink := nodePadding + 2
   let tgtShrink := nodePadding + 2
   let (a, b) := shortenSegment srcPos tgtPos srcShrink tgtShrink
-  let arrowStrokeOverride := arrowStroke.toStroke
   if morph.bend == 0 then
-    let shaft := Diagram.fromStroke (PathData.line a b) arrowStrokeOverride
+    let shaft := Diagram.fromStroke (PathData.line a b) arrowStroke
     let (head, _) := ArrowDraw.drawArrowhead defaultArrowhead b (Vec2.sub b a) arrowStroke
     let arrow := Diagram.atop shaft head
     let arrow := match morph.label with
@@ -226,7 +225,7 @@ private def buildArrow (base : Diagram β) (morph : Morphism) : Diagram β :=
     let c2 := b + (2 / 3 : Float) • (ctrl - b)
     let shaft := Diagram.fromStroke
       (PathData.empty |>.moveTo a |>.curveTo c1 c2 b)
-      arrowStrokeOverride
+      arrowStroke
     let headDir := Vec2.sub b c2
     let (head, _) := ArrowDraw.drawArrowhead defaultArrowhead b headDir arrowStroke
     let arrow := Diagram.atop shaft head

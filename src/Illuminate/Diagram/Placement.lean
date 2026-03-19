@@ -49,10 +49,10 @@ namespace CorePrimitive
 
 /--
 Computes the envelope of a core primitive.
-Text uses a placeholder size based on the resolved config's font size.
+Text uses a placeholder size based on the text style's font size.
 Real text sizes require the monadic measurement pass and are not available here.
 -/
-def toEnvelope (cp : CorePrimitive) (rc : ResolvedConfig := .defaults) : Envelope :=
+def toEnvelope (cp : CorePrimitive) : Envelope :=
   match cp with
   | .path pd _ _ =>
     let pts := pd.commands.foldl (init := []) fun acc cmd =>
@@ -63,8 +63,8 @@ def toEnvelope (cp : CorePrimitive) (rc : ResolvedConfig := .defaults) : Envelop
       | .closePath => acc
     Envelope.ofVertices pts
   | .text s style =>
-    let fontSize := style.fontSize.getD rc.fontSize
-    let anchor := style.anchor.getD .middle
+    let fontSize := style.fontSize
+    let anchor := style.anchor
     let lines := s.splitOn "\n"
     let nLines := Max.max 1 lines.length
     if nLines == 1 then
@@ -107,10 +107,10 @@ variable {β : Type}
 Computes the envelope of a primitive. Foreign primitives with a core fallback
 use the fallback's envelope; otherwise they have zero envelope.
 -/
-def toEnvelope (p : Primitive β) (rc : ResolvedConfig := .defaults) : Envelope :=
+def toEnvelope (p : Primitive β) : Envelope :=
   match p with
-  | .core cp => cp.toEnvelope rc
-  | .foreign _ (some cp) => cp.toEnvelope rc
+  | .core cp => cp.toEnvelope
+  | .foreign _ (some cp) => cp.toEnvelope
   | .foreign _ none => Envelope.empty
 
 end Primitive
@@ -123,23 +123,19 @@ variable {β : Type}
 -- Envelope extraction
 -- ═══════════════════════════════════════════════════════════════
 
-/--
-Computes the envelope of a diagram by recursive traversal. Threads the resolved
-draw config so that text nodes use the correct inherited font size.
--/
-def getEnvelope (d : Diagram β) (rc : ResolvedConfig := .defaults) : Envelope :=
+/-- Computes the envelope of a diagram by recursive traversal. -/
+def getEnvelope (d : Diagram β) : Envelope :=
   match d with
   | .empty => Envelope.empty
-  | .prim p => p.toEnvelope rc
-  | .annotate _ d => d.getEnvelope rc
-  | .named _ d => d.getEnvelope rc
-  | .transform m d => Envelope.transform m (d.getEnvelope rc)
-  | .compose a b => Envelope.union (a.getEnvelope rc) (b.getEnvelope rc)
+  | .prim p => p.toEnvelope
+  | .annotate _ d => d.getEnvelope
+  | .named _ d => d.getEnvelope
+  | .transform m d => Envelope.transform m d.getEnvelope
+  | .compose a b => Envelope.union a.getEnvelope b.getEnvelope
   | .withEnv env _ => env
-  | .warning _ d => d.getEnvelope rc
-  | .withConfig cfg d => d.getEnvelope (cfg.resolve rc)
-  | .cellophane _ d => d.getEnvelope rc
-  | .clip _ d => d.getEnvelope rc
+  | .warning _ d => d.getEnvelope
+  | .cellophane _ d => d.getEnvelope
+  | .clip _ d => d.getEnvelope
 
 -- ═══════════════════════════════════════════════════════════════
 -- Name resolution
@@ -166,7 +162,6 @@ def collectNames (d : Diagram β) (xform : Matrix) (pfx : Lean.Name)
     collectNames b xform pfx acc
   | .withEnv _ d => collectNames d xform pfx acc
   | .warning _ d => collectNames d xform pfx acc
-  | .withConfig _ d => collectNames d xform pfx acc
   | .cellophane _ d => collectNames d xform pfx acc
   | .clip _ d => collectNames d xform pfx acc
 
@@ -199,7 +194,6 @@ where
       | none => go target pfx xform b
     | .withEnv _ d => go target pfx xform d
     | .warning _ d => go target pfx xform d
-    | .withConfig _ d => go target pfx xform d
     | .cellophane _ d => go target pfx xform d
     | .clip _ d => go target pfx xform d
 
@@ -210,18 +204,6 @@ where
   go (xform : Matrix) : Diagram β → Point
     | .transform m d => go (Matrix.mul xform m) d
     | _ => Matrix.applyPoint xform Point.origin
-
-/--
-Resolves the `DrawConfig` from the outermost wrappers of a diagram, threading
-through transparent nodes like `warning` and `annotate`. Stops at the first
-non-config structural node and returns the accumulated resolved config.
--/
-def resolveOuterConfig (d : Diagram β) (rc : ResolvedConfig := .defaults) : ResolvedConfig :=
-  match d with
-  | .withConfig cfg d => resolveOuterConfig d (cfg.resolve rc)
-  | .warning _ d => resolveOuterConfig d rc
-  | .annotate _ d => resolveOuterConfig d rc
-  | _ => rc
 
 /-- Names a diagram and adds cardinal anchors derived from its envelope. -/
 def namedWithAnchors (n : Lean.Name) (d : Diagram β) : Diagram β :=
@@ -563,7 +545,7 @@ def frame (d : Diagram β) (stroke : Stroke := {})
           |>.lineTo bl
           |>.close)
         stroke
-  let halfStroke := (stroke.width.getD 1.0) / 2
+  let halfStroke := stroke.width / 2
   Diagram.pad halfStroke (Diagram.compose border d)
 
 /--
@@ -597,7 +579,7 @@ def filledFrame (d : Diagram β) (fill : Fill := {}) (stroke : Stroke := {})
           |>.lineTo bl
           |>.close)
         fill stroke
-  let halfStroke := (stroke.width.getD 1.0) / 2
+  let halfStroke := stroke.width / 2
   Diagram.pad halfStroke (Diagram.compose border d)
 
 -- ═══════════════════════════════════════════════════════════════

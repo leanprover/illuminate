@@ -68,7 +68,7 @@ def testDiag_text : IO Unit := do
 def testDiag_line : IO Unit := do
   let d : Diagram Empty := Diagram.line ⟨0, 0⟩ ⟨1, 1⟩
   match d with
-  | .prim (.core (.path _ fill _)) => assertTrue (fill.color == some Color.transparent) "line has transparent fill"
+  | .prim (.core (.path _ fill _)) => assertTrue (fill.color == Color.transparent) "line has transparent fill"
   | _ => throw <| IO.userError "expected prim/core/path"
 
 -- ══════════════════════════════════════════════════════════════════

@@ -62,7 +62,7 @@ def testSvg_fillPath : IO Unit := do
   assertContains svg "fill=\"rgb(255,0,0)\"" "fill has red"
 
 def testSvg_strokePath : IO Unit := do
-  let cmd := DrawCmd.strokePath (PathData.rect 4 4) { FullStroke.ofWidth 2 with color := Color.blue }
+  let cmd := DrawCmd.strokePath (PathData.rect 4 4) { Stroke.ofWidth 2 with color := Color.blue }
   let svg := Svg.renderCmd cmd
   assertContains svg "stroke=\"rgb(0,0,255)\"" "stroke has blue"
   assertContains svg "stroke-width=\"2\"" "stroke has width"

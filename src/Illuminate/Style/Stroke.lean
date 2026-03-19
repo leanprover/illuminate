@@ -41,45 +41,27 @@ inductive StrokeDash where
   | dashDot
 deriving Repr, BEq, Inhabited
 
-/-- Stroke style override for paths. Fields set to `none` inherit from the draw config. -/
+/-- Stroke style for paths: color, width, line cap, line join, and dash pattern. -/
 structure Stroke where
-  /-- Stroke color. Inherits from config when `none`. Default: opaque black. -/
-  color : Option Color := none
-  /-- Stroke width in diagram units. Inherits from config when `none`. Default: 1.0. -/
-  width : Option Float := none
-  /-- Style of line endpoints. Inherits from config when `none`. Default: butt. -/
-  lineCap : Option LineCap := none
-  /-- Style of line joins. Inherits from config when `none`. Default: miter. -/
-  lineJoin : Option LineJoin := none
-  /-- Dash pattern. Inherits from config when `none`. Default: solid. -/
-  dash : Option StrokeDash := none
-deriving Repr, BEq, Inhabited
-
-/-- Resolved stroke style with all fields concrete. -/
-structure FullStroke where
   /-- Stroke color. -/
-  color : Color
+  color : Color := Color.black
   /-- Stroke width in diagram units. -/
-  width : Float
+  width : Float := 1.0
   /-- Style of line endpoints. -/
-  lineCap : LineCap
+  lineCap : LineCap := .butt
   /-- Style of line joins. -/
-  lineJoin : LineJoin
+  lineJoin : LineJoin := .miter
   /-- Dash pattern. -/
-  dash : StrokeDash
+  dash : StrokeDash := .solid
 deriving Repr, BEq, Inhabited
 
-namespace FullStroke
+namespace Stroke
 
 /-- Black stroke at the given width with butt cap, miter join, and solid dash. -/
-def ofWidth (w : Float) : FullStroke :=
-  { color := Color.black, width := w, lineCap := .butt, lineJoin := .miter, dash := .solid }
+def ofWidth (w : Float) : Stroke :=
+  { width := w }
 
 /-- Default arrow/line stroke (black, width 1.5). -/
-def defaultArrow : FullStroke := ofWidth 1.5
+def defaultArrow : Stroke := ofWidth 1.5
 
-/-- Converts a resolved stroke back to an override stroke (all fields set). -/
-def toStroke (fs : FullStroke) : Stroke :=
-  { color := fs.color, width := fs.width, lineCap := fs.lineCap, lineJoin := fs.lineJoin, dash := fs.dash }
-
-end FullStroke
+end Stroke

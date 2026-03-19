@@ -65,8 +65,6 @@ inductive Diagram (β : Type) where
   | withEnv : Envelope → Diagram β → Diagram β
   /-- Embeds a validation warning message alongside a sub-diagram. -/
   | warning : String → Diagram β → Diagram β
-  /-- Applies a cascading draw configuration to a sub-diagram. -/
-  | withConfig : DrawConfig → Diagram β → Diagram β
   /-- Wraps a sub-diagram with a given opacity (0–1). -/
   | cellophane : Float → Diagram β → Diagram β
   /-- Clips a sub-diagram to a path boundary. -/
@@ -95,30 +93,30 @@ def withNameAndAnchors (d : Diagram β) (n : Lean.Name)
 /-- The empty diagram — renders nothing, has zero envelope. -/
 def emptyDiagram : Diagram β := .empty
 
-/-- A filled and/or stroked path. `none` fields inherit from the draw config. -/
+/-- A filled and/or stroked path. -/
 def fromPath (pd : PathData) (fill : Fill := {}) (stroke : Stroke := {})
     : Diagram β :=
   .prim (.core (.path pd fill stroke))
 
-/-- A stroked path with no fill. `none` stroke fields inherit from the draw config. -/
+/-- A stroked path with no fill. -/
 def fromStroke (pd : PathData) (stroke : Stroke := {}) : Diagram β :=
   .prim (.core (.path pd { color := Color.transparent } stroke))
 
-/-- A text node with the given style overrides. `none` fields inherit from the draw config. -/
+/-- A text node with the given style. -/
 def text (s : String) (style : TextStyle := {})
     (name : Option Lean.Name := none) : Diagram β :=
   let d : Diagram β := .prim (.core (.text s style))
   match name with
   | none => d
   | some n =>
-    let fs := style.fontSize.getD 16
+    let fs := style.fontSize
     let lines := s.splitOn "\n"
     let totalW := lines.foldl (fun acc line => Max.max acc (estimateTextWidth fs line)) 0
     let lineHeight := fs * 1.2
     let nLines := Max.max 1 lines.length
     let h := if nLines == 1 then fs / 2
              else lineHeight * nLines.toFloat / 2
-    let (left, right) : Float × Float := match style.anchor.getD .middle with
+    let (left, right) : Float × Float := match style.anchor with
       | .start  => (0, totalW)
       | .«end» => (-totalW, 0)
       | .middle => (-totalW / 2, totalW / 2)
@@ -141,7 +139,7 @@ def rect (width height : Float) (fill : Fill := {}) (stroke : Stroke := {})
   match name with
   | none => d
   | some n =>
-    let sw := stroke.width.getD 0 / 2
+    let sw := stroke.width / 2
     let hw := width / 2 + sw
     let hh := height / 2 + sw
     withNameAndAnchors d n [
@@ -159,7 +157,7 @@ def roundedRect (width height : Float) (cornerRadius : Float)
   match name with
   | none => d
   | some n =>
-    let sw := stroke.width.getD 0 / 2
+    let sw := stroke.width / 2
     let hw := width / 2 + sw
     let hh := height / 2 + sw
     withNameAndAnchors d n [
@@ -177,7 +175,7 @@ def circle (radius : Float) (fill : Fill := {}) (stroke : Stroke := {})
   match name with
   | none => d
   | some n =>
-    let sw := stroke.width.getD 0 / 2
+    let sw := stroke.width / 2
     let r := radius + sw
     withNameAndAnchors d n [
       (`north, ⟨0, r⟩), (`south, ⟨0, -r⟩),
@@ -328,102 +326,3 @@ def fromImage (ref : ImageRef) : Diagram β :=
 def fromForeign (val : β) (fallback : Option CorePrimitive := none) : Diagram β :=
   .prim (.foreign val fallback)
 
--- ═══════════════════════════════════════════════════════════════
--- Per-field config override helpers
--- ═══════════════════════════════════════════════════════════════
-
-/-- Sets the stroke color for a sub-diagram. -/
-def withStrokeColor (c : Color) (d : Diagram β) : Diagram β :=
-  .withConfig { strokeColor := .set c } d
-
-/-- Sets the stroke width for a sub-diagram. -/
-def withStrokeWidth (w : Float) (d : Diagram β) : Diagram β :=
-  .withConfig { strokeWidth := .set w } d
-
-/-- Sets the fill color for a sub-diagram. -/
-def withFillColor (c : Color) (d : Diagram β) : Diagram β :=
-  .withConfig { fillColor := .set c } d
-
-/-- Sets the font size for a sub-diagram. -/
-def withFontSize (s : Float) (d : Diagram β) : Diagram β :=
-  .withConfig { fontSize := .set s } d
-
-/-- Sets the font family for a sub-diagram. -/
-def withFontFamily (f : String) (d : Diagram β) : Diagram β :=
-  .withConfig { fontFamily := .set f } d
-
-/-- Sets the bold flag for a sub-diagram. -/
-def withFontBold (b : Bool) (d : Diagram β) : Diagram β :=
-  .withConfig { fontBold := .set b } d
-
-/-- Sets the italic flag for a sub-diagram. -/
-def withFontItalic (i : Bool) (d : Diagram β) : Diagram β :=
-  .withConfig { fontItalic := .set i } d
-
-/-- Sets the text color for a sub-diagram. -/
-def withTextColor (c : Color) (d : Diagram β) : Diagram β :=
-  .withConfig { textColor := .set c } d
-
-/-- Sets the default arrowhead style for a sub-diagram. -/
-def withArrowhead (ah : Arrowhead) (d : Diagram β) : Diagram β :=
-  .withConfig { arrowhead := .set (some ah) } d
-
-/-- Sets the stroke line cap for a sub-diagram. -/
-def withStrokeLineCap (cap : LineCap) (d : Diagram β) : Diagram β :=
-  .withConfig { strokeLineCap := .set cap } d
-
-/-- Sets the stroke line join for a sub-diagram. -/
-def withStrokeLineJoin (join : LineJoin) (d : Diagram β) : Diagram β :=
-  .withConfig { strokeLineJoin := .set join } d
-
--- ═══════════════════════════════════════════════════════════════
--- Per-field config reset helpers
--- ═══════════════════════════════════════════════════════════════
-
-/-- Resets the stroke color to the global default for a sub-diagram. -/
-def resetStrokeColor (d : Diagram β) : Diagram β :=
-  .withConfig { strokeColor := .reset } d
-
-/-- Resets the stroke width to the global default for a sub-diagram. -/
-def resetStrokeWidth (d : Diagram β) : Diagram β :=
-  .withConfig { strokeWidth := .reset } d
-
-/-- Resets the fill color to the global default for a sub-diagram. -/
-def resetFillColor (d : Diagram β) : Diagram β :=
-  .withConfig { fillColor := .reset } d
-
-/-- Resets the font size to the global default for a sub-diagram. -/
-def resetFontSize (d : Diagram β) : Diagram β :=
-  .withConfig { fontSize := .reset } d
-
-/-- Resets the font family to the global default for a sub-diagram. -/
-def resetFontFamily (d : Diagram β) : Diagram β :=
-  .withConfig { fontFamily := .reset } d
-
-/-- Resets the bold flag to the global default for a sub-diagram. -/
-def resetFontBold (d : Diagram β) : Diagram β :=
-  .withConfig { fontBold := .reset } d
-
-/-- Resets the italic flag to the global default for a sub-diagram. -/
-def resetFontItalic (d : Diagram β) : Diagram β :=
-  .withConfig { fontItalic := .reset } d
-
-/-- Resets the text color to the global default for a sub-diagram. -/
-def resetTextColor (d : Diagram β) : Diagram β :=
-  .withConfig { textColor := .reset } d
-
-/-- Resets the arrowhead to the global default for a sub-diagram. -/
-def resetArrowhead (d : Diagram β) : Diagram β :=
-  .withConfig { arrowhead := .reset } d
-
-/-- Sets arrow labels to stay upright (not rotate to follow the arrow) for a sub-diagram. -/
-def withLabelUpright (d : Diagram β) : Diagram β :=
-  .withConfig { labelUpright := .set true } d
-
-/-- Resets the label upright flag to the global default for a sub-diagram. -/
-def resetLabelUpright (d : Diagram β) : Diagram β :=
-  .withConfig { labelUpright := .reset } d
-
-/-- Resets all config fields to their global defaults for a sub-diagram. -/
-def resetConfig (d : Diagram β) : Diagram β :=
-  .withConfig DrawConfig.resetAll d

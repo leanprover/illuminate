@@ -16,47 +16,41 @@ variable {β : Type}
 
 /-- Compiles a diagram tree into a flat display list of drawing commands. -/
 def compile (d : Diagram β) : List DrawCmd :=
-  go d ResolvedConfig.defaults []
+  go d []
 where
-  go (d : Diagram β) (rc : ResolvedConfig) (acc : List DrawCmd) : List DrawCmd :=
+  go (d : Diagram β) (acc : List DrawCmd) : List DrawCmd :=
     match d with
     | .empty => acc
     | .prim p =>
       match p with
       | .core (.path pd fill stroke) =>
-        let fullFill := fill.resolve rc
-        let fullStroke := stroke.resolve rc
-        let acc := if fullFill.color.a > 0 then acc ++ [.fillPath pd fullFill] else acc
-        if fullStroke.width > 0 && fullStroke.color.a > 0 then acc ++ [.strokePath pd fullStroke]
+        let acc := if fill.color.a > 0 then acc ++ [.fillPath pd fill] else acc
+        if stroke.width > 0 && stroke.color.a > 0 then acc ++ [.strokePath pd stroke]
         else acc
       | .core (.text s style) =>
-        let fullStyle := style.resolve rc
-        acc ++ [.drawTextRun s fullStyle ⟨0, 0⟩]
+        acc ++ [.drawTextRun s style ⟨0, 0⟩]
       | .core (.image _) => acc
       | .foreign _ (some cp) =>
-        go (.prim (.core cp)) rc acc
+        go (.prim (.core cp)) acc
       | .foreign _ none => acc
     | .annotate tag d =>
-      let inner := go d rc []
+      let inner := go d []
       acc ++ [.pushAnnotation tag] ++ inner ++ [.popAnnotation]
-    | .named _ d => go d rc acc
+    | .named _ d => go d acc
     | .transform m d =>
-      let inner := go d rc []
+      let inner := go d []
       acc ++ [.pushTransform m] ++ inner ++ [.popTransform]
     | .compose a b =>
-      let acc := go a rc acc
-      go b rc acc
-    | .withEnv _ d => go d rc acc
-    | .warning _ d => go d rc acc
-    | .withConfig cfg d =>
-      let rc' := cfg.resolve rc
-      go d rc' acc
+      let acc := go a acc
+      go b acc
+    | .withEnv _ d => go d acc
+    | .warning _ d => go d acc
     | .cellophane α d =>
-      let inner := go d rc []
+      let inner := go d []
       acc ++ [.pushOpacity α] ++ inner ++ [.popOpacity]
     | .clip pd d =>
       let clipId := acc.length
-      let inner := go d rc []
+      let inner := go d []
       acc ++ [.pushClip pd clipId] ++ inner ++ [.popClip]
 
 /-- Renders a diagram to an SVG string. -/

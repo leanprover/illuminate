@@ -34,16 +34,16 @@ namespace StateDiagramConfig
 variable {β : Type}
 
 private def stateStroke (cfg : StateDiagramConfig) : Stroke :=
-  { color := Color.black, width := (cfg.lineWidth : Float) }
+  { color := Color.black, width := cfg.lineWidth }
 
-private def arrowStroke (cfg : StateDiagramConfig) : FullStroke :=
+private def arrowStroke (cfg : StateDiagramConfig) : Stroke :=
   { color := Color.black, width := cfg.lineWidth, lineCap := .round, lineJoin := .miter, dash := .solid }
 
 private def labelStyle (cfg : StateDiagramConfig) : TextStyle :=
-  { fontSize := (cfg.fontSize : Float) }
+  { fontSize := cfg.fontSize }
 
 private def transStyle (cfg : StateDiagramConfig) : TextStyle :=
-  { fontSize := (cfg.labelSize : Float), bold := true }
+  { fontSize := cfg.labelSize, bold := true }
 
 private def posOf (cfg : StateDiagramConfig) (i : Nat) : Vec2 :=
   ⟨i.toFloat * cfg.spacing, 0⟩
@@ -132,9 +132,8 @@ def loop (cfg : StateDiagramConfig) (i : Nat) (label : String) : Diagram β :=
   let c1 : Vec2 := ⟨cx - loopR, top + loopR * 2.2⟩
   let c2 : Vec2 := ⟨cx + loopR, top + loopR * 2.2⟩
   -- Build shaft manually (self-loop geometry doesn't map to angle+pull)
-  let arrowStrokeOverride := cfg.arrowStroke.toStroke
   let shaft := Diagram.fromStroke
-    (PathData.empty |>.moveTo a |>.curveTo c1 c2 b) arrowStrokeOverride
+    (PathData.empty |>.moveTo a |>.curveTo c1 c2 b) cfg.arrowStroke
   let (head, _) := ArrowDraw.drawArrowhead cfg.defaultArrowhead b (b - c2) cfg.arrowStroke
   let lbl := Diagram.transform (Matrix.translate cx (top + loopR * 2.2 + 6))
     (.text label cfg.transStyle)

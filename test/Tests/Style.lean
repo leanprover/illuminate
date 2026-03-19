@@ -14,18 +14,18 @@ open Illuminate
 
 def testStyle_fillDefault : IO Unit := do
   let f : Fill := {}
-  assertTrue (f.color == none) "default fill color is none"
+  assertTrue (f.color == Color.black) "default fill color is black"
 
 def testStyle_strokeDefault : IO Unit := do
   let s : Stroke := {}
-  assertTrue (s.color == none) "default stroke color is none"
-  assertTrue (s.width == none) "default stroke width is none"
-  assertTrue (s.lineCap == none) "default line cap is none"
+  assertTrue (s.color == Color.black) "default stroke color is black"
+  assertTrue (s.width == 1.0) "default stroke width is 1.0"
+  assertTrue (s.lineCap == .butt) "default line cap is butt"
 
 def testStyle_textDefault : IO Unit := do
   let t : TextStyle := {}
-  assertTrue (t.fontSize == none) "default font size is none"
-  assertTrue (t.bold == none) "default bold is none"
+  assertTrue (t.fontSize == 16) "default font size is 16"
+  assertTrue (t.bold == false) "default bold is false"
 
 def testStyle_colorTransparent : IO Unit := do
   assertTrue (Color.transparent.a == 0.0) "transparent alpha is 0"
