@@ -9,50 +9,43 @@ import Tests.Helpers
 open Illuminate
 
 -- ══════════════════════════════════════════════════════════════════
--- Layout (5)
+-- Name resolution (5)
 -- ══════════════════════════════════════════════════════════════════
 
-def testLayout_renderDiagramM : IO Unit := do
+def testLayout_renderDiagram : IO Unit := do
   let d : Diagram Empty := Diagram.rect 4 2
-  let svg := Id.run (renderDiagramM d)
-  -- renderDiagramM should produce the same output as renderDiagram
-  let expected := renderDiagram d
-  assertTrue (svg == expected) "renderDiagramM matches renderDiagram"
+  let svg := d.renderDiagram
+  assertContains svg "<svg" "has svg tag"
+  assertContains svg "<path" "has path"
 
 def testLayout_namedAnchors : IO Unit := do
   let d : Diagram Empty :=
     .transform (Matrix.translate 10 20) (.named `A (Diagram.rect 4 4))
-  let ld := (toLayout d).resolve
-  match ld.anchorPoint `A with
-  | some pos =>
-    assertApproxEq pos.x 10 "anchor A x"
-    assertApproxEq pos.y 20 "anchor A y"
-  | none => throw <| IO.userError "anchor A not found"
+  let pos := (d.find `A).origin
+  assertApproxEq pos.x 10 "anchor A x"
+  assertApproxEq pos.y 20 "anchor A y"
 
 def testLayout_envelopeIn : IO Unit := do
   let d : Diagram Empty := .named `box (Diagram.rect 6 4)
-  let ld := (toLayout d).resolve
-  match ld.envelopeIn `box Vec2.east with
-  | some ext => assertApproxEq ext 3 "envelopeIn east" (tol := 0.01)
-  | none => throw <| IO.userError "envelope for box not found"
+  let env := (d.find `box).getEnvelope
+  assertApproxEq (env Vec2.east) 3 "envelope east" (tol := 0.01)
 
 def testLayout_deterministic : IO Unit := do
   let d : Diagram Empty := .compose
     (.named `X (Diagram.rect 4 4))
     (.named `Y (.transform (Matrix.translate 5 0) (Diagram.circle 3)))
-  let ld1 := (toLayout d).resolve
-  let ld2 := (toLayout d).resolve
-  assertTrue (ld1.compile.length == ld2.compile.length) "deterministic cmd count"
-  let n1 := ld1.collectNames Matrix.identity .anonymous []
-  let n2 := ld2.collectNames Matrix.identity .anonymous []
+  let cmds1 := d.compile
+  let cmds2 := d.compile
+  assertTrue (cmds1.length == cmds2.length) "deterministic cmd count"
+  let n1 := d.collectNames Matrix.identity .anonymous []
+  let n2 := d.collectNames Matrix.identity .anonymous []
   assertTrue (n1.length == n2.length) "deterministic name count"
 
-def testLayout_monoVsFixed : IO Unit := do
+def testLayout_compileText : IO Unit := do
   let d : Diagram Empty := .text "Hello"
-  let ld1 := (toLayout d).resolve
-  let ld2 := (toLayout d).resolve
-  -- Same topological structure (same number of commands)
-  assertTrue (ld1.compile.length == ld2.compile.length) "same cmd structure"
+  let cmds1 := d.compile
+  let cmds2 := d.compile
+  assertTrue (cmds1.length == cmds2.length) "same cmd structure"
 
 -- ══════════════════════════════════════════════════════════════════
 -- Validate (5)
@@ -60,8 +53,7 @@ def testLayout_monoVsFixed : IO Unit := do
 
 def testValidate_wellFormed : IO Unit := do
   let d : Diagram Empty := .named `A (Diagram.rect 4 4)
-  let ld := (toLayout d).resolve
-  match validate ld with
+  match validate d with
   | .ok () => pure ()
   | .error errs => throw <| IO.userError s!"expected ok, got {errs.size} errors"
 
@@ -69,8 +61,7 @@ def testValidate_duplicateName : IO Unit := do
   let d : Diagram Empty := .compose
     (.named `foo (Diagram.rect 2 2))
     (.named `foo (Diagram.rect 2 2))
-  let ld := (toLayout d).resolve
-  match validate ld with
+  match validate d with
   | .ok () => throw <| IO.userError "expected duplicate error"
   | .error errs =>
     let hasDup := errs.any fun e => match e with
@@ -80,11 +71,9 @@ def testValidate_duplicateName : IO Unit := do
 
 def testValidate_emptyPath : IO Unit := do
   let emptyPd : PathData := PathData.empty
-  -- Build a LayoutDiagram containing a path prim with empty commands
-  -- and a fill style so compile emits a fillPath command
-  let ld : LayoutDiagram Empty :=
+  let d : Diagram Empty :=
     .prim (.core (.path emptyPd { color := (⟨0, 0, 0, 1⟩ : Color) } {}))
-  match validate ld with
+  match validate d with
   | .ok () => throw <| IO.userError "expected malformed path error"
   | .error errs =>
     let hasMalformed := errs.any fun e => match e with
@@ -94,9 +83,8 @@ def testValidate_emptyPath : IO Unit := do
 
 def testValidate_idempotent : IO Unit := do
   let d : Diagram Empty := .named `A (Diagram.rect 4 4)
-  let ld := (toLayout d).resolve
-  let r1 := validate ld
-  let r2 := validate ld
+  let r1 := validate d
+  let r2 := validate d
   match r1, r2 with
   | .ok (), .ok () => pure ()
   | _, _ => throw <| IO.userError "validation not idempotent"
@@ -105,19 +93,16 @@ def testValidate_noErrors : IO Unit := do
   let d : Diagram Empty := .compose
     (.named `A (Diagram.rect 4 4))
     (.named `B (.transform (Matrix.translate 10 0) (Diagram.rect 4 4)))
-  let ld := (toLayout d).resolve
-  match validate ld with
+  match validate d with
   | .ok () => pure ()
   | .error errs => throw <| IO.userError s!"expected ok, got {errs.size} errors"
 
 def testValidate_pinOverDuplicateName : IO Unit := do
-  -- Two diagrams sharing name `node` composed via pinOver should trigger duplicate name
   let d1 : Diagram Empty := Diagram.circle 10 (name := some `node)
   let d2 : Diagram Empty := Diagram.circle 10 (name := some `node)
   let combined := Diagram.compose d1 d2
   let pinned := Diagram.pinOver `node (Diagram.circle 3) combined
-  let ld := (toLayout pinned).resolve
-  match validate ld with
+  match validate pinned with
   | .ok () => throw <| IO.userError "expected duplicate name error from pinOver collision"
   | .error errs =>
     let hasDup := errs.any fun e => match e with
@@ -126,12 +111,12 @@ def testValidate_pinOverDuplicateName : IO Unit := do
     assertTrue hasDup "pinOver with colliding names triggers duplicateName"
 
 def layoutTests : List (String × IO Unit) := [
-  -- Layout (5)
-  ("Layout/renderDiagramM", testLayout_renderDiagramM),
+  -- Name resolution (5)
+  ("Layout/renderDiagram", testLayout_renderDiagram),
   ("Layout/namedAnchors", testLayout_namedAnchors),
   ("Layout/envelopeIn", testLayout_envelopeIn),
   ("Layout/deterministic", testLayout_deterministic),
-  ("Layout/monoVsFixed", testLayout_monoVsFixed),
+  ("Layout/compileText", testLayout_compileText),
   -- Validate (5)
   ("Validate/wellFormed", testValidate_wellFormed),
   ("Validate/duplicateName", testValidate_duplicateName),

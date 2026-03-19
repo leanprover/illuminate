@@ -87,25 +87,27 @@ lake test --wfail && uv run test_playwright.py
 
 ```
 src/Illuminate/          Library source
-  Basic.lean             Foundational constants (pi)
-  Vec2.lean              2D vector type
-  Matrix.lean            3x3 affine transform matrix
-  Envelope.lean          Envelope (direction -> extent) and CardinalAnchors
-  PathData.lean          Path drawing commands (line, rect, circle, roundedRect)
-  Style.lean             Color, Fill, Stroke, TextStyle, FontSpec
-  MathExpr.lean          Math expression tree (atom, frac, sup, sub, etc.)
-  Diagram.lean           Core diagram type and smart constructors
-  Placement.lean         Spatial composition (beside, hcat, vcat, grid, pad, frame)
-  Arrow.lean             General-purpose curved arrow routing (LineEnd, Arrowhead, connect)
-  Render.lean            DrawCmd display list and SVG backend
-  FontMetrics.lean       Font measurement interface
-  Renderable.lean        MeasuredBox type
-  Layout.lean            Layout pass (name resolution, anchor lookup)
-  Measure.lean           LayoutMeasure type class for monadic text/foreign measurement
-  Validate.lean          Diagram validation
-  Animation.lean         Animation framework
-  CommDiag.lean          Commutative diagram DSL
-  StateDiagram.lean      DFA/NFA state diagram builder
+  Geometry/
+    Basic.lean           Foundational constants (pi)
+    Vec2.lean            2D vector type (directions and offsets)
+    Point.lean           2D point type (positions)
+    Matrix.lean          3x3 affine transform matrix
+    Envelope.lean        Envelope (direction -> extent)
+    PathData.lean        Path drawing commands (line, rect, circle, roundedRect)
+  Style/                 Color, Fill, Stroke, TextStyle, FontSpec, DrawConfig
+  Diagram/
+    Basic.lean           Core diagram type and smart constructors
+    Placement.lean       Spatial composition (beside, hcat, vcat, grid, pad, frame)
+    Arrow.lean           Curved arrow routing (LineEnd, Arrowhead, connect)
+    Paper.lean           Piece-of-paper diagram element
+    Compile.lean         Diagram → DrawCmd compiler and SVG renderer
+    Validate.lean        Diagram validation (duplicate names, malformed paths)
+  Render/
+    DrawCmd.lean         Display list commands
+    Svg.lean             SVG backend
+  DSL/
+    CommDiag.lean        Commutative diagram DSL
+    StateDiagram.lean    DFA/NFA state diagram builder
   Widget.lean            #diagram command for Lean infoview
 src/Illuminate.lean      Root import (re-exports all modules)
 test/Main.lean           Unit tests and #diagram previews

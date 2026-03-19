@@ -37,7 +37,7 @@ def assertContains (haystack needle label : String) : IO Unit := do
 /-- Renders a diagram to SVG, writes it to a file, and runs basic assertions. -/
 def testVisualWrite (filename : String) (diagram : Illuminate.Diagram Empty)
     (padding : Float := 15) (checks : List (String × String) := []) : IO Unit := do
-  let svg := Illuminate.renderDiagram diagram (padding := padding)
+  let svg := diagram.renderDiagram (padding := padding)
   IO.FS.writeFile filename svg
   let contents ← IO.FS.readFile filename
   assertContains contents "<svg" "written file has svg"

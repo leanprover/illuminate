@@ -140,31 +140,76 @@ def getEnvelope (d : Diagram β) (rc : ResolvedConfig := .defaults) : Envelope :
   | .withConfig cfg d => d.getEnvelope (cfg.resolve rc)
   | .cellophane _ d => d.getEnvelope rc
   | .clip _ d => d.getEnvelope rc
-  | .deferred _ _ => Envelope.empty
-  | .deferredEnvelope d _ => d.getEnvelope rc
 
-/-- Checks whether a diagram contains text or foreign primitives that require measurement. -/
-def needsMeasurement : Diagram β → Bool
-  | .empty => false
-  | .prim (.core (.text ..)) => true
-  | .prim (.core _) => false
-  | .prim (.foreign ..) => true
-  | .annotate _ d | .named _ d | .transform _ d | .warning _ d
-  | .withConfig _ d | .cellophane _ d | .clip _ d => d.needsMeasurement
-  | .compose a b => a.needsMeasurement || b.needsMeasurement
-  | .withEnv _ _ => false
-  | .deferred _ _ => false
-  | .deferredEnvelope d _ => d.needsMeasurement
+-- ═══════════════════════════════════════════════════════════════
+-- Name resolution
+-- ═══════════════════════════════════════════════════════════════
+
+/-- Collects all named anchor positions from a diagram tree. -/
+def collectNames (d : Diagram β) (xform : Matrix) (pfx : Lean.Name)
+    (acc : List (Lean.Name × Vec2)) : List (Lean.Name × Vec2) :=
+  match d with
+  | .empty => acc
+  | .prim _ => acc
+  | .annotate _ d => collectNames d xform pfx acc
+  | .named name d =>
+    let pos := Matrix.apply xform ⟨0, 0⟩
+    let qualName := match pfx with
+      | .anonymous => name
+      | _ => pfx ++ name
+    let acc := acc ++ [(qualName, pos)]
+    collectNames d xform qualName acc
+  | .transform m d =>
+    collectNames d (Matrix.mul xform m) pfx acc
+  | .compose a b =>
+    let acc := collectNames a xform pfx acc
+    collectNames b xform pfx acc
+  | .withEnv _ d => collectNames d xform pfx acc
+  | .warning _ d => collectNames d xform pfx acc
+  | .withConfig _ d => collectNames d xform pfx acc
+  | .cellophane _ d => collectNames d xform pfx acc
+  | .clip _ d => collectNames d xform pfx acc
 
 /--
-Wraps a diagram so that `f` receives its measured envelope, computing eagerly
-when no text or foreign measurement is needed and deferring to layout time otherwise.
+Extracts the named subdiagram from a diagram, wrapped in its accumulated transform.
+Searches hierarchically: for a qualified name like `` `A.east ``, first matches `A`,
+then searches inside for `east`. Returns `.warning ... .empty` if the name is not found.
 -/
-def withComputedEnvelope (d : Diagram β) (f : Envelope → Diagram β) : Diagram β :=
-  if d.needsMeasurement then
-    .deferredEnvelope d (fun _rc env => f env)
-  else
-    f d.getEnvelope
+def find (target : Lean.Name) (d : Diagram β) : Diagram β :=
+  match go target .anonymous Matrix.identity d with
+  | some result => result
+  | none => .warning s!"missing anchor: {target}" .empty
+where
+  go (target : Lean.Name) (pfx : Lean.Name) (xform : Matrix) : Diagram β → Option (Diagram β)
+    | .empty => none
+    | .prim _ => none
+    | .annotate _ d => go target pfx xform d
+    | .named name d =>
+      let qualName := match pfx with
+        | .anonymous => name
+        | _ => pfx ++ name
+      if qualName == target then
+        some (.transform xform d)
+      else
+        go target qualName xform d
+    | .transform m d => go target pfx (Matrix.mul xform m) d
+    | .compose a b =>
+      match go target pfx xform a with
+      | some result => some result
+      | none => go target pfx xform b
+    | .withEnv _ d => go target pfx xform d
+    | .warning _ d => go target pfx xform d
+    | .withConfig _ d => go target pfx xform d
+    | .cellophane _ d => go target pfx xform d
+    | .clip _ d => go target pfx xform d
+
+/-- Computes the origin of a diagram (where `(0,0)` maps to under accumulated transforms). -/
+def origin (d : Diagram β) : Point :=
+  go Matrix.identity d
+where
+  go (xform : Matrix) : Diagram β → Point
+    | .transform m d => go (Matrix.mul xform m) d
+    | _ => Matrix.applyPoint xform Point.origin
 
 /-- Names a diagram and adds cardinal anchors derived from its envelope. -/
 def namedWithAnchors (n : Lean.Name) (d : Diagram β) : Diagram β :=
@@ -701,15 +746,23 @@ def clipCircle (radius : Float) (d : Diagram β) : Diagram β :=
 def clipRect (width height : Float) (d : Diagram β) : Diagram β :=
   .clip (PathData.rect width height) d
 
+/-- Places `overlay` at a point, on top of `d`. -/
+def pinOver' (pos : Point) (overlay : Diagram β) (d : Diagram β) : Diagram β :=
+  .compose d (.transform (Matrix.translate pos.x pos.y) overlay)
+
 /-- Places `overlay` at the position of a named anchor in `d`, on top of `d`. -/
 def pinOver (anchorName : Lean.Name) (overlay : Diagram β) (d : Diagram β) : Diagram β :=
-  .compose d (.deferred anchorName fun (_rc : ResolvedConfig) pos =>
-    .transform (Matrix.translate pos.x pos.y) overlay)
+  let pos := (d.find anchorName).origin
+  pinOver' pos overlay d
+
+/-- Places `underlay` at a point, beneath `d`. -/
+def pinUnder' (pos : Point) (underlay : Diagram β) (d : Diagram β) : Diagram β :=
+  .compose (.transform (Matrix.translate pos.x pos.y) underlay) d
 
 /-- Places `underlay` at the position of a named anchor in `d`, beneath `d`. -/
 def pinUnder (anchorName : Lean.Name) (underlay : Diagram β) (d : Diagram β) : Diagram β :=
-  .compose (.deferred anchorName fun (_rc : ResolvedConfig) pos =>
-    .transform (Matrix.translate pos.x pos.y) underlay) d
+  let pos := (d.find anchorName).origin
+  pinUnder' pos underlay d
 
 /-- Places a curly brace spanning the full width of a diagram below it, with a label. -/
 def braceBelow (d : Diagram β) (label : Diagram β)

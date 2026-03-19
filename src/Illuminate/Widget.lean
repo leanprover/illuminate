@@ -7,7 +7,6 @@ Author: David Thrane Christiansen
 import Lean
 import Illuminate.Diagram
 import Illuminate.Render
-import Illuminate.Layout
 
 
 namespace Illuminate
@@ -174,13 +173,12 @@ export default function(props) {
 
 /-- Renders a `Diagram Empty` to SVG with default settings. -/
 def diagramToSvg (d : Diagram Empty) : String :=
-  renderDiagram d (padding := 5)
+  d.renderDiagram (padding := 5)
 
 /-- Validates a diagram and returns a list of warning strings. -/
 def validateDiagram (d : Diagram Empty) : List String :=
   let treeWarnings := collectWarnings d
-  let ld := (toLayout d).resolve
-  let layoutWarnings := match validate ld with
+  let layoutWarnings := match validate d with
     | .ok () => []
     | .error errs => errs.toList.map toString
   treeWarnings ++ layoutWarnings

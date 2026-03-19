@@ -176,27 +176,27 @@ def pipelineDiagram : Diagram Empty :=
     #[some (box `core "Core Type\nTheory"), some (box `kernel "Core Type\nTheory\n(no recursion)")],
     #[some (box `exe "Executable"),         some result]
   ]
-  -- Arrows (stealth arrowheads and upright labels set via config)
+  -- Arrows with stealth arrowheads and upright labels
     |>.connect `source.south `stx.north
-      (label := lbl "Parsing")
+      (label := lbl "Parsing") (arrowhead := ah)
     |>.connect `stx.south `core.north
-      (label := lbl "Elaboration")
+      (label := lbl "Elaboration") (arrowhead := ah)
     |>.connect `core.south `exe.north
-      (label := lbl "Compilation")
+      (label := lbl "Compilation") (arrowhead := ah)
     |>.connect `core.east `kernel.west
-      (label := lbl "Recursion\nElimination")
+      (label := lbl "Recursion\nElimination") (arrowhead := ah)
   -- Self-loop on Syntax Tree for macro expansion (left side)
     |>.connect
       { point := `stx.west, shift := ⟨0, -10⟩, angle := some (pi + pi / 7), pull := 3.5 }
       { point := `stx.west, shift := ⟨0, 10⟩, angle := some (0 - pi / 7), pull := 3.5 }
-      (label := lbl "Macro\nExpansion")
+      (label := lbl "Macro\nExpansion") (arrowhead := ah)
   -- Kernel check arrow
     |>.connect `kernel.south `result.north
-      (label := lbl "Kernel\nCheck")
-    |>.withArrowhead { type := .stealth } |>.withLabelUpright
+      (label := lbl "Kernel\nCheck") (arrowhead := ah)
 where
+  ah : Arrowhead := { type := .stealth }
   lbl (s : String) : Option (Label Empty) :=
-    some { label := .text s { fontSize := (10 : Float) } }
+    some { label := .text s { fontSize := (10 : Float) }, upright := true }
   box (name : Lean.Name) (label : String) (mono := false) : Diagram Empty :=
     Diagram.text label { fontSize := (12 : Float) }
       |> (if mono then Diagram.withFontFamily "monospace" else id)
