@@ -73,7 +73,7 @@ def testSvg_text : IO Unit := do
   assertContains svg ">hello</text>" "text content"
 
 def testSvg_viewBox : IO Unit := do
-  let svg := Svg.render [] (0, 0, 100, 100)
+  let svg := Svg.render [] { minX := 0, minY := 0, width := 100, height := 100 }
   assertContains svg "viewBox=\"0 0 100 100\"" "viewBox"
 
 -- ══════════════════════════════════════════════════════════════════
@@ -83,28 +83,28 @@ def testSvg_viewBox : IO Unit := do
 def testSvg_rectRender : IO Unit := do
   let d : Diagram Empty := Diagram.rect 4 4
   let cmds := d.compile
-  let svg := Svg.render cmds (-5, -5, 10, 10)
+  let svg := Svg.render cmds { minX := -5, minY := -5, width := 10, height := 10 }
   assertContains svg "<path" "svg has path element"
   assertContains svg "</svg>" "svg is closed"
 
 def testSvg_circleRender : IO Unit := do
   let d : Diagram Empty := Diagram.circle 5
   let cmds := d.compile
-  let svg := Svg.render cmds (-10, -10, 20, 20)
+  let svg := Svg.render cmds { minX := -10, minY := -10, width := 20, height := 20 }
   assertContains svg "<path" "svg has path for circle"
   assertContains svg "C" "svg circle has curves"
 
 def testSvg_transformNested : IO Unit := do
   let d : Diagram Empty := .transform (Matrix.translate 10 0) (Diagram.rect 4 4)
   let cmds := d.compile
-  let svg := Svg.render cmds (-20, -20, 40, 40)
+  let svg := Svg.render cmds { minX := -20, minY := -20, width := 40, height := 40 }
   assertContains svg "<g transform=\"matrix(" "svg has transform group"
   assertContains svg "</g>" "svg has closing group"
 
 def testSvg_annotationId : IO Unit := do
   let d : Diagram Empty := .annotate 7 (Diagram.rect 2 2)
   let cmds := d.compile
-  let svg := Svg.render cmds (-5, -5, 10, 10)
+  let svg := Svg.render cmds { minX := -5, minY := -5, width := 10, height := 10 }
   assertContains svg "data-anno-id=\"7\"" "svg has annotation"
 
 def testSvg_renderDiagram : IO Unit := do

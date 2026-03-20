@@ -348,8 +348,8 @@ def testEmpty_unionIdentity : IO Unit := do
 
 def testOfRect_cardinals : IO Unit := do
   let env := Envelope.ofRect 3 2
-  assertApproxEq env[Vec2.east]  3 "rect east"
-  assertApproxEq env[Vec2.west]  3 "rect west"
+  assertApproxEq env[Vec2.east] 3 "rect east"
+  assertApproxEq env[Vec2.west] 3 "rect west"
   assertApproxEq env[Vec2.north] 2 "rect north"
   assertApproxEq env[Vec2.south] 2 "rect south"
 

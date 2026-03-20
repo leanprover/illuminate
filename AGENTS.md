@@ -83,6 +83,19 @@ intentional and the user has confirmed it.
 lake test --wfail && uv run test_playwright.py
 ```
 
+### Formatting
+
+Before finishing work, run Prettier to format non-Lean files
+(Markdown, Python, JSON, YAML):
+
+```sh
+npx prettier --write .
+```
+
+CI has a Prettier bot that auto-commits formatting fixes, but pushes
+from `github-actions[bot]` do not re-trigger CI. Running Prettier
+locally avoids this problem.
+
 ## Project structure
 
 ```
@@ -158,8 +171,9 @@ lean-toolchain           Lean 4 toolchain pin (v4.28.0)
     ```
 - **No vertical alignment**: Do not pad field names or `:=` with extra
   spaces to align columns. Write `a := ...` not `a  := ...`.
-- **No trailing `end`**: Do not put `end Namespace` at the end of a
-  file. Lean 4 does not require it for file-level namespaces.
+- **No trailing `end`**: A file must never end with `end Namespace`.
+  The end of a file implicitly closes all open namespace blocks, so a
+  trailing `end` is always redundant. Simply delete it.
 - `Diagram beta` is parameterized by a foreign primitive type; use
   `Empty` for pure geometric diagrams.
 - The SVG backend applies a `scale(1,-1)` y-flip so that +y points up

@@ -37,7 +37,7 @@ private def stateStroke (cfg : StateDiagramConfig) : Stroke :=
   { color := Color.black, width := cfg.lineWidth }
 
 private def arrowStroke (cfg : StateDiagramConfig) : Stroke :=
-  { color := Color.black, width := cfg.lineWidth, lineCap := .round, lineJoin := .miter, dash := .solid }
+  { color := Color.black, width := cfg.lineWidth, lineCap := .round }
 
 private def labelStyle (cfg : StateDiagramConfig) : TextStyle :=
   { fontSize := cfg.fontSize }

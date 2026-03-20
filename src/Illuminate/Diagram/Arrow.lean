@@ -382,3 +382,50 @@ def Diagram.connectL {β : Type} (start stop : LineEnd)
   let srcPoint := (d.find start.point).origin
   let tgtPoint := (d.find stop.point).origin
   d.connectL' srcPoint tgtPoint start stop bend stroke
+
+/--
+Draws a line or arrow between two named shapes using trace-based boundary detection.
+Instead of connecting to explicit anchor points (like `node.north`), this finds the
+named subdiagrams, computes the direction between their centers, and uses traces to
+find where the arrow should start and end on each shape's boundary.
+
+When an endpoint specifies an explicit angle, it is interpreted as the absolute direction
+from the shape's center to the connection point on its boundary: `0` connects on the
+right, `pi` on the left, `pi/2` on the top, etc. Without an explicit angle, the
+center-to-center direction is used.
+-/
+def Diagram.connectEdge {β : Type} (start stop : LineEnd)
+    (stroke : Stroke := .defaultArrow)
+    (arrowhead : Option Arrowhead := none)
+    (label : Option (Label β) := none)
+    (d : Diagram β) : Diagram β :=
+  let stop' := { stop with arrowhead := stop.arrowhead <|> arrowhead }
+  let srcSub := d.find start.point
+  let tgtSub := d.find stop'.point
+  let srcCenter := srcSub.origin.toVec2
+  let tgtCenter := tgtSub.origin.toVec2
+  let defaultDir := (tgtCenter - srcCenter).normalize
+  -- Trace direction from each shape's center to its boundary connection point.
+  -- An explicit angle is absolute: 0 = right, pi = left, pi/2 = top, etc.
+  let srcDir := match start.angle with
+    | some a => Vec2.mk (Float.cos a) (Float.sin a)
+    | none => defaultDir
+  let tgtDir := match stop'.angle with
+    | some a => Vec2.mk (Float.cos a) (Float.sin a)
+    | none => -defaultDir
+  -- Find boundary points using stroke-aware traces so arrows clear the painted edge
+  let srcTrace := srcSub.getStrokeTrace
+  let tgtTrace := tgtSub.getStrokeTrace
+  let src := match srcTrace.closest (Point.ofVec2 srcCenter) srcDir with
+    | some hit => srcCenter + (hit.edge + hit.width) • srcDir + start.shift
+    | none => srcCenter + start.shift
+  let tgt := match tgtTrace.closest (Point.ofVec2 tgtCenter) tgtDir with
+    | some hit => tgtCenter + (hit.edge + hit.width) • tgtDir + stop'.shift
+    | none => tgtCenter + stop'.shift
+  -- For buildArrow, the stop angle is the arrow's arrival tangent direction.
+  -- The user-facing angle points outward (center → boundary), so flip it for
+  -- the arrival tangent (arrow travels inward).
+  let stop'' := match stop'.angle with
+    | some a => { stop' with angle := some (a + pi) }
+    | none => stop'
+  .compose d (buildArrow src tgt start stop'' stroke label)

@@ -62,10 +62,10 @@ def renderDiagram (d : Diagram β) (padding : Float := 2) : String :=
     let south := env Vec2.south
     let minX := -(west + padding)
     let minY := -(north + padding)
-    let w := west + east + 2 * padding
-    let h := north + south + 2 * padding
+    let width := west + east + 2 * padding
+    let height := north + south + 2 * padding
     let cmds := d.compile
-    Svg.render cmds (minX, minY, w, h)
+    Svg.render cmds { minX, minY, width, height }
   else
     let cmds := d.warning "Diagram has no envelope, defaulting to 640x480" |>.compile
-    Svg.render cmds (-320, -240, 320, 240)
+    Svg.render cmds { minX := -320, minY := -240, width := 640, height := 480 }

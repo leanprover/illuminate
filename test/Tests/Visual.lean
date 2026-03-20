@@ -617,6 +617,161 @@ def testVisual_cellophaneClip : IO Unit :=
   testVisualWrite "cellophane-clip.svg" cellophaneClipDiagram
     (checks := [("opacity", "has opacity attributes"), ("clipPath", "has clip paths")])
 
+-- ══════════════════════════════════════════════════════════════════
+-- Trace visual tests
+-- ══════════════════════════════════════════════════════════════════
+
+/-- Circle with rays from four different directions. -/
+def traceCircleDiagram : Diagram Empty :=
+  let c := Diagram.circle 20 (fill := { color := { r := 200, g := 220, b := 255 } })
+    (stroke := { color := Color.black, width := (1 : Float) })
+  c.showTraces [
+    (⟨-40, 0⟩, ⟨1, 0⟩, .red),
+    (⟨0, -40⟩, ⟨0.3, 1⟩, .green),
+    (⟨30, 30⟩, ⟨-1, -0.8⟩, .blue),
+    (⟨-7, -35⟩, ⟨0.15, 1⟩, .black)
+  ]
+
+#diagram traceCircleDiagram
+
+def testVisual_traceCircle : IO Unit :=
+  testVisualWrite "trace-circle.svg" traceCircleDiagram
+
+/-- Rectangle with axis-aligned and diagonal rays. -/
+def traceRectDiagram : Diagram Empty :=
+  let r := Diagram.rect 40 30 (fill := { color := { r := 255, g := 230, b := 200 } })
+    (stroke := { color := Color.black, width := (1 : Float) })
+  r.showTraces [
+    (⟨-40, 0⟩, ⟨1, 0⟩, .black),
+    (⟨0, -35⟩, ⟨0, 1⟩, .red),
+    (⟨-35, -25⟩, ⟨1, 0.7⟩, .blue),
+    (⟨30, -20⟩, ⟨-0.8, 1⟩, .green)
+  ]
+
+#diagram traceRectDiagram
+
+def testVisual_traceRect : IO Unit :=
+  testVisualWrite "trace-rect.svg" traceRectDiagram
+
+/-- Two overlapping shapes (circle + rect) with a ray hitting both. -/
+def traceComposedDiagram : Diagram Empty :=
+  let c := Diagram.circle 15 (fill := { color := { r := 200, g := 200, b := 255, a := 0.5 } })
+  let r := Diagram.transform (Matrix.translate 10 0)
+    (Diagram.rect 30 20 (fill := { color := { r := 255, g := 200, b := 200, a := 0.5 } }))
+  let d := Diagram.compose c r
+  d.showTraces [
+    (⟨-30, 0⟩, ⟨1, 0⟩, .red),
+    (⟨-25, -15⟩, ⟨1, 0.5⟩, { r := 0, g := 128, b := 0 })
+  ]
+
+#diagram traceComposedDiagram
+
+def testVisual_traceComposed : IO Unit :=
+  testVisualWrite "trace-composed.svg" traceComposedDiagram
+
+/-- Rotated rectangle with trace rays. -/
+def traceTransformedDiagram : Diagram Empty :=
+  let r := Diagram.rotate (pi / 6)
+    (Diagram.rect 40 20 (fill := { color := { r := 220, g := 255, b := 220 } })
+      (stroke := { color := Color.black, width := (1 : Float) }))
+  r.showTraces [
+    (⟨-35, 0⟩, ⟨1, 0⟩, .red),
+    (⟨0, -30⟩, ⟨0, 1⟩, .red),
+    (⟨-30, -20⟩, ⟨1, 1⟩, { r := 0, g := 0, b := 200 })
+  ]
+
+#diagram traceTransformedDiagram
+
+def testVisual_traceTransformed : IO Unit :=
+  testVisualWrite "trace-transformed.svg" traceTransformedDiagram
+
+/-- Closed F-shaped path with an oblique ray crossing multiple edges. -/
+def tracePathDiagram : Diagram Empty :=
+  -- Outline of a capital letter F as a closed polygon
+  let fPath := PathData.empty
+    |>.moveTo ⟨0, 0⟩         -- bottom-left of vertical stroke
+    |>.lineTo ⟨10, 0⟩        -- bottom-right of vertical stroke
+    |>.lineTo ⟨10, 20⟩       -- up to crossbar
+    |>.lineTo ⟨25, 20⟩       -- crossbar right
+    |>.lineTo ⟨25, 25⟩       -- crossbar top
+    |>.lineTo ⟨10, 25⟩       -- crossbar inner
+    |>.lineTo ⟨10, 40⟩       -- up to top bar
+    |>.lineTo ⟨30, 40⟩       -- top bar right
+    |>.lineTo ⟨30, 45⟩       -- top edge
+    |>.lineTo ⟨0, 45⟩        -- top-left
+    |>.close                  -- back to origin
+  let f := Diagram.fromPath fPath
+    (fill := { color := { r := 255, g := 240, b := 200 } })
+    (stroke := { color := Color.black, width := (1 : Float) })
+  f.showTraces [
+    (⟨-1, -2⟩, ⟨1, 1.5⟩, .red),
+    (⟨-5, 35⟩, ⟨1, -0.3⟩, .green),
+    (⟨35, 2⟩, ⟨-0.7, 1⟩, .blue)
+  ]
+
+#diagram tracePathDiagram
+
+def testVisual_tracePath : IO Unit :=
+  testVisualWrite "trace-path.svg" tracePathDiagram
+
+/-- Trace-based arrow connections between shapes at non-cardinal angles. -/
+def traceConnectDiagram : Diagram Empty :=
+  let circ := Diagram.circle 15
+    (fill := { color := { r := 200, g := 220, b := 255 } })
+    (stroke := { color := Color.black, width := (1 : Float) })
+    (name := some `circ)
+  let box := Diagram.roundedRect 40 25 4
+    (fill := { color := { r := 255, g := 230, b := 200 } })
+    (stroke := { color := Color.black, width := (1 : Float) })
+    (name := some `box)
+  let ell := Diagram.ellipse 20 12
+    (fill := { color := { r := 220, b := 220, g := 255 } })
+    (stroke := { color := Color.black, width := (1 : Float) })
+    (name := some `ell)
+  -- Arrange in a triangle layout
+  let top := Diagram.transform (Matrix.translate 0 50) circ
+  let botLeft := Diagram.transform (Matrix.translate (-50) (-20)) box
+  let botRight := Diagram.transform (Matrix.translate 50 (-20)) ell
+  let d := Diagram.compose (Diagram.compose top botLeft) botRight
+  d
+    |>.connectEdge `circ (stop := { point := `box, arrowhead := some { type := .stealth } })
+    |>.connectEdge `circ (stop := { point := `ell, arrowhead := some { type := .latex } })
+    |>.connectEdge `box (stop := { point := `ell, arrowhead := some { type := .triangle } })
+
+#diagram traceConnectDiagram
+
+def testVisual_traceConnect : IO Unit :=
+  testVisualWrite "trace-connect.svg" traceConnectDiagram
+
+def traceConnectAngledDiagram (angle3 : Slider "Angle 3" 0 (2 * pi) pi) : Diagram Empty :=
+  let circ := Diagram.circle 15
+    (fill := { color := { r := 200, g := 220, b := 255 } })
+    (stroke := { color := Color.black, width := (1 : Float) })
+    (name := some `circ)
+  let box := Diagram.roundedRect 40 25 4
+    (fill := { color := { r := 255, g := 230, b := 200 } })
+    (stroke := { color := Color.black, width := (1 : Float) })
+    (name := some `box)
+  let ell := Diagram.star 5 20 12
+    (fill := { color := { r := 220, b := 220, g := 255 } })
+    (stroke := { color := Color.black, width := (1 : Float) })
+    (name := some `ell)
+  -- Arrange in a triangle layout
+  let top := Diagram.transform (Matrix.translate 0 50) circ
+  let botLeft := Diagram.transform (Matrix.translate (-50) (-20)) box
+  let botRight := Diagram.transform (Matrix.translate 50 (-20)) ell
+  let d := Diagram.compose (Diagram.compose top botLeft) botRight
+  d
+    |>.connectEdge {point := `circ, angle := some (1.5 * pi)} { point := `box, arrowhead := some { type := .stealth }, angle := some pi, pull := 3 }
+    |>.connectEdge `circ { point := `ell, arrowhead := some { type := .latex } }
+    |>.connectEdge {point := `box, pull := 1} { point := `ell, arrowhead := some { type := .triangle }, angle := some angle3, pull := 1.5 }
+
+#diagram traceConnectAngledDiagram
+
+def testVisual_traceConnectAngled : IO Unit :=
+  testVisualWrite "trace-connect-angled.svg" (traceConnectAngledDiagram (1.2 * pi))
+
+
 def visualTests : List (String × IO Unit) := [
   ("Visual/roundedRects", testVisual_roundedRects),
   ("Visual/roundedRects_2_5", testVisual_roundedRects_2_5),
@@ -632,5 +787,12 @@ def visualTests : List (String × IO Unit) := [
   ("Visual/ellipse", testVisual_ellipse),
   ("Visual/transforms", testVisual_transforms),
   ("Visual/ghostRefocus", testVisual_ghostRefocus),
-  ("Visual/cellophaneClip", testVisual_cellophaneClip)
+  ("Visual/cellophaneClip", testVisual_cellophaneClip),
+  ("Visual/traceCircle", testVisual_traceCircle),
+  ("Visual/traceRect", testVisual_traceRect),
+  ("Visual/traceComposed", testVisual_traceComposed),
+  ("Visual/traceTransformed", testVisual_traceTransformed),
+  ("Visual/tracePath", testVisual_tracePath),
+  ("Visual/traceConnect", testVisual_traceConnect),
+  ("Visual/traceConnectAngled", testVisual_traceConnectAngled)
 ]

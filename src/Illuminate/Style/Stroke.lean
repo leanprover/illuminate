@@ -63,5 +63,3 @@ def ofWidth (w : Float) : Stroke :=
 
 /-- Default arrow/line stroke (black, width 1.5). -/
 def defaultArrow : Stroke := ofWidth 1.5
-
-end Stroke

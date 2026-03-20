@@ -9,4 +9,5 @@ import Illuminate.Geometry.Vec2
 import Illuminate.Geometry.Point
 import Illuminate.Geometry.Matrix
 import Illuminate.Geometry.Envelope
+import Illuminate.Geometry.Trace
 import Illuminate.Geometry.PathData

@@ -18,10 +18,46 @@ namespace Illuminate
 namespace PathData
 
 /--
-Computes the axis-aligned bounding box of a path.
-Returns `(lo, hi)` where `lo` is the min corner and `hi` is the max corner.
-For cubic Béziers, uses the control-point hull (conservative).
+Evaluates a cubic Bézier at parameter `t`.
 -/
+private def evalBezier (p0 c1 c2 p3 : Vec2) (t : Float) : Vec2 :=
+  let u := 1 - t
+  Vec2.mk
+    (u*u*u * p0.x + 3*u*u*t * c1.x + 3*u*t*t * c2.x + t*t*t * p3.x)
+    (u*u*u * p0.y + 3*u*u*t * c1.y + 3*u*t*t * c2.y + t*t*t * p3.y)
+
+/--
+Computes the exact extremal points of a cubic Bézier curve by solving the derivative
+(a quadratic) for each axis independently. Returns the two endpoints plus any interior
+extrema where `t ∈ (0, 1)`.
+-/
+private def bezierExtrema (p0 c1 c2 p3 : Vec2) : List Vec2 :=
+  let solve (v0 v1 v2 v3 : Float) : List Float :=
+    -- Derivative of cubic Bézier component: 3(1-t)²(v1-v0) + 6(1-t)t(v2-v1) + 3t²(v3-v2)
+    -- = at² + bt + c where:
+    let a := -3*v0 + 9*v1 - 9*v2 + 3*v3
+    let b := 6*v0 - 12*v1 + 6*v2
+    let c := -3*v0 + 3*v1
+    if nearZero a then
+      -- Linear: bt + c = 0
+      if nearZero b then []
+      else
+        let t := -c / b
+        if t > 0 && t < 1 then [t] else []
+    else
+      let disc := b * b - 4 * a * c
+      if disc < 0 then []
+      else
+        let sqrtDisc := disc.sqrt
+        let t1 := (-b - sqrtDisc) / (2 * a)
+        let t2 := (-b + sqrtDisc) / (2 * a)
+        let ts := if t1 > 0 && t1 < 1 then [t1] else []
+        if t2 > 0 && t2 < 1 then ts ++ [t2] else ts
+  let xRoots := solve p0.x c1.x c2.x p3.x
+  let yRoots := solve p0.y c1.y c2.y p3.y
+  let allT := xRoots ++ yRoots
+  [p0, p3] ++ allT.map (evalBezier p0 c1 c2 p3)
+
 private def extendBounds (acc : Option (Vec2 × Vec2)) (p : Vec2) : Option (Vec2 × Vec2) :=
   match acc with
   | none => some (p, p)
@@ -31,13 +67,15 @@ private def extendBounds (acc : Option (Vec2 × Vec2)) (p : Vec2) : Option (Vec2
 
 /-- Computes the axis-aligned bounding box of a path as `(lo, hi)` corners. -/
 def bounds (pd : PathData) : Vec2 × Vec2 :=
-  let acc := pd.commands.foldl (init := none) fun acc cmd =>
+  let acc := pd.commands.foldl (init := (none, Vec2.mk 0 0)) fun (acc, cur) cmd =>
     match cmd with
-    | .moveTo p => extendBounds acc p
-    | .lineTo p => extendBounds acc p
-    | .curveTo c1 c2 ep => extendBounds (extendBounds (extendBounds acc c1) c2) ep
-    | .closePath => acc
-  acc.getD (⟨0, 0⟩, ⟨0, 0⟩)
+    | .moveTo p => (extendBounds acc p, p)
+    | .lineTo p => (extendBounds acc p, p)
+    | .curveTo c1 c2 ep =>
+      let pts := bezierExtrema cur c1 c2 ep
+      (pts.foldl extendBounds acc, ep)
+    | .closePath => (acc, cur)
+  acc.1.getD (⟨0, 0⟩, ⟨0, 0⟩)
 
 end PathData
 
@@ -55,13 +93,13 @@ Real text sizes require the monadic measurement pass and are not available here.
 def toEnvelope (cp : CorePrimitive) : Envelope :=
   match cp with
   | .path pd _ _ =>
-    let pts := pd.commands.foldl (init := []) fun acc cmd =>
+    let pts := pd.commands.foldl (init := ([], Vec2.mk 0 0)) fun (acc, cur) cmd =>
       match cmd with
-      | .moveTo p => p :: acc
-      | .lineTo p => p :: acc
-      | .curveTo c1 c2 ep => ep :: c2 :: c1 :: acc
-      | .closePath => acc
-    Envelope.ofVertices pts
+      | .moveTo p => (p :: acc, p)
+      | .lineTo p => (p :: acc, p)
+      | .curveTo c1 c2 ep => (PathData.bezierExtrema cur c1 c2 ep ++ acc, ep)
+      | .closePath => (acc, cur)
+    Envelope.ofVertices pts.1
   | .text s style =>
     let fontSize := style.fontSize
     let anchor := style.anchor
@@ -115,6 +153,95 @@ def toEnvelope (p : Primitive β) : Envelope :=
 
 end Primitive
 
+-- ═══════════════════════════════════════════════════════════════
+-- Trace computation from primitives
+-- ═══════════════════════════════════════════════════════════════
+
+/-- Computes the bounding-box half-width and half-height for a text primitive. -/
+private def textTraceDims (s : String) (style : TextStyle) : Float × Float :=
+  let fontSize := style.fontSize
+  let lines := s.splitOn "\n"
+  let nLines := Max.max 1 lines.length
+  let totalW := lines.foldl (fun acc line => Max.max acc (estimateTextWidth fontSize line)) 0
+  let h := if nLines == 1 then fontSize / 2
+           else fontSize * 1.2 * nLines.toFloat / 2
+  (totalW / 2, h)
+
+namespace CorePrimitive
+
+/--
+Computes the trace of a core primitive.
+Path primitives use `Trace.ofPathData`. Text and image use bounding-box traces.
+-/
+def toTrace (cp : CorePrimitive) : Trace :=
+  match cp with
+  | .path pd _ _ => Trace.ofPathData pd.commands
+  | .text s style =>
+    let (hw, hh) := textTraceDims s style
+    match style.anchor with
+    | .start => Trace.ofRect hw hh |> Trace.translateBy ⟨hw, 0⟩
+    | .«end» => Trace.ofRect hw hh |> Trace.translateBy ⟨-hw, 0⟩
+    | .middle => Trace.ofRect hw hh
+  | .image ref => Trace.ofRect (ref.width / 2) (ref.height / 2)
+
+end CorePrimitive
+
+namespace Primitive
+
+variable {β : Type}
+
+/--
+Computes the trace of a primitive. Foreign primitives with a core fallback
+use the fallback's trace; otherwise they have an empty trace.
+-/
+def toTrace (p : Primitive β) : Trace :=
+  match p with
+  | .core cp => cp.toTrace
+  | .foreign _ (some cp) => cp.toTrace
+  | .foreign _ none => Trace.empty
+
+end Primitive
+
+-- ═══════════════════════════════════════════════════════════════
+-- StrokeTrace computation from primitives
+-- ═══════════════════════════════════════════════════════════════
+
+namespace CorePrimitive
+
+/--
+Computes the stroke-aware trace of a core primitive.
+Path primitives use `StrokeTrace.ofPathData`. Text and image use bounding-box traces
+with zero stroke width.
+-/
+def toStrokeTrace (cp : CorePrimitive) : StrokeTrace :=
+  match cp with
+  | .path pd _ stroke => StrokeTrace.ofPathData pd.commands stroke.width
+  | .text s style =>
+    let (hw, hh) := textTraceDims s style
+    match style.anchor with
+    | .start => StrokeTrace.ofRect hw hh 0 |> StrokeTrace.translateBy ⟨hw, 0⟩
+    | .«end» => StrokeTrace.ofRect hw hh 0 |> StrokeTrace.translateBy ⟨-hw, 0⟩
+    | .middle => StrokeTrace.ofRect hw hh 0
+  | .image ref => StrokeTrace.ofRect (ref.width / 2) (ref.height / 2) 0
+
+end CorePrimitive
+
+namespace Primitive
+
+variable {β : Type}
+
+/--
+Computes the stroke-aware trace of a primitive. Foreign primitives with a core fallback
+use the fallback's stroke trace; otherwise they have an empty stroke trace.
+-/
+def toStrokeTrace (p : Primitive β) : StrokeTrace :=
+  match p with
+  | .core cp => cp.toStrokeTrace
+  | .foreign _ (some cp) => cp.toStrokeTrace
+  | .foreign _ none => StrokeTrace.empty
+
+end Primitive
+
 namespace Diagram
 
 variable {β : Type}
@@ -136,6 +263,42 @@ def getEnvelope (d : Diagram β) : Envelope :=
   | .warning _ d => d.getEnvelope
   | .cellophane _ d => d.getEnvelope
   | .clip _ d => d.getEnvelope
+
+-- ═══════════════════════════════════════════════════════════════
+-- Trace extraction
+-- ═══════════════════════════════════════════════════════════════
+
+/-- Computes the trace of a diagram by recursive traversal. -/
+def getTrace (d : Diagram β) : Trace :=
+  match d with
+  | .empty => Trace.empty
+  | .prim p => p.toTrace
+  | .annotate _ d => d.getTrace
+  | .named _ d => d.getTrace
+  | .transform m d => Trace.transform m d.getTrace
+  | .compose a b => Trace.union a.getTrace b.getTrace
+  | .withEnv _ d => d.getTrace
+  | .warning _ d => d.getTrace
+  | .cellophane _ d => d.getTrace
+  | .clip _ d => d.getTrace
+
+-- ═══════════════════════════════════════════════════════════════
+-- StrokeTrace extraction
+-- ═══════════════════════════════════════════════════════════════
+
+/-- Computes the stroke-aware trace of a diagram by recursive traversal. -/
+def getStrokeTrace (d : Diagram β) : StrokeTrace :=
+  match d with
+  | .empty => StrokeTrace.empty
+  | .prim p => p.toStrokeTrace
+  | .annotate _ d => d.getStrokeTrace
+  | .named _ d => d.getStrokeTrace
+  | .transform m d => StrokeTrace.transform m d.getStrokeTrace
+  | .compose a b => StrokeTrace.union a.getStrokeTrace b.getStrokeTrace
+  | .withEnv _ d => d.getStrokeTrace
+  | .warning _ d => d.getStrokeTrace
+  | .cellophane _ d => d.getStrokeTrace
+  | .clip _ d => d.getStrokeTrace
 
 -- ═══════════════════════════════════════════════════════════════
 -- Name resolution
@@ -207,19 +370,21 @@ where
 
 /-- Names a diagram and adds cardinal anchors derived from its envelope. -/
 def namedWithAnchors (n : Lean.Name) (d : Diagram β) : Diagram β :=
-  let env := match d.getEnvelope with | .empty => fun _ => 0.0 | .nonempty f => f
-  -- Envelope values are always positive extents from the origin.
-  -- West and south anchors are negated to place them in negative x/y.
-  let e := env Vec2.east
-  let w := env Vec2.west
-  let no := env Vec2.north
-  let s := env Vec2.south
-  withNameAndAnchors d n [
-    (`north, ⟨0, no⟩), (`south, ⟨0, -s⟩),
-    (`east, ⟨e, 0⟩), (`west, ⟨-w, 0⟩),
-    (`northeast, ⟨e, no⟩), (`northwest, ⟨-w, no⟩),
-    (`southeast, ⟨e, -s⟩), (`southwest, ⟨-w, -s⟩)
-  ]
+  match d.getEnvelope with
+  | .empty => .named n d
+  | .nonempty env =>
+    -- Envelope values are always positive extents from the origin.
+    -- West and south anchors are negated to place them in negative x/y.
+    let e := env Vec2.east
+    let w := env Vec2.west
+    let no := env Vec2.north
+    let s := env Vec2.south
+    withNameAndAnchors d n [
+      (`north, ⟨0, no⟩), (`south, ⟨0, -s⟩),
+      (`east, ⟨e, 0⟩), (`west, ⟨-w, 0⟩),
+      (`northeast, ⟨e, no⟩), (`northwest, ⟨-w, no⟩),
+      (`southeast, ⟨e, -s⟩), (`southwest, ⟨-w, -s⟩)
+    ]
 
 /-- Computes the total width of a diagram from its envelope. -/
 def width (d : Diagram β) : Float :=
@@ -602,41 +767,42 @@ Useful for debugging layout and envelope behavior.
 def showEnvelope (d : Diagram β) (samples : Nat := 64)
     (color : Color := { r := 255, g := 153, b := 153 })
     (alpha : Float := 0.2) : Diagram β :=
-  let env := d.getEnvelope
-  let n := max samples 8
-  let step := 2 * pi / n.toFloat
-  -- Sample envelope directions and extents
-  let dirs := List.range n |>.map fun i =>
-    let θ := i.toFloat * step
-    let dir : Vec2 := ⟨Float.cos θ, Float.sin θ⟩
-    (dir, env[dir])
-  -- Compute boundary vertices as intersections of adjacent tangent lines.
-  -- Each tangent line is { p | p · dᵢ = eᵢ }. The intersection of adjacent
-  -- lines p · d₁ = e₁ and p · d₂ = e₂ gives a vertex of the convex shape.
-  let vertices := dirs.mapIdx fun i (d1, e1) =>
-    let (d2, e2) := match dirs[((i : Nat) + 1) % n]? with
-      | some v => v
-      | none => (d1, e1)
-    -- Solve: d1.x * x + d1.y * y = e1, d2.x * x + d2.y * y = e2
-    let det := d1.x * d2.y - d1.y * d2.x
-    if det.abs < 1e-10 then
-      -- Nearly parallel: fall back to polar point
-      e1 • d1
-    else
-      ⟨(e1 * d2.y - e2 * d1.y) / det, (d1.x * e2 - d2.x * e1) / det⟩
-  -- Build a closed polygon path
-  let path := match vertices with
-    | [] => PathData.empty
-    | p :: rest =>
-      let pd := PathData.empty |>.moveTo p
-      let pd := rest.foldl (fun acc pt => acc.lineTo pt) pd
-      pd.close
-  let fillColor : Color := { color with a := alpha }
-  let overlay : Diagram β := fromPath path
-    (fill := { color := fillColor })
-    (stroke := { width := (0 : Float) })
-  Diagram.compose d overlay
-
+  if let .nonempty env := d.getEnvelope then
+    let n := max samples 8
+    let step := 2 * pi / n.toFloat
+    -- Sample envelope directions and extents
+    let dirs := List.range n |>.map fun i =>
+      let θ := i.toFloat * step
+      let dir : Vec2 := ⟨Float.cos θ, Float.sin θ⟩
+      (dir, env dir)
+    -- Compute boundary vertices as intersections of adjacent tangent lines.
+    -- Each tangent line is { p | p · dᵢ = eᵢ }. The intersection of adjacent
+    -- lines p · d₁ = e₁ and p · d₂ = e₂ gives a vertex of the convex shape.
+    let vertices := dirs.mapIdx fun i (d1, e1) =>
+      let (d2, e2) := match dirs[((i : Nat) + 1) % n]? with
+        | some v => v
+        | none => (d1, e1)
+      -- Solve: d1.x * x + d1.y * y = e1, d2.x * x + d2.y * y = e2
+      let det := d1.x * d2.y - d1.y * d2.x
+      if det.abs < 1e-10 then
+        -- Nearly parallel: fall back to polar point
+        e1 • d1
+      else
+        ⟨(e1 * d2.y - e2 * d1.y) / det, (d1.x * e2 - d2.x * e1) / det⟩
+    -- Build a closed polygon path
+    let path := match vertices with
+      | [] => PathData.empty
+      | p :: rest =>
+        let pd := PathData.empty |>.moveTo p
+        let pd := rest.foldl (fun acc pt => acc.lineTo pt) pd
+        pd.close
+    let fillColor : Color := { color with a := alpha }
+    let overlay : Diagram β := fromPath path
+      (fill := { color := fillColor })
+      (stroke := { width := (0 : Float) })
+    Diagram.compose d overlay
+  else
+    d.warning "Attempted to show empty envelope"
 /--
 Overlays a small red X at the origin of the diagram's coordinate system.
 Useful for debugging layout and positioning.
@@ -648,6 +814,66 @@ def showOrigin (d : Diagram β) (size : Float := 5)
     (Diagram.fromStroke (PathData.line ⟨-size, -size⟩ ⟨size, size⟩) stroke)
     (Diagram.fromStroke (PathData.line ⟨-size, size⟩ ⟨size, -size⟩) stroke)
   Diagram.atop d cross
+
+/--
+Renders the ray, arrowhead, and intersection dots for a single trace query.
+Returns just the overlay diagram (without the original diagram).
+-/
+private def traceOverlay {β : Type} (trace : Trace) (p : Point) (v : Vec2)
+    (dotRadius : Float) (rayColor : Color) : Diagram β :=
+  let vn := v.normalize
+  let hits : Array Float := trace.query p vn
+  let rayLen :=
+    if hits.isEmpty then 10
+    else
+      let maxT := hits.foldl (init := 0.0) fun acc t => Max.max acc t
+      maxT * 1.3
+  let rayEnd : Vec2 := ⟨p.x + rayLen * vn.x, p.y + rayLen * vn.y⟩
+  let rayStart : Vec2 := ⟨p.x, p.y⟩
+  let stroke : Stroke := { color := rayColor, width := (1 : Float) }
+  let ray : Diagram β := Diagram.fromStroke (PathData.line rayStart rayEnd) stroke
+  let headLen := 5.0
+  let halfAngle := 0.4
+  let cosA := Float.cos halfAngle
+  let sinA := Float.sin halfAngle
+  let ld : Vec2 := ⟨-(vn.x * cosA - vn.y * sinA), -(vn.y * cosA + vn.x * sinA)⟩
+  let rd : Vec2 := ⟨-(vn.x * cosA + vn.y * sinA), -(vn.y * cosA - vn.x * sinA)⟩
+  let tip := rayEnd + (headLen * 0.5) • vn
+  let headPath := PathData.empty
+    |>.moveTo tip
+    |>.lineTo (tip + headLen • ld)
+    |>.lineTo (tip + headLen • rd)
+    |>.close
+  let head : Diagram β := Diagram.fromPath headPath (fill := { color := rayColor }) (stroke := { width := (0 : Float) })
+  let dots : Diagram β := hits.foldl (init := Diagram.empty) fun acc t =>
+    let cx := p.x + t * vn.x
+    let cy := p.y + t * vn.y
+    let dot : Diagram β := Diagram.transform (Matrix.translate cx cy)
+      (Diagram.circle dotRadius (fill := { color := rayColor }))
+    Diagram.compose acc dot
+  Diagram.compose (Diagram.compose ray head) dots
+
+/--
+Overlays a ray and intersection dots to visualize a trace query.
+The ray extends from `p` along `v`; if the trace returns hits, the ray
+goes 30% past the last hit, otherwise it is 10 units long. Each
+intersection point is marked with a small filled circle.
+-/
+def showTrace (d : Diagram β) (p : Point) (v : Vec2)
+    (dotRadius : Float := 2) (rayColor : Color := Color.red) : Diagram β :=
+  Diagram.compose d (traceOverlay d.getTrace p v dotRadius rayColor)
+
+/--
+Overlays multiple trace rays on a diagram. Each ray is computed against the
+original diagram's trace independently, so rays do not interfere with each
+other's intersection results.
+-/
+def showTraces (d : Diagram β) (specs : List (Point × Vec2 × Color))
+    (dotRadius : Float := 2) : Diagram β :=
+  let trace := d.getTrace
+  let overlay := specs.foldl (init := (Diagram.empty : Diagram β)) fun acc (p, v, c) =>
+    Diagram.compose acc (traceOverlay trace p v dotRadius c)
+  Diagram.compose d overlay
 
 -- ═══════════════════════════════════════════════════════════════
 -- Aligned composition
