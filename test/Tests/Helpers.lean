@@ -37,7 +37,7 @@ def assertContains (haystack needle label : String) : IO Unit := do
 /-- Renders a diagram to SVG, writes it to a file, and runs basic assertions. -/
 def testVisualWrite (filename : String) (diagram : Illuminate.Diagram Empty)
     (padding : Float := 15) (checks : List (String × String) := []) : IO Unit := do
-  let svg := Illuminate.renderDiagram diagram (padding := padding)
+  let svg := diagram.renderDiagram (padding := padding)
   IO.FS.writeFile filename svg
   let contents ← IO.FS.readFile filename
   assertContains contents "<svg" "written file has svg"
@@ -51,30 +51,33 @@ tangent-line intersections (the same method used by `showEnvelope`) and
 verifying that all consecutive turns have the same winding direction.
 -/
 def assertEnvelopeConvex (env : Envelope) (label : String) (n : Nat := 64) : IO Unit := do
-  let step := 2 * Illuminate.pi / n.toFloat
-  -- Sample directions and extents
-  let dirs := (List.range n).map fun i =>
-    let θ := i.toFloat * step
-    let dir : Vec2 := ⟨Float.cos θ, Float.sin θ⟩
-    (dir, env dir)
-  -- Compute boundary vertices as tangent-line intersections
-  let vertices := (List.range n).map fun i =>
-    let (d1, e1) := dirs[i]!
-    let (d2, e2) := dirs[(i + 1) % n]!
-    let det := d1.x * d2.y - d1.y * d2.x
-    if det.abs < 1e-10 then e1 • d1
-    else ⟨(e1 * d2.y - e2 * d1.y) / det, (d1.x * e2 - d2.x * e1) / det⟩
-  -- Check that all consecutive cross products have the same sign
-  let mut positiveCount := 0
-  let mut negativeCount := 0
-  for i in List.range n do
-    let a := vertices[i]!
-    let b := vertices[(i + 1) % n]!
-    let c := vertices[(i + 2) % n]!
-    let ab : Vec2 := b - a
-    let bc : Vec2 := c - b
-    let cross := ab.x * bc.y - ab.y * bc.x
-    if cross > 1e-6 then positiveCount := positiveCount + 1
-    else if cross < -1e-6 then negativeCount := negativeCount + 1
-  if positiveCount > 0 && negativeCount > 0 then
-    throw <| IO.userError s!"{label}: envelope is not convex ({positiveCount} CCW, {negativeCount} CW turns)"
+  match env with
+  | .empty => pure ()
+  | .nonempty f =>
+    let step := 2 * Illuminate.pi / n.toFloat
+    -- Sample directions and extents
+    let dirs := (List.range n).map fun i =>
+      let θ := i.toFloat * step
+      let dir : Vec2 := ⟨Float.cos θ, Float.sin θ⟩
+      (dir, f dir)
+    -- Compute boundary vertices as tangent-line intersections
+    let vertices := (List.range n).map fun i =>
+      let (d1, e1) := dirs[i]!
+      let (d2, e2) := dirs[(i + 1) % n]!
+      let det := d1.x * d2.y - d1.y * d2.x
+      if det.abs < 1e-10 then e1 • d1
+      else ⟨(e1 * d2.y - e2 * d1.y) / det, (d1.x * e2 - d2.x * e1) / det⟩
+    -- Check that all consecutive cross products have the same sign
+    let mut positiveCount := 0
+    let mut negativeCount := 0
+    for i in List.range n do
+      let a := vertices[i]!
+      let b := vertices[(i + 1) % n]!
+      let c := vertices[(i + 2) % n]!
+      let ab : Vec2 := b - a
+      let bc : Vec2 := c - b
+      let cross := ab.x * bc.y - ab.y * bc.x
+      if cross > 1e-6 then positiveCount := positiveCount + 1
+      else if cross < -1e-6 then negativeCount := negativeCount + 1
+    if positiveCount > 0 && negativeCount > 0 then
+      throw <| IO.userError s!"{label}: envelope is not convex ({positiveCount} CCW, {negativeCount} CW turns)"

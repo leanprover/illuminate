@@ -135,7 +135,7 @@ def cellSpacing : Float := 60
 def nodePadding : Float := 8
 
 /-- Arrow stroke style. -/
-def arrowStroke : FullStroke := { color := Color.black, width := 1.5, lineCap := .butt, lineJoin := .miter, dash := .solid }
+def arrowStroke : Stroke := .defaultArrow
 
 /-- Default arrowhead configuration for commutative diagram arrows. -/
 private def defaultArrowhead : Arrowhead := {}
@@ -188,51 +188,50 @@ private def buildNodeLayer (st : CommDiagState) : Diagram β :=
     Diagram.grid gridRows
 
 /--
-Builds a deferred arrow diagram for a single morphism.
-Uses nested deferred nodes to look up source and target anchor positions.
+Builds an arrow diagram for a single morphism, resolving source and target
+positions from the given base diagram.
 -/
-private def buildDeferredArrow (morph : Morphism) : Diagram β :=
-  .deferred morph.src fun _rc srcPos =>
-    .deferred morph.tgt fun _rc2 tgtPos =>
-      let dir := Vec2.sub tgtPos srcPos
-      let dirNorm := dir.normalize
-      let srcShrink := nodePadding + 2
-      let tgtShrink := nodePadding + 2
-      let (a, b) := shortenSegment srcPos tgtPos srcShrink tgtShrink
-      let arrowStrokeOverride : Stroke := { color := arrowStroke.color, width := arrowStroke.width, lineCap := arrowStroke.lineCap, lineJoin := arrowStroke.lineJoin, dash := arrowStroke.dash }
-      if morph.bend == 0 then
-        let shaft := Diagram.fromStroke (PathData.line a b) arrowStrokeOverride
-        let (head, _) := ArrowDraw.drawArrowhead defaultArrowhead b (Vec2.sub b a) arrowStroke
-        let arrow := Diagram.atop shaft head
-        let arrow := match morph.label with
-          | some labelExpr =>
-            let mid : Vec2 := ⟨(a.x + b.x) / 2, (a.y + b.y) / 2⟩
-            let offset := labelOffset morph.side dirNorm
-            let labelPos := Vec2.add mid offset
-            let labelDiag := Diagram.transform
-              (Matrix.translate labelPos.x labelPos.y)
-              (.text labelExpr { fontSize := (12 : Float) })
-            Diagram.atop arrow labelDiag
-          | none => arrow
-        match morph.tag with
-        | some t => Diagram.annotate t arrow
-        | none => arrow
-      else
+private def buildArrow (base : Diagram β) (morph : Morphism) : Diagram β :=
+  let srcPos := (base.find morph.src).origin.toVec2
+  let tgtPos := (base.find morph.tgt).origin.toVec2
+  let dir := Vec2.sub tgtPos srcPos
+  let dirNorm := dir.normalize
+  let srcShrink := nodePadding + 2
+  let tgtShrink := nodePadding + 2
+  let (a, b) := shortenSegment srcPos tgtPos srcShrink tgtShrink
+  if morph.bend == 0 then
+    let shaft := Diagram.fromStroke (PathData.line a b) arrowStroke
+    let (head, _) := ArrowDraw.drawArrowhead defaultArrowhead b (Vec2.sub b a) arrowStroke
+    let arrow := Diagram.atop shaft head
+    let arrow := match morph.label with
+      | some labelExpr =>
         let mid : Vec2 := ⟨(a.x + b.x) / 2, (a.y + b.y) / 2⟩
-        let perp : Vec2 := ⟨-dirNorm.y, dirNorm.x⟩
-        let bendOffset := morph.bend * dir.length * 0.3
-        let ctrl := Vec2.add mid (bendOffset • perp)
-        let c1 := a + (2 / 3 : Float) • (ctrl - a)
-        let c2 := b + (2 / 3 : Float) • (ctrl - b)
-        let shaft := Diagram.fromStroke
-          (PathData.empty |>.moveTo a |>.curveTo c1 c2 b)
-          arrowStrokeOverride
-        let headDir := Vec2.sub b c2
-        let (head, _) := ArrowDraw.drawArrowhead defaultArrowhead b headDir arrowStroke
-        let arrow := Diagram.atop shaft head
-        match morph.tag with
-        | some t => Diagram.annotate t arrow
-        | none => arrow
+        let offset := labelOffset morph.side dirNorm
+        let labelPos := Vec2.add mid offset
+        let labelDiag := Diagram.transform
+          (Matrix.translate labelPos.x labelPos.y)
+          (.text labelExpr { fontSize := (12 : Float) })
+        Diagram.atop arrow labelDiag
+      | none => arrow
+    match morph.tag with
+    | some t => Diagram.annotate t arrow
+    | none => arrow
+  else
+    let mid : Vec2 := ⟨(a.x + b.x) / 2, (a.y + b.y) / 2⟩
+    let perp : Vec2 := ⟨-dirNorm.y, dirNorm.x⟩
+    let bendOffset := morph.bend * dir.length * 0.3
+    let ctrl := Vec2.add mid (bendOffset • perp)
+    let c1 := a + (2 / 3 : Float) • (ctrl - a)
+    let c2 := b + (2 / 3 : Float) • (ctrl - b)
+    let shaft := Diagram.fromStroke
+      (PathData.empty |>.moveTo a |>.curveTo c1 c2 b)
+      arrowStroke
+    let headDir := Vec2.sub b c2
+    let (head, _) := ArrowDraw.drawArrowhead defaultArrowhead b headDir arrowStroke
+    let arrow := Diagram.atop shaft head
+    match morph.tag with
+    | some t => Diagram.annotate t arrow
+    | none => arrow
 where
   labelOffset (side : LabelSide) (dir : Vec2) : Vec2 :=
     let perp : Vec2 := ⟨-dir.y, dir.x⟩
@@ -244,8 +243,7 @@ where
 
 /--
 Compiles a commutative diagram from the DSL state to a `Diagram β`.
-Builds a node layer and composes deferred arrow diagrams atop it.
-Arrow positions are resolved during the layout fixed-point pass.
+Builds a node layer and resolves arrow positions eagerly.
 -/
 def compile (m : CommDiagM Unit) : Diagram β :=
   let initState : CommDiagState := {
@@ -254,7 +252,7 @@ def compile (m : CommDiagM Unit) : Diagram β :=
   let (_, st) := StateT.run m initState
   let nodeLayer := buildNodeLayer st
   let arrowLayer := st.morphisms.foldl (init := Diagram.empty) fun acc morph =>
-    Diagram.atop acc (buildDeferredArrow morph)
+    Diagram.atop acc (buildArrow nodeLayer morph)
   Diagram.atop nodeLayer arrowLayer
 
 end CommDiag

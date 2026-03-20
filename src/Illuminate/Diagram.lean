@@ -8,3 +8,5 @@ import Illuminate.Diagram.Basic
 import Illuminate.Diagram.Placement
 import Illuminate.Diagram.Arrow
 import Illuminate.Diagram.Paper
+import Illuminate.Diagram.Compile
+import Illuminate.Diagram.Validate

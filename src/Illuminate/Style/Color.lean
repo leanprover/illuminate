@@ -38,14 +38,8 @@ def transparent : Color := { r := 0, g := 0, b := 0, a := 0.0 }
 
 end Color
 
-/-- Fill style override for closed paths. Fields set to `none` inherit from the draw config. -/
+/-- Fill style for closed paths. -/
 structure Fill where
-  /-- Fill color. Inherits from config when `none`. Default: opaque black. -/
-  color : Option Color := none
-deriving Repr, BEq, Inhabited
-
-/-- Resolved fill style with all fields concrete. -/
-structure FullFill where
   /-- Fill color. -/
-  color : Color
+  color : Color := Color.black
 deriving Repr, BEq, Inhabited

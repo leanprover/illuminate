@@ -304,6 +304,22 @@ def test_roundedrects_visual():
     """Compare rounded-rects rendering against expected baseline."""
     _run_visual_test("roundedrects.svg", "roundedrects")
 
+def test_roundedrects_2_5_visual():
+    """Compare rounded-rects rendering against expected baseline."""
+    _run_visual_test("roundedrects_2_5.svg", "roundedrects_2_5")
+
+def test_roundedrects_2_10_visual():
+    """Compare rounded-rects rendering against expected baseline."""
+    _run_visual_test("roundedrects_2_10.svg", "roundedrects_2_10")
+
+def test_roundedrects_7_2_visual():
+    """Compare rounded-rects rendering against expected baseline."""
+    _run_visual_test("roundedrects_7_2.svg", "roundedrects_7_2")
+
+def test_roundedrects_7_5_visual():
+    """Compare rounded-rects rendering against expected baseline."""
+    _run_visual_test("roundedrects_7_5.svg", "roundedrects_7_5")
+
 
 def test_pipeline_visual():
     """Compare pipeline diagram rendering against expected baseline."""
@@ -386,6 +402,10 @@ def main():
         test_smiley_visual,
         test_commdiag_visual,
         test_roundedrects_visual,
+        test_roundedrects_2_5_visual,
+        test_roundedrects_2_10_visual,
+        test_roundedrects_7_2_visual,
+        test_roundedrects_7_5_visual,
         test_pipeline_visual,
         test_stringlayout_visual,
         test_coechain_visual,

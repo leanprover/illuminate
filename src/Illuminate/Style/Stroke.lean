@@ -41,30 +41,27 @@ inductive StrokeDash where
   | dashDot
 deriving Repr, BEq, Inhabited
 
-/-- Stroke style override for paths. Fields set to `none` inherit from the draw config. -/
+/-- Stroke style for paths: color, width, line cap, line join, and dash pattern. -/
 structure Stroke where
-  /-- Stroke color. Inherits from config when `none`. Default: opaque black. -/
-  color : Option Color := none
-  /-- Stroke width in diagram units. Inherits from config when `none`. Default: 1.0. -/
-  width : Option Float := none
-  /-- Style of line endpoints. Inherits from config when `none`. Default: butt. -/
-  lineCap : Option LineCap := none
-  /-- Style of line joins. Inherits from config when `none`. Default: miter. -/
-  lineJoin : Option LineJoin := none
-  /-- Dash pattern. Inherits from config when `none`. Default: solid. -/
-  dash : Option StrokeDash := none
+  /-- Stroke color. -/
+  color : Color := Color.black
+  /-- Stroke width in diagram units. -/
+  width : Float := 1.0
+  /-- Style of line endpoints. -/
+  lineCap : LineCap := .butt
+  /-- Style of line joins. -/
+  lineJoin : LineJoin := .miter
+  /-- Dash pattern. -/
+  dash : StrokeDash := .solid
 deriving Repr, BEq, Inhabited
 
-/-- Resolved stroke style with all fields concrete. -/
-structure FullStroke where
-  /-- Stroke color. -/
-  color : Color
-  /-- Stroke width in diagram units. -/
-  width : Float
-  /-- Style of line endpoints. -/
-  lineCap : LineCap
-  /-- Style of line joins. -/
-  lineJoin : LineJoin
-  /-- Dash pattern. -/
-  dash : StrokeDash
-deriving Repr, BEq, Inhabited
+namespace Stroke
+
+/-- Black stroke at the given width with butt cap, miter join, and solid dash. -/
+def ofWidth (w : Float) : Stroke :=
+  { width := w }
+
+/-- Default arrow/line stroke (black, width 1.5). -/
+def defaultArrow : Stroke := ofWidth 1.5
+
+end Stroke

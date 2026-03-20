@@ -5,6 +5,7 @@ Author: David Thrane Christiansen
 -/
 
 import Illuminate.Geometry.Vec2
+import Illuminate.Geometry.Point
 
 
 namespace Illuminate
@@ -89,6 +90,11 @@ def inverse (m : Matrix) : Option Matrix :=
 def apply (m : Matrix) (v : Vec2) : Vec2 :=
   ⟨m.a * v.x + m.b * v.y + m.tx,
    m.c * v.x + m.d * v.y + m.ty⟩
+
+/-- Applies the matrix to a point (full affine transform). -/
+def applyPoint (m : Matrix) (p : Point) : Point :=
+  ⟨m.a * p.x + m.b * p.y + m.tx,
+   m.c * p.x + m.d * p.y + m.ty⟩
 
 /-- Applies only the linear part (no translation). Used for transforming directions. -/
 def applyLinear (m : Matrix) (v : Vec2) : Vec2 :=
