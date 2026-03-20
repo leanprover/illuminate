@@ -121,7 +121,7 @@ def drawArrowhead (ah : Arrowhead) (tip dir : Vec2) (stroke : Stroke)
       |>.lineTo notch
       |>.lineTo (tip + headLen • rd)
       |>.close
-    (Diagram.fromPath path (fill := { color := stroke.color }) (stroke := stroke), headLen * 0.5)
+    (Diagram.fromPath path (fill := .solid stroke.color) (stroke := stroke), headLen * 0.5)
   | .triangle =>
     let cosA := Float.cos halfAngle
     let sinA := Float.sin halfAngle
@@ -132,12 +132,12 @@ def drawArrowhead (ah : Arrowhead) (tip dir : Vec2) (stroke : Stroke)
       |>.lineTo (tip + headLen • ld)
       |>.lineTo (tip + headLen • rd)
       |>.close
-    (Diagram.fromPath path (fill := { color := stroke.color }) (stroke := stroke), headLen * cosA)
+    (Diagram.fromPath path (fill := .solid stroke.color) (stroke := stroke), headLen * cosA)
   | .circle =>
     let r := headLen * 0.4
     let center := tip - r • n
     let d := Diagram.transform (Matrix.translate center.x center.y)
-      (Diagram.circle r (fill := { color := stroke.color }) (stroke := stroke))
+      (Diagram.circle r (fill := .solid stroke.color) (stroke := stroke))
     (d, r * 2)
 
 -- ═══════════════════════════════════════════════════════════════

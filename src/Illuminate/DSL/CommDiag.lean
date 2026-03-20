@@ -164,7 +164,7 @@ private def buildNodeLayer (st : CommDiagState) : Diagram β :=
       let boxed := Diagram.pad nodePadding label
       let named := Diagram.named cdNode.name boxed
       match cdNode.tag with
-      | some t => Diagram.annotate t named
+      | some t => Diagram.tag t named
       | none => named
     Diagram.hcat nodeDiags
   | some rows =>
@@ -183,7 +183,7 @@ private def buildNodeLayer (st : CommDiagState) : Diagram β :=
             let sized := Diagram.withEnvelope (Envelope.ofRect (cellSpacing / 2) (cellSpacing / 2)) boxed
             let named := Diagram.named cdNode.name sized
             some (match cdNode.tag with
-              | some t => Diagram.annotate t named
+              | some t => Diagram.tag t named
               | none => named)
     Diagram.grid gridRows
 
@@ -214,7 +214,7 @@ private def buildArrow (base : Diagram β) (morph : Morphism) : Diagram β :=
         Diagram.atop arrow labelDiag
       | none => arrow
     match morph.tag with
-    | some t => Diagram.annotate t arrow
+    | some t => Diagram.tag t arrow
     | none => arrow
   else
     let mid : Vec2 := ⟨(a.x + b.x) / 2, (a.y + b.y) / 2⟩
@@ -230,7 +230,7 @@ private def buildArrow (base : Diagram β) (morph : Morphism) : Diagram β :=
     let (head, _) := ArrowDraw.drawArrowhead defaultArrowhead b headDir arrowStroke
     let arrow := Diagram.atop shaft head
     match morph.tag with
-    | some t => Diagram.annotate t arrow
+    | some t => Diagram.tag t arrow
     | none => arrow
 where
   labelOffset (side : LabelSide) (dir : Vec2) : Vec2 :=

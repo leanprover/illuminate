@@ -12,10 +12,11 @@ import Tests.Layout
 import Tests.DSL
 import Tests.Trace
 import Tests.Visual
+import Tests.HitTest
 
 def main : IO Unit := do
   let tests := geometryTests ++ styleTests ++ diagramTests ++ renderTests
-    ++ layoutTests ++ dslTests ++ traceTests ++ visualTests
+    ++ layoutTests ++ dslTests ++ traceTests ++ visualTests ++ hitTestTests
   let mut passed := 0
   let mut failed := 0
   for (name, test) in tests do

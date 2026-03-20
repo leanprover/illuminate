@@ -88,9 +88,12 @@ def renderCmd (cmd : DrawCmd) : String :=
   match cmd with
   | .fillPath pd fill =>
     let d := pathDataToD pd
-    let c := colorToSvg fill.color
-    let op := opacityAttr "fill-opacity" fill.color
-    s!"<path d=\"{d}\" fill=\"{c}\"{op}/>"
+    match fill with
+    | .none => ""
+    | .solid fs =>
+      let cs := colorToSvg fs.color
+      let op := opacityAttr "fill-opacity" fs.color
+      s!"<path d=\"{d}\" fill=\"{cs}\"{op}/>"
   | .strokePath pd stroke =>
     let d := pathDataToD pd
     let c := colorToSvg stroke.color

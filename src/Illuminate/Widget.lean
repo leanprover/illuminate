@@ -27,46 +27,13 @@ def TextInput (_name : String) (_initial : String := "") : Type := String
 def Checkbox (_name : String) (_initial : Bool := false) : Type := Bool
 
 -- ═══════════════════════════════════════════════════════════════
--- Widgets
+-- Widget
 -- ═══════════════════════════════════════════════════════════════
 
 open Lean Widget in
-/-- Widget module that renders static SVG HTML in the Lean infoview. -/
+/-- Widget module that renders diagrams with optional parameter controls and hit-test hover. -/
 @[widget_module]
-def svgWidget : Lean.Widget.Module where
-  javascript := "
-import * as React from 'react';
-const e = React.createElement;
-export default function(props) {
-  const ref = React.useRef(null);
-  React.useEffect(() => {
-    if (ref.current) {
-      ref.current.innerHTML = props.html || '';
-      const svg = ref.current.querySelector('svg');
-      if (svg) {
-        svg.style.width = '100%';
-        svg.style.height = 'auto';
-        svg.style.maxHeight = '300px';
-        svg.removeAttribute('width');
-        svg.removeAttribute('height');
-      }
-    }
-  }, [props.html]);
-  return e('div', {
-    ref: ref,
-    style: {
-      padding: '4px',
-      display: 'block',
-      background: 'white'
-    }
-  });
-}
-"
-
-open Lean Widget in
-/-- Widget module that renders parameterized diagrams with interactive controls. -/
-@[widget_module]
-def paramWidget : Lean.Widget.Module where
+def diagramWidget : Lean.Widget.Module where
   javascript := "
 import * as React from 'react';
 import { useRpcSession } from '@leanprover/infoview';
@@ -129,6 +96,7 @@ function renderControl(p, i, values, setValues) {
 export default function(props) {
   var rs = useRpcSession();
   var params = props.parameters || [];
+  var hasParams = params.length > 0;
   var initials = React.useMemo(function() {
     return params.map(function(p) { return p.initial; });
   }, []);
@@ -140,8 +108,15 @@ export default function(props) {
   var setSvg = _svg[1];
   var timer = React.useRef(null);
   var latestValues = React.useRef(initials);
+  var svgRef = React.useRef(null);
+  var _hitInfo = React.useState(null);
+  var hitInfo = _hitInfo[0];
+  var setHitInfo = _hitInfo[1];
+  var hitTimer = React.useRef(null);
 
+  // Re-evaluate diagram when parameters change
   React.useEffect(function() {
+    if (!hasParams) return;
     latestValues.current = values;
     if (timer.current) clearTimeout(timer.current);
     timer.current = setTimeout(function() {
@@ -153,16 +128,72 @@ export default function(props) {
     return function() { if (timer.current) clearTimeout(timer.current); };
   }, [values]);
 
-  var controls = params.map(function(p, i) {
-    return renderControl(p, i, values, setValues);
-  });
+  // Mouse move handler for hit testing
+  var onMouseMove = React.useCallback(function(ev) {
+    var container = svgRef.current;
+    if (!container) return;
+    var svgEl = container.querySelector('svg');
+    if (!svgEl) return;
+    // Map client coordinates to SVG user space
+    var ctm = svgEl.getScreenCTM();
+    if (!ctm) return;
+    var inv = ctm.inverse();
+    var svgX = inv.a * ev.clientX + inv.c * ev.clientY + inv.e;
+    var svgY = inv.b * ev.clientX + inv.d * ev.clientY + inv.f;
+    // The SVG wraps content in <g transform=\"scale(1,-1)\">,
+    // so negate y to get diagram coordinates
+    var diagX = svgX;
+    var diagY = -svgY;
+    if (hitTimer.current) clearTimeout(hitTimer.current);
+    hitTimer.current = setTimeout(function() {
+      rs.call('Illuminate.hitTestDiagram',
+        { id: props.exprId, x: diagX, y: diagY })
+        .then(function(resp) { setHitInfo(resp); })
+        .catch(function() { setHitInfo(null); });
+    }, 30);
+  }, []);
 
-  return e('div', { style: { padding: '4px', background: 'white' } },
-    e('div', { style: { marginBottom: '8px' } }, controls),
+  var onMouseLeave = React.useCallback(function() {
+    if (hitTimer.current) clearTimeout(hitTimer.current);
+    setHitInfo(null);
+  }, []);
+
+  // Format hit info for display
+  var hitLabel = null;
+  if (hitInfo && hitInfo.kind !== 'nothing') {
+    if (hitInfo.kind === 'tag') {
+      hitLabel = 'tag ' + hitInfo.value;
+    } else {
+      hitLabel = hitInfo.kind;
+    }
+  }
+
+  var controls = hasParams ? params.map(function(p, i) {
+    return renderControl(p, i, values, setValues);
+  }) : null;
+
+  return e('div', { style: { padding: '4px', background: 'white', position: 'relative' } },
+    controls ? e('div', { style: { marginBottom: '8px' } }, controls) : null,
     e('div', {
+      ref: svgRef,
       style: { width: '100%' },
-      dangerouslySetInnerHTML: { __html: svg }
-    })
+      dangerouslySetInnerHTML: { __html: svg },
+      onMouseMove: onMouseMove,
+      onMouseLeave: onMouseLeave
+    }),
+    hitLabel ? e('div', {
+      style: {
+        position: 'absolute',
+        bottom: '4px',
+        right: '8px',
+        background: 'rgba(0,0,0,0.75)',
+        color: 'white',
+        padding: '2px 8px',
+        borderRadius: '4px',
+        fontSize: '11px',
+        pointerEvents: 'none'
+      }
+    }, hitLabel) : null
   );
 }
 "
@@ -174,6 +205,10 @@ export default function(props) {
 /-- Renders a `Diagram Empty` to SVG with default settings. -/
 def diagramToSvg (d : Diagram Empty) : String :=
   d.renderDiagram (padding := 5)
+
+/-- Hit-tests a `Diagram Empty` at the given point. -/
+def diagramHitTest (d : Diagram Empty) (x y : Float) : Click :=
+  d.hitTest (Point.mk x y)
 
 /-- Validates a diagram and returns a list of warning strings. -/
 def validateDiagram (d : Diagram Empty) : List String :=
@@ -188,7 +223,7 @@ def validateDiagram (d : Diagram Empty) : List String :=
 -- ═══════════════════════════════════════════════════════════════
 
 open Lean in
-/-- Build a Lean `Expr` representing a `Float` literal, including negative values. -/
+/-- Builds a Lean `Expr` representing a `Float` literal, including negative values. -/
 private def mkFloatExpr (f : Float) : Expr :=
   -- Float.ofScientific (m : Nat) (s : Bool) (e : Nat) : Float
   -- Represents m × 10^(if s then -e else e)
@@ -208,22 +243,22 @@ private def mkFloatExpr (f : Float) : Expr :=
 -- RPC infrastructure
 -- ═══════════════════════════════════════════════════════════════
 
-/-- Stored diagram function for RPC re-evaluation. -/
-structure StoredParamDiagram where
+/-- Stored diagram for RPC re-evaluation and hit testing. -/
+structure StoredDiagram where
   /-- The environment in which the expression was elaborated. -/
   env : Lean.Environment
   /-- Options from the elaboration context. -/
   opts : Lean.Options
-  /-- The elaborated function expression. -/
+  /-- The elaborated expression (possibly a function taking gadget parameters). -/
   expr : Lean.Expr
-  /-- Gadget specifications for each parameter. -/
+  /-- Gadget specifications for each parameter (empty for static diagrams). -/
   gadgets : Array Lean.Json
 
-/-- Global store for parameterized diagram expressions, keyed by unique ID. -/
-initialize paramDiagramStore : IO.Ref (Array (Nat × StoredParamDiagram)) ← IO.mkRef #[]
+/-- Global store for diagram expressions, keyed by unique ID. -/
+initialize diagramStore : IO.Ref (Array (Nat × StoredDiagram)) ← IO.mkRef #[]
 
-/-- Counter for unique parameterized diagram IDs. -/
-initialize nextParamId : IO.Ref Nat ← IO.mkRef 0
+/-- Counter for unique diagram IDs. -/
+initialize nextDiagramId : IO.Ref Nat ← IO.mkRef 0
 
 /-- Request to evaluate a parameterized diagram with new parameter values. -/
 structure EvalParamRequest where
@@ -239,35 +274,62 @@ structure EvalParamResponse where
   svg : String
 deriving Lean.FromJson, Lean.ToJson
 
+/-- Request to hit-test a diagram at a point. -/
+structure HitTestRequest where
+  /-- The unique ID of the stored diagram. -/
+  id : Nat
+  /-- X coordinate in diagram space. -/
+  x : Float
+  /-- Y coordinate in diagram space. -/
+  y : Float
+deriving Lean.FromJson, Lean.ToJson
+
+/-- Response from a hit test. -/
+structure HitTestResponse where
+  /-- The kind of hit: "nothing", "something", or "tag". -/
+  kind : String
+  /-- The tag value (only meaningful when `kind` is "tag"). -/
+  value : Nat := 0
+deriving Lean.FromJson, Lean.ToJson
+
+/--
+Applies stored gadget parameter values to a diagram expression, producing the
+fully-applied `Diagram Empty` expression.
+-/
+private def applyGadgetValues (sd : StoredDiagram) (values : Array Lean.Json)
+    : Except String Lean.Expr := do
+  let mut app := sd.expr
+  for i in [:sd.gadgets.size] do
+    let gadget := sd.gadgets[i]!
+    let kind := gadget.getObjValD "kind" |>.getStr? |>.toOption |>.getD ""
+    let v := values[i]!
+    match kind with
+    | "slider" =>
+      match Lean.FromJson.fromJson? v with
+      | .ok (f : Float) => app := Lean.mkApp app (mkFloatExpr f)
+      | .error e => throw s!"bad float: {e}"
+    | "textInput" =>
+      match Lean.FromJson.fromJson? v with
+      | .ok (s : String) => app := Lean.mkApp app (Lean.toExpr s)
+      | .error e => throw s!"bad string: {e}"
+    | "checkbox" =>
+      match Lean.FromJson.fromJson? v with
+      | .ok (b : Bool) => app := Lean.mkApp app (Lean.toExpr b)
+      | .error e => throw s!"bad bool: {e}"
+    | other => throw s!"unknown gadget: {other}"
+  return app
+
 open Lean Server Elab Term Meta in
 /-- Unsafe implementation of the parameterized diagram RPC evaluator. -/
 private unsafe def evalParamDiagramUnsafe (req : EvalParamRequest) :
     RequestM (RequestTask EvalParamResponse) :=
   RequestM.asTask do
-    let store ← paramDiagramStore.get
+    let store ← diagramStore.get
     let some (_, sd) := store.find? (fun (k, _) => k == req.id)
       | throw (.mk .invalidParams "unknown diagram id" : RequestError)
-    -- Build application expression from parameter values
-    let mut app := sd.expr
-    for i in [:sd.gadgets.size] do
-      let gadget := sd.gadgets[i]!
-      let kind := gadget.getObjValD "kind" |>.getStr? |>.toOption |>.getD ""
-      let v := req.values[i]!
-      match kind with
-      | "slider" =>
-        match Lean.FromJson.fromJson? v with
-        | .ok (f : Float) => app := mkApp app (mkFloatExpr f)
-        | .error e => throw (.mk .invalidParams s!"bad float: {e}" : RequestError)
-      | "textInput" =>
-        match Lean.FromJson.fromJson? v with
-        | .ok (s : String) => app := mkApp app (toExpr s)
-        | .error e => throw (.mk .invalidParams s!"bad string: {e}" : RequestError)
-      | "checkbox" =>
-        match Lean.FromJson.fromJson? v with
-        | .ok (b : Bool) => app := mkApp app (toExpr b)
-        | .error e => throw (.mk .invalidParams s!"bad bool: {e}" : RequestError)
-      | other => throw (.mk .invalidParams s!"unknown gadget: {other}" : RequestError)
-    -- Evaluate diagramToSvg(app) in the stored environment
+    let app ← match applyGadgetValues sd req.values with
+      | .ok e => pure e
+      | .error msg => throw (.mk .invalidParams msg : RequestError)
     let svgExpr := mkApp (mkConst ``diagramToSvg) app
     let ctx : Core.Context := { options := sd.opts, fileName := "<rpc>", fileMap := default }
     let st : Core.State := { env := sd.env }
@@ -293,12 +355,63 @@ def evalParamDiagram (req : EvalParamRequest) :
   evalParamDiagramImpl req
 
 -- ═══════════════════════════════════════════════════════════════
+-- Hit-test RPC
+-- ═══════════════════════════════════════════════════════════════
+
+open Lean Server Elab Term Meta in
+/-- Unsafe implementation of the hit-test RPC evaluator. -/
+private unsafe def hitTestDiagramUnsafe (req : HitTestRequest) :
+    RequestM (RequestTask HitTestResponse) :=
+  RequestM.asTask do
+    let store ← diagramStore.get
+    let some (_, sd) := store.find? (fun (k, _) => k == req.id)
+      | throw (.mk .invalidParams "unknown diagram id" : RequestError)
+    -- For parameterized diagrams, we hit-test using the initial values
+    let app ← if sd.gadgets.isEmpty then
+        pure sd.expr
+      else
+        let initials := sd.gadgets.map fun g =>
+          g.getObjValD "initial"
+        match applyGadgetValues sd initials with
+        | .ok e => pure e
+        | .error msg => throw (.mk .invalidParams msg : RequestError)
+    let hitExpr := mkApp3 (mkConst ``diagramHitTest) app
+      (mkFloatExpr req.x) (mkFloatExpr req.y)
+    let ctx : Core.Context := { options := sd.opts, fileName := "<rpc>", fileMap := default }
+    let st : Core.State := { env := sd.env }
+    let clickTy := Lean.mkConst ``Click
+    let action : CoreM Click := MetaM.run' (TermElabM.run' (do
+      evalExpr Click clickTy hitExpr (safety := .unsafe)))
+    let evalResult ← (action.run ctx st).toBaseIO
+    match evalResult with
+    | Except.ok (click, _) =>
+      match click with
+      | .nothing => return { kind := "nothing" }
+      | .something => return { kind := "something" }
+      | .tag n => return { kind := "tag", value := n }
+    | Except.error _ =>
+      throw (.mk .internalError "hit test evaluation failed" : RequestError)
+
+open Lean Server in
+/-- Safe wrapper for the unsafe hit-test evaluator, linked via `@[implementedBy]`. -/
+@[implemented_by hitTestDiagramUnsafe]
+private opaque hitTestDiagramImpl (req : HitTestRequest) :
+    RequestM (RequestTask HitTestResponse)
+
+open Lean Server in
+/-- Server RPC method that hit-tests a stored diagram at a given point. -/
+@[server_rpc_method]
+def hitTestDiagram (req : HitTestRequest) :
+    RequestM (RequestTask HitTestResponse) :=
+  hitTestDiagramImpl req
+
+-- ═══════════════════════════════════════════════════════════════
 -- Gadget extraction
 -- ═══════════════════════════════════════════════════════════════
 
 open Lean Meta in
 /--
-Extract gadget parameter specifications from a function type.
+Extracts gadget parameter specifications from a function type.
 Walks binders, recognizing `Slider`, `TextInput`, `Checkbox` applications.
 Returns an array of JSON gadget specs.
 -/
@@ -374,6 +487,11 @@ unsafe def elabDiagramCmd : CommandElab := fun stx => do
     let e ← instantiateMVars e
     let ty ← instantiateMVars ty
     let gadgets ← extractGadgets ty
+    -- Store the diagram for RPC (hit testing and parameter re-evaluation)
+    let env ← getEnv
+    let opts ← getOptions
+    let id ← nextDiagramId.modifyGet fun n => (n, n + 1)
+    diagramStore.modify (·.push (id, { env, opts, expr := e, gadgets }))
     if gadgets.isEmpty then
       -- Static diagram
       let diagramType ← mkAppM ``Diagram #[mkConst ``Empty]
@@ -388,18 +506,13 @@ unsafe def elabDiagramCmd : CommandElab := fun stx => do
       -- Render SVG and display widget
       let svgStr ← evalExpr String (mkConst ``String)
         (mkApp (mkConst ``diagramToSvg) e)
-      let props : Json := .mkObj [("html", .str svgStr)]
-      savePanelWidgetInfo svgWidget.javascriptHash.val (pure props) stx
+      let props : Json := .mkObj [
+        ("exprId", toJson id),
+        ("initialSvg", .str svgStr),
+        ("parameters", .arr #[])]
+      savePanelWidgetInfo diagramWidget.javascriptHash.val (pure props) stx
     else
-      -- Parameterized diagram: store expr, evaluate at initial values, show paramWidget
-      let env ← getEnv
-      let opts ← getOptions
-      -- Allocate unique ID
-      let id ← nextParamId.modifyGet fun n => (n, n + 1)
-      -- Store for RPC
-      paramDiagramStore.modify (·.push (id,
-        { env, opts, expr := e, gadgets }))
-      -- Build initial application using initial values from gadgets
+      -- Parameterized diagram: evaluate at initial values, show controls
       let mut initApp := e
       for g in gadgets do
         let kind := g.getObjValD "kind" |>.getStr? |>.toOption |>.getD ""
@@ -417,12 +530,10 @@ unsafe def elabDiagramCmd : CommandElab := fun stx => do
           | .ok (b : Bool) => initApp := mkApp initApp (toExpr b)
           | .error _ => pure ()
         | _ => pure ()
-      -- Evaluate initial SVG
       let svgStr ← evalExpr String (mkConst ``String)
         (mkApp (mkConst ``diagramToSvg) initApp)
-      -- Build widget props
       let props : Json := .mkObj [
         ("exprId", toJson id),
         ("initialSvg", .str svgStr),
         ("parameters", .arr gadgets)]
-      savePanelWidgetInfo paramWidget.javascriptHash.val (pure props) stx
+      savePanelWidgetInfo diagramWidget.javascriptHash.val (pure props) stx

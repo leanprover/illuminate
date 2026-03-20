@@ -72,7 +72,7 @@ def testValidate_duplicateName : IO Unit := do
 def testValidate_emptyPath : IO Unit := do
   let emptyPd : PathData := PathData.empty
   let d : Diagram Empty :=
-    .prim (.core (.path emptyPd { color := (⟨0, 0, 0, 1⟩ : Color) } {}))
+    .prim (.core (.path emptyPd (.solid { color := (⟨0, 0, 0, 1⟩ : Color) }) {}))
   match validate d with
   | .ok () => throw <| IO.userError "expected malformed path error"
   | .error errs =>
@@ -119,7 +119,8 @@ def testConnect_explicitArrowhead : IO Unit := do
     ]
     |>.connect `A.east `B.west (arrowhead := some { type := .stealth })
   -- Stealth arrowheads produce a filled polygon, which compiles to a fillPath.
-  -- The two circles each produce one fillPath (2 total), plus one for the stealth head.
+  -- The two circles also have default fill (lightGray, a=1), producing fills.
+  -- So we expect 3 fills: 2 circles + 1 stealth head.
   let fillCmds := d.compile.filter fun cmd => match cmd with
     | .fillPath _ _ => true
     | _ => false

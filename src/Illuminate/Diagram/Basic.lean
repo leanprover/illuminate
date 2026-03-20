@@ -54,7 +54,7 @@ inductive Diagram (β : Type) where
   /-- Wraps a single primitive shape (path, text, image, or foreign) as a leaf node. -/
   | prim : Primitive β → Diagram β
   /-- Attaches a numeric tag to a sub-diagram for hit-testing or interactivity. -/
-  | annotate : Nat → Diagram β → Diagram β
+  | tag : Nat → Diagram β → Diagram β
   /-- Gives a sub-diagram a hierarchical name with cardinal anchor points derived from its envelope. -/
   | named : Lean.Name → Diagram β → Diagram β
   /-- Applies an affine transformation (translate, rotate, scale) to a sub-diagram. -/
@@ -94,13 +94,13 @@ def withNameAndAnchors (d : Diagram β) (n : Lean.Name)
 def emptyDiagram : Diagram β := .empty
 
 /-- A filled and/or stroked path. -/
-def fromPath (pd : PathData) (fill : Fill := {}) (stroke : Stroke := {})
+def fromPath (pd : PathData) (fill : Fill := default) (stroke : Stroke := {})
     : Diagram β :=
   .prim (.core (.path pd fill stroke))
 
 /-- A stroked path with no fill. -/
 def fromStroke (pd : PathData) (stroke : Stroke := {}) : Diagram β :=
-  .prim (.core (.path pd { color := Color.transparent } stroke))
+  .prim (.core (.path pd .none stroke))
 
 /-- A text node with the given style. -/
 def text (s : String) (style : TextStyle := {})
@@ -133,7 +133,7 @@ def line (a b : Vec2) (stroke : Stroke := {}) : Diagram β :=
   fromStroke (PathData.line a b) stroke
 
 /-- A filled rectangle centered at the origin. -/
-def rect (width height : Float) (fill : Fill := {}) (stroke : Stroke := {})
+def rect (width height : Float) (fill : Fill := default) (stroke : Stroke := {})
     (name : Option Lean.Name := none) : Diagram β :=
   let d : Diagram β := fromPath (PathData.rect width height) fill stroke
   match name with
@@ -151,7 +151,7 @@ def rect (width height : Float) (fill : Fill := {}) (stroke : Stroke := {})
 
 /-- A filled rounded rectangle centered at the origin. -/
 def roundedRect (width height : Float) (cornerRadius : Float)
-    (fill : Fill := {}) (stroke : Stroke := {})
+    (fill : Fill := default) (stroke : Stroke := {})
     (name : Option Lean.Name := none) : Diagram β :=
   let d : Diagram β := fromPath (PathData.roundedRect width height cornerRadius) fill stroke
   match name with
@@ -168,7 +168,7 @@ def roundedRect (width height : Float) (cornerRadius : Float)
     ]
 
 /-- A filled circle centered at the origin. -/
-def circle (radius : Float) (fill : Fill := {}) (stroke : Stroke := {})
+def circle (radius : Float) (fill : Fill := default) (stroke : Stroke := {})
     (name : Option Lean.Name := none) : Diagram β :=
   let d : Diagram β := .withEnv (Envelope.ofCircle radius)
     (fromPath (PathData.circle radius) fill stroke)
@@ -183,7 +183,7 @@ def circle (radius : Float) (fill : Fill := {}) (stroke : Stroke := {})
     ]
 
 /-- A filled ellipse centered at the origin with the given half-widths. -/
-def ellipse (rx ry : Float) (fill : Fill := {}) (stroke : Stroke := {})
+def ellipse (rx ry : Float) (fill : Fill := default) (stroke : Stroke := {})
     (name : Option Lean.Name := none) : Diagram β :=
   let d : Diagram β := .withEnv (Envelope.ofRect rx ry)
     (fromPath (PathData.ellipse rx ry) fill stroke)
@@ -198,7 +198,7 @@ def ellipse (rx ry : Float) (fill : Fill := {}) (stroke : Stroke := {})
 /-- A regular polygon centered at the origin with the given number of sides and circumradius.
     If `sides` is less than 3, uses 3 and attaches a validation warning. -/
 def polygon (sides : Nat) (radius : Float)
-    (fill : Fill := {})
+    (fill : Fill := default)
     (stroke : Stroke := {}) : Diagram β :=
   let (n, warn) := if sides < 3 then (3, true) else (sides, false)
   let step := 2 * pi / n.toFloat
@@ -226,7 +226,7 @@ Special cases for low point counts:
 - 3+ points: a star with `points` outer tips and `points` inner valleys.
 -/
 def star (points : Nat) (outerRadius innerRadius : Float)
-    (fill : Fill := {})
+    (fill : Fill := default)
     (stroke : Stroke := {})
     (name : Option Lean.Name := none) : Diagram β :=
   if points == 0 then

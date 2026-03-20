@@ -69,7 +69,7 @@ where
   go (d : Diagram β) (acc : List String) : List String :=
     match d with
     | .empty | .prim _ => acc
-    | .annotate _ d | .named _ d | .transform _ d | .withEnv _ d
+    | .tag _ d | .named _ d | .transform _ d | .withEnv _ d
     | .cellophane _ d | .clip _ d => go d acc
     | .compose a b => go b (go a acc)
     | .warning msg d => go d (acc ++ [msg])

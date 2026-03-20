@@ -13,7 +13,7 @@ open Illuminate
 -- ══════════════════════════════════════════════════════════════════
 
 def testCorePrim_path : IO Unit := do
-  let p := CorePrimitive.path (PathData.rect 2 2) {} {}
+  let p := CorePrimitive.path (PathData.rect 2 2) default {}
   match p with
   | .path _ _ _ => pure ()
   | _ => throw <| IO.userError "expected path"
@@ -68,7 +68,8 @@ def testDiag_text : IO Unit := do
 def testDiag_line : IO Unit := do
   let d : Diagram Empty := Diagram.line ⟨0, 0⟩ ⟨1, 1⟩
   match d with
-  | .prim (.core (.path _ fill _)) => assertTrue (fill.color == Color.transparent) "line has transparent fill"
+  | .prim (.core (.path _ .none _)) => pure ()
+  | .prim (.core (.path _ (.solid _) _)) => throw <| IO.userError "expected no fill on line"
   | _ => throw <| IO.userError "expected prim/core/path"
 
 -- ══════════════════════════════════════════════════════════════════
@@ -90,10 +91,10 @@ def testDiagTree_transform : IO Unit := do
   | _ => throw <| IO.userError "expected transform wrapping prim"
 
 def testDiagTree_annotate : IO Unit := do
-  let d : Diagram Empty := Diagram.annotate 42 (Diagram.rect 1 1)
+  let d : Diagram Empty := Diagram.tag 42 (Diagram.rect 1 1)
   match d with
-  | .annotate tag _ => assertTrue (tag == 42) "annotation tag"
-  | _ => throw <| IO.userError "expected annotate"
+  | .tag tag _ => assertTrue (tag == 42) "annotation tag"
+  | _ => throw <| IO.userError "expected tag"
 
 def testDiagTree_named : IO Unit := do
   let d : Diagram Empty := Diagram.named `myBox (Diagram.rect 1 1)

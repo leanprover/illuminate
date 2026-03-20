@@ -13,8 +13,10 @@ open Illuminate
 -- ══════════════════════════════════════════════════════════════════
 
 def testStyle_fillDefault : IO Unit := do
-  let f : Fill := {}
-  assertTrue (f.color == Color.black) "default fill color is black"
+  let f : Fill := default
+  match f with
+  | .solid fs => assertTrue (fs.color == Color.lightGray) "default fill color is lightGray"
+  | .none => throw <| IO.userError "expected solid fill"
 
 def testStyle_strokeDefault : IO Unit := do
   let s : Stroke := {}
