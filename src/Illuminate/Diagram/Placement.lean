@@ -119,6 +119,16 @@ end Primitive
 -- Trace computation from primitives
 -- ═══════════════════════════════════════════════════════════════
 
+/-- Computes the bounding-box half-width and half-height for a text primitive. -/
+private def textTraceDims (s : String) (style : TextStyle) : Float × Float :=
+  let fontSize := style.fontSize
+  let lines := s.splitOn "\n"
+  let nLines := Max.max 1 lines.length
+  let totalW := lines.foldl (fun acc line => Max.max acc (estimateTextWidth fontSize line)) 0
+  let h := if nLines == 1 then fontSize / 2
+           else fontSize * 1.2 * nLines.toFloat / 2
+  (totalW / 2, h)
+
 namespace CorePrimitive
 
 /--
@@ -129,16 +139,11 @@ def toTrace (cp : CorePrimitive) : Trace :=
   match cp with
   | .path pd _ _ => Trace.ofPathData pd.commands
   | .text s style =>
-    let fontSize := style.fontSize
-    let lines := s.splitOn "\n"
-    let nLines := Max.max 1 lines.length
-    let totalW := lines.foldl (fun acc line => Max.max acc (estimateTextWidth fontSize line)) 0
-    let h := if nLines == 1 then fontSize / 2
-             else fontSize * 1.2 * nLines.toFloat / 2
+    let (hw, hh) := textTraceDims s style
     match style.anchor with
-    | .start => Trace.ofRect (totalW / 2) h |> Trace.translateBy ⟨totalW / 2, 0⟩
-    | .«end» => Trace.ofRect (totalW / 2) h |> Trace.translateBy ⟨-totalW / 2, 0⟩
-    | .middle => Trace.ofRect (totalW / 2) h
+    | .start => Trace.ofRect hw hh |> Trace.translateBy ⟨hw, 0⟩
+    | .«end» => Trace.ofRect hw hh |> Trace.translateBy ⟨-hw, 0⟩
+    | .middle => Trace.ofRect hw hh
   | .image ref => Trace.ofRect (ref.width / 2) (ref.height / 2)
 
 end CorePrimitive
@@ -174,16 +179,11 @@ def toStrokeTrace (cp : CorePrimitive) : StrokeTrace :=
   match cp with
   | .path pd _ stroke => StrokeTrace.ofPathData pd.commands stroke.width
   | .text s style =>
-    let fontSize := style.fontSize
-    let lines := s.splitOn "\n"
-    let nLines := Max.max 1 lines.length
-    let totalW := lines.foldl (fun acc line => Max.max acc (estimateTextWidth fontSize line)) 0
-    let h := if nLines == 1 then fontSize / 2
-             else fontSize * 1.2 * nLines.toFloat / 2
+    let (hw, hh) := textTraceDims s style
     match style.anchor with
-    | .start => StrokeTrace.ofRect (totalW / 2) h 0 |> StrokeTrace.translateBy ⟨totalW / 2, 0⟩
-    | .«end» => StrokeTrace.ofRect (totalW / 2) h 0 |> StrokeTrace.translateBy ⟨-totalW / 2, 0⟩
-    | .middle => StrokeTrace.ofRect (totalW / 2) h 0
+    | .start => StrokeTrace.ofRect hw hh 0 |> StrokeTrace.translateBy ⟨hw, 0⟩
+    | .«end» => StrokeTrace.ofRect hw hh 0 |> StrokeTrace.translateBy ⟨-hw, 0⟩
+    | .middle => StrokeTrace.ofRect hw hh 0
   | .image ref => StrokeTrace.ofRect (ref.width / 2) (ref.height / 2) 0
 
 end CorePrimitive

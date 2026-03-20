@@ -201,6 +201,161 @@ def testTrace_transform_scale : IO Unit := do
   assertTrue (traceClosestApprox t ⟨-30, 0⟩ Vec2.east 10 (tol := 1e-4))
     "transform scale: scaled circle closest hit"
 
+def testTrace_transform_nonUniformScale : IO Unit := do
+  -- Circle r=10 scaled by (2, 1) becomes an ellipse with rx=20, ry=10
+  let t := Trace.transform (Matrix.scale 2 1) (Trace.ofCircle 10)
+  -- From (-30, 0) going east: hit at x=-20 → t=10
+  assertTrue (traceClosestApprox t ⟨-30, 0⟩ Vec2.east 10 (tol := 1e-4))
+    "transform nonUniform: x-scaled circle closest hit"
+  -- From (0, -20) going north: hit at y=-10 → t=10
+  assertTrue (traceClosestApprox t ⟨0, -20⟩ Vec2.north 10 (tol := 1e-4))
+    "transform nonUniform: y-axis unchanged"
+
+-- ══════════════════════════════════════════════════════════════════
+-- Empty trace tests
+-- ══════════════════════════════════════════════════════════════════
+
+def testTrace_empty_noHits : IO Unit := do
+  assertTrue (traceHitsExactly Trace.empty ⟨0, 0⟩ Vec2.east 0)
+    "empty: should return no hits"
+
+def testTrace_empty_closestIsNone : IO Unit := do
+  let result := Trace.empty.closest ⟨0, 0⟩ Vec2.east
+  unless result.isNone do
+    throw <| IO.userError "empty: closest should be none"
+
+-- ══════════════════════════════════════════════════════════════════
+-- Ellipse trace tests
+-- ══════════════════════════════════════════════════════════════════
+
+def ellipseTrace := Trace.ofEllipse 20 10
+
+def testTrace_ellipse_axisAligned_hitCount : IO Unit := do
+  -- Ray from (-30, 0) going east through an ellipse with rx=20, ry=10
+  assertTrue (traceHitsExactly ellipseTrace ⟨-30, 0⟩ Vec2.east 2)
+    "ellipse: axis-aligned ray should hit twice"
+
+def testTrace_ellipse_axisAligned_closest : IO Unit := do
+  -- Closest hit at x=-20, so t=10
+  assertTrue (traceClosestApprox ellipseTrace ⟨-30, 0⟩ Vec2.east 10)
+    "ellipse: closest on major axis should be 10"
+
+def testTrace_ellipse_minor_axis : IO Unit := do
+  -- From (0, -20) going north, hits at y=-10 → t=10
+  assertTrue (traceClosestApprox ellipseTrace ⟨0, -20⟩ Vec2.north 10)
+    "ellipse: closest on minor axis should be 10"
+
+def testTrace_ellipse_fromInside : IO Unit := do
+  assertTrue (traceHitsExactly ellipseTrace ⟨0, 0⟩ Vec2.east 1)
+    "ellipse: ray from inside should hit once"
+
+def testTrace_ellipse_miss : IO Unit := do
+  -- Ray from (0, 15) going east misses ellipse with ry=10
+  assertTrue (traceHitsExactly ellipseTrace ⟨0, 15⟩ Vec2.east 0)
+    "ellipse: ray outside minor extent should miss"
+
+def testTrace_ellipse_sorted : IO Unit := do
+  let v := Vec2.normalize ⟨1, 0.3⟩
+  assertTrue (traceHitsSorted ellipseTrace ⟨-30, -5⟩ v)
+    "ellipse: diagonal hits should be sorted"
+
+def testTrace_ellipse_degenerateToCircle : IO Unit := do
+  -- Ellipse with rx=ry=10 should match circle r=10
+  let e := Trace.ofEllipse 10 10
+  let c := Trace.ofCircle 10
+  let p : Point := ⟨-20, 0⟩
+  let v := Vec2.east
+  match e.closest p v, c.closest p v with
+  | some et, some ct =>
+    assertTrue ((et - ct).abs < 1e-6) "ellipse rx=ry: should match circle"
+  | _, _ => throw <| IO.userError "ellipse rx=ry: expected hits"
+
+-- ══════════════════════════════════════════════════════════════════
+-- Rounded rectangle trace tests
+-- ══════════════════════════════════════════════════════════════════
+
+def roundedRectTrace := Trace.ofRoundedRect 15 10 3
+
+def testTrace_roundedRect_axisAligned_hitCount : IO Unit := do
+  -- Ray from (-30, 0) going east through a 30×20 rounded rect
+  assertTrue (traceHitsExactly roundedRectTrace ⟨-30, 0⟩ Vec2.east 2)
+    "roundedRect: axis-aligned ray should hit twice"
+
+def testTrace_roundedRect_axisAligned_closest : IO Unit := do
+  -- At y=0, we hit the straight left edge at x=-15
+  assertTrue (traceClosestApprox roundedRectTrace ⟨-30, 0⟩ Vec2.east 15)
+    "roundedRect: closest on axis should be 15"
+
+def testTrace_roundedRect_fromInside : IO Unit := do
+  assertTrue (traceHitsExactly roundedRectTrace ⟨0, 0⟩ Vec2.east 1)
+    "roundedRect: ray from inside should hit once"
+
+def testTrace_roundedRect_corner : IO Unit := do
+  -- Ray aimed at a corner should still hit (via the arc)
+  let v := Vec2.normalize ⟨-1, 1⟩
+  assertTrue (traceHitsExactly roundedRectTrace ⟨30, -20⟩ v 2)
+    "roundedRect: ray through corner should hit twice"
+
+def testTrace_roundedRect_sorted : IO Unit := do
+  let v := Vec2.normalize ⟨1, 0.5⟩
+  assertTrue (traceHitsSorted roundedRectTrace ⟨-30, -10⟩ v)
+    "roundedRect: diagonal hits should be sorted"
+
+def testTrace_roundedRect_miss : IO Unit := do
+  assertTrue (traceHitsExactly roundedRectTrace ⟨-30, 0⟩ Vec2.west 0)
+    "roundedRect: ray going away should miss"
+
+def testTrace_roundedRect_zeroRadius : IO Unit := do
+  -- With cr=0, should match a plain rectangle
+  let rr := Trace.ofRoundedRect 15 10 0
+  let r := Trace.ofRect 15 10
+  match rr.closest ⟨-30, 0⟩ Vec2.east, r.closest ⟨-30, 0⟩ Vec2.east with
+  | some rrt, some rt =>
+    assertTrue ((rrt - rt).abs < 1e-6) "roundedRect cr=0: should match plain rect"
+  | _, _ => throw <| IO.userError "roundedRect cr=0: expected hits"
+
+-- ══════════════════════════════════════════════════════════════════
+-- Path trace tests
+-- ══════════════════════════════════════════════════════════════════
+
+-- A simple 10×10 square as a closed path
+def squarePath := PathData.empty
+  |>.moveTo ⟨-5, -5⟩
+  |>.lineTo ⟨5, -5⟩
+  |>.lineTo ⟨5, 5⟩
+  |>.lineTo ⟨-5, 5⟩
+  |>.close
+
+def pathTrace := Trace.ofPathData squarePath.commands
+
+def testTrace_path_hitCount : IO Unit := do
+  assertTrue (traceHitsExactly pathTrace ⟨-20, 0⟩ Vec2.east 2)
+    "path: ray through square should hit twice"
+
+def testTrace_path_closest : IO Unit := do
+  -- From (-20, 0) going east, hits left edge at x=-5 → t=15
+  assertTrue (traceClosestApprox pathTrace ⟨-20, 0⟩ Vec2.east 15)
+    "path: closest hit on square left edge"
+
+def testTrace_path_miss : IO Unit := do
+  assertTrue (traceHitsExactly pathTrace ⟨0, 10⟩ Vec2.east 0)
+    "path: ray above square should miss"
+
+def testTrace_path_fromInside : IO Unit := do
+  assertTrue (traceHitsExactly pathTrace ⟨0, 0⟩ Vec2.east 1)
+    "path: ray from inside square should hit once"
+
+def testTrace_path_diagonal : IO Unit := do
+  -- Slightly off-center to avoid corner degeneracy
+  let v := Vec2.normalize ⟨1, 0.9⟩
+  assertTrue (traceHitsExactly pathTrace ⟨-20, -18⟩ v 2)
+    "path: diagonal ray through square should hit twice"
+
+def testTrace_path_sorted : IO Unit := do
+  let v := Vec2.normalize ⟨1, 0.3⟩
+  assertTrue (traceHitsSorted pathTrace ⟨-20, -2⟩ v)
+    "path: diagonal hits should be sorted"
+
 -- ══════════════════════════════════════════════════════════════════
 -- StrokeTrace testable predicates
 -- ══════════════════════════════════════════════════════════════════
@@ -349,6 +504,85 @@ def testStroke_transform_scale : IO Unit := do
   assertTrue (strokeClosestEdgeApprox st ⟨-40, 0⟩ Vec2.east 18 (tol := 0.1))
     "strokeTransform scale: closest edge of scaled circle"
 
+def testStroke_transform_rotate : IO Unit := do
+  -- Rect 30×20 rotated 90° becomes 20×30. sw=2.
+  -- From (-20, 0) going east, perpendicular to left edge: centerline at t=10, edge=10-1=9
+  let st := StrokeTrace.transform (Matrix.rotate (Illuminate.pi / 2))
+    (StrokeTrace.ofRect 15 10 2)
+  assertTrue (strokeClosestEdgeApprox st ⟨-20, 0⟩ Vec2.east 9 (tol := 0.1))
+    "strokeTransform rotate: closest edge of rotated rect"
+
+-- ══════════════════════════════════════════════════════════════════
+-- StrokeTrace ellipse tests
+-- ══════════════════════════════════════════════════════════════════
+
+def testStroke_ellipse_hitCount : IO Unit := do
+  let st := StrokeTrace.ofEllipse 20 10 2
+  assertTrue (strokeHitsExactly st ⟨-30, 0⟩ Vec2.east 2)
+    "strokeEllipse: should hit twice from outside"
+
+def testStroke_ellipse_closestEdge : IO Unit := do
+  -- Perpendicular hit on major axis: centerline at t=10, edge = 10 - 1 = 9
+  let st := StrokeTrace.ofEllipse 20 10 2
+  assertTrue (strokeClosestEdgeApprox st ⟨-30, 0⟩ Vec2.east 9)
+    "strokeEllipse: closest edge at perpendicular"
+
+def testStroke_ellipse_edgeBefore : IO Unit := do
+  let st := StrokeTrace.ofEllipse 20 10 2
+  let tr := Trace.ofEllipse 20 10
+  assertTrue (strokeEdgeBeforeCenterline st tr ⟨-30, 0⟩ Vec2.east)
+    "strokeEllipse: edge should be before centerline"
+
+def testStroke_ellipse_widthsPositive : IO Unit := do
+  let st := StrokeTrace.ofEllipse 20 10 2
+  assertTrue (strokeWidthsPositive st ⟨-30, 0⟩ Vec2.east)
+    "strokeEllipse: all widths positive"
+
+-- ══════════════════════════════════════════════════════════════════
+-- StrokeTrace rounded rectangle tests
+-- ══════════════════════════════════════════════════════════════════
+
+def testStroke_roundedRect_hitCount : IO Unit := do
+  let st := StrokeTrace.ofRoundedRect 15 10 3 2
+  assertTrue (strokeHitsExactly st ⟨-30, 0⟩ Vec2.east 2)
+    "strokeRoundedRect: should hit twice"
+
+def testStroke_roundedRect_closestEdge : IO Unit := do
+  -- At y=0, perpendicular to left edge: centerline at t=15, edge = 15 - 1 = 14
+  let st := StrokeTrace.ofRoundedRect 15 10 3 2
+  assertTrue (strokeClosestEdgeApprox st ⟨-30, 0⟩ Vec2.east 14)
+    "strokeRoundedRect: closest edge at perpendicular"
+
+def testStroke_roundedRect_edgeBefore : IO Unit := do
+  let st := StrokeTrace.ofRoundedRect 15 10 3 2
+  let tr := Trace.ofRoundedRect 15 10 3
+  assertTrue (strokeEdgeBeforeCenterline st tr ⟨-30, 0⟩ Vec2.east)
+    "strokeRoundedRect: edge should be before centerline"
+
+-- ══════════════════════════════════════════════════════════════════
+-- StrokeTrace path tests
+-- ══════════════════════════════════════════════════════════════════
+
+def strokePathTrace := StrokeTrace.ofPathData squarePath.commands 2
+
+def testStroke_path_hitCount : IO Unit := do
+  assertTrue (strokeHitsExactly strokePathTrace ⟨-20, 0⟩ Vec2.east 2)
+    "strokePath: should hit twice"
+
+def testStroke_path_closestEdge : IO Unit := do
+  -- From (-20, 0) going east, perpendicular to left edge at x=-5 → centerline t=15, edge=14
+  assertTrue (strokeClosestEdgeApprox strokePathTrace ⟨-20, 0⟩ Vec2.east 14)
+    "strokePath: closest edge at perpendicular"
+
+def testStroke_path_edgeBefore : IO Unit := do
+  let tr := Trace.ofPathData squarePath.commands
+  assertTrue (strokeEdgeBeforeCenterline strokePathTrace tr ⟨-20, 0⟩ Vec2.east)
+    "strokePath: edge should be before centerline"
+
+def testStroke_path_widthsPositive : IO Unit := do
+  assertTrue (strokeWidthsPositive strokePathTrace ⟨-20, 0⟩ Vec2.east)
+    "strokePath: all widths positive"
+
 -- ══════════════════════════════════════════════════════════════════
 -- Test list
 -- ══════════════════════════════════════════════════════════════════
@@ -370,6 +604,28 @@ def traceTests : List (String × IO Unit) := [
   ("Trace/rect_diagonal_sorted", testTrace_rect_diagonal_sorted),
   ("Trace/rect_miss", testTrace_rect_miss),
   ("Trace/rect_fromInside", testTrace_rect_fromInside),
+  ("Trace/ellipse_axisAligned_hitCount", testTrace_ellipse_axisAligned_hitCount),
+  ("Trace/ellipse_axisAligned_closest", testTrace_ellipse_axisAligned_closest),
+  ("Trace/ellipse_minor_axis", testTrace_ellipse_minor_axis),
+  ("Trace/ellipse_fromInside", testTrace_ellipse_fromInside),
+  ("Trace/ellipse_miss", testTrace_ellipse_miss),
+  ("Trace/ellipse_sorted", testTrace_ellipse_sorted),
+  ("Trace/ellipse_degenerateToCircle", testTrace_ellipse_degenerateToCircle),
+  ("Trace/roundedRect_axisAligned_hitCount", testTrace_roundedRect_axisAligned_hitCount),
+  ("Trace/roundedRect_axisAligned_closest", testTrace_roundedRect_axisAligned_closest),
+  ("Trace/roundedRect_fromInside", testTrace_roundedRect_fromInside),
+  ("Trace/roundedRect_corner", testTrace_roundedRect_corner),
+  ("Trace/roundedRect_sorted", testTrace_roundedRect_sorted),
+  ("Trace/roundedRect_miss", testTrace_roundedRect_miss),
+  ("Trace/roundedRect_zeroRadius", testTrace_roundedRect_zeroRadius),
+  ("Trace/path_hitCount", testTrace_path_hitCount),
+  ("Trace/path_closest", testTrace_path_closest),
+  ("Trace/path_miss", testTrace_path_miss),
+  ("Trace/path_fromInside", testTrace_path_fromInside),
+  ("Trace/path_diagonal", testTrace_path_diagonal),
+  ("Trace/path_sorted", testTrace_path_sorted),
+  ("Trace/empty_noHits", testTrace_empty_noHits),
+  ("Trace/empty_closestIsNone", testTrace_empty_closestIsNone),
   ("Trace/union_hitCount", testTrace_union_hitCount),
   ("Trace/union_sorted", testTrace_union_sorted),
   ("Trace/translate_hitCount", testTrace_translate_hitCount),
@@ -379,6 +635,7 @@ def traceTests : List (String × IO Unit) := [
   ("Trace/transform_translate_closest", testTrace_transform_translate_closest),
   ("Trace/transform_rotate", testTrace_transform_rotate),
   ("Trace/transform_scale", testTrace_transform_scale),
+  ("Trace/transform_nonUniformScale", testTrace_transform_nonUniformScale),
   ("StrokeTrace/circle_sw1_hitCount", testStroke_circle_sw1_hitCount),
   ("StrokeTrace/circle_sw1_edgeBefore", testStroke_circle_sw1_edgeBefore),
   ("StrokeTrace/circle_sw1_closestEdge", testStroke_circle_sw1_closestEdge),
@@ -393,7 +650,19 @@ def traceTests : List (String × IO Unit) := [
   ("StrokeTrace/rect_sw20_closestEdge", testStroke_rect_sw20_closestEdge),
   ("StrokeTrace/rect_sw1_edgeBefore", testStroke_rect_sw1_edgeBefore),
   ("StrokeTrace/rect_diagonal_wider", testStroke_rect_diagonal_wider),
+  ("StrokeTrace/ellipse_hitCount", testStroke_ellipse_hitCount),
+  ("StrokeTrace/ellipse_closestEdge", testStroke_ellipse_closestEdge),
+  ("StrokeTrace/ellipse_edgeBefore", testStroke_ellipse_edgeBefore),
+  ("StrokeTrace/ellipse_widthsPositive", testStroke_ellipse_widthsPositive),
+  ("StrokeTrace/roundedRect_hitCount", testStroke_roundedRect_hitCount),
+  ("StrokeTrace/roundedRect_closestEdge", testStroke_roundedRect_closestEdge),
+  ("StrokeTrace/roundedRect_edgeBefore", testStroke_roundedRect_edgeBefore),
+  ("StrokeTrace/path_hitCount", testStroke_path_hitCount),
+  ("StrokeTrace/path_closestEdge", testStroke_path_closestEdge),
+  ("StrokeTrace/path_edgeBefore", testStroke_path_edgeBefore),
+  ("StrokeTrace/path_widthsPositive", testStroke_path_widthsPositive),
   ("StrokeTrace/union_hitCount", testStroke_union_hitCount),
   ("StrokeTrace/translate_closestEdge", testStroke_translate_closestEdge),
-  ("StrokeTrace/transform_scale", testStroke_transform_scale)
+  ("StrokeTrace/transform_scale", testStroke_transform_scale),
+  ("StrokeTrace/transform_rotate", testStroke_transform_rotate)
 ]
