@@ -9,7 +9,7 @@ import Illuminate.Diagram.Placement
 
 namespace Illuminate
 
-variable {β : Type}
+variable {β : Type} [Backend β]
 
 namespace Diagram
 

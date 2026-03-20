@@ -31,7 +31,7 @@ deriving Repr, BEq
 
 namespace StateDiagramConfig
 
-variable {β : Type}
+variable {β : Type} [Backend β]
 
 private def stateStroke (cfg : StateDiagramConfig) : Stroke :=
   { color := Color.black, width := cfg.lineWidth }
@@ -142,5 +142,5 @@ def loop (cfg : StateDiagramConfig) (i : Nat) (label : String) : Diagram β :=
 end StateDiagramConfig
 
 /-- Overlays a list of diagrams into a single diagram. -/
-def overlay {β : Type} (ds : List (Diagram β)) : Diagram β :=
+def overlay {β : Type} [Backend β] (ds : List (Diagram β)) : Diagram β :=
   ds.foldl Diagram.compose Diagram.empty

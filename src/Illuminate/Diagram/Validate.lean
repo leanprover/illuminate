@@ -34,7 +34,7 @@ instance : ToString DiagramError where
 Validates a diagram for structural well-formedness before rendering.
 Checks for duplicate names and empty paths.
 -/
-def validate {β : Type} (d : Diagram β) : Except (Array DiagramError) Unit :=
+def validate {β : Type} [Backend β] (d : Diagram β) : Except (Array DiagramError) Unit :=
   let names := d.collectNames Matrix.identity .anonymous []
   let cmds := d.compile
   let errors := checkDuplicateNames names #[]
@@ -50,7 +50,7 @@ where
       else
         (errs, name :: seen)
     seen.1
-  checkCommands (cmds : List DrawCmd) (acc : Array DiagramError)
+  checkCommands (cmds : List (DrawCmd β)) (acc : Array DiagramError)
       : Array DiagramError :=
     cmds.foldl (init := acc) fun errs cmd =>
       match cmd with
@@ -63,13 +63,13 @@ where
       | _ => errs
 
 /-- Collects all warning messages embedded in a diagram tree. -/
-def collectWarnings {β : Type} (d : Diagram β) : List String :=
+def collectWarnings {β : Type} [Backend β] (d : Diagram β) : List String :=
   go d []
 where
   go (d : Diagram β) (acc : List String) : List String :=
     match d with
     | .empty | .prim _ => acc
-    | .tag _ d | .named _ d | .transform _ d | .withEnv _ d
+    | .foreign _ d | .tag _ d | .named _ d | .transform _ d | .withEnv _ d
     | .cellophane _ d | .clip _ d => go d acc
     | .compose a b => go b (go a acc)
     | .warning msg d => go d (acc ++ [msg])

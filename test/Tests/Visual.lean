@@ -47,7 +47,7 @@ open Illuminate
 
 open Diagram in
 open Lean in
-def labelDia (name : Name) (pull : Float) : Diagram Empty :=
+def labelDia (name : Name) (pull : Float) : Diagram SVG :=
   let start := roundedRect 25 15 0.4 (fill := .solid { color := {r := 100, g := 30, b := 132} }) (name := `start)
   let stop := roundedRect 20 15 0.4 (fill := .solid { color := {r := 33, g := 128, b := 5} }) (name := `stop)
   let d := hsep 5 [start, stop] |>.named `boxes
@@ -58,7 +58,7 @@ def labelDia (name : Name) (pull : Float) : Diagram Empty :=
       { point := `boxes.stop.north, pull, angle := some (- angle), arrowhead := some {} }
     |>.named name
 
-def arrowBends : Diagram Empty :=
+def arrowBends : Diagram SVG :=
   let diagrams := List.range 19 |>.map fun i =>
     labelDia (`v ++ .num .anonymous i) (i.toFloat / 10.0)
   let len := diagrams.length
@@ -72,7 +72,7 @@ def arrowBends : Diagram Empty :=
 
 
 open Diagram in
-def arrowDemo (arrowhead : Arrowhead) : Diagram Empty :=
+def arrowDemo (arrowhead : Arrowhead) : Diagram SVG :=
   vsep 10 <|
   List.range 7 |>.map fun l =>
     let length := l.toFloat * 0.3
@@ -120,7 +120,7 @@ def arrowDemo (arrowhead : Arrowhead) : Diagram Empty :=
 -- RoundedRect visual test
 -- ══════════════════════════════════════════════════════════════════
 
-def roundedRectsDiagram (pos : Slider "pos" 0 1 0.5) (pull : Slider "pull" 0 1 0.5) : Diagram Empty :=
+def roundedRectsDiagram (pos : Slider "pos" 0 1 0.5) (pull : Slider "pull" 0 1 0.5) : Diagram SVG :=
   Diagram.hsep gap [node `left "Input", node `right "Output"]
     -- Forward arrow: left.north → right.north, arching upward
     |>.connect
@@ -136,7 +136,7 @@ def roundedRectsDiagram (pos : Slider "pos" 0 1 0.5) (pull : Slider "pull" 0 1 0
       (label := some { label := .text "backward" { fontSize := (11 : Float) }, pos })
 where
   gap := 50
-  node (name : Lean.Name) (label : String) : Diagram Empty :=
+  node (name : Lean.Name) (label : String) : Diagram SVG :=
     Diagram.atop
       (Diagram.roundedRect 80 40 8 (fill := .solid { color := { r := 220, g := 235, b := 255 } })
         (stroke := { color := Color.black, width := (1.5 : Float) }) (name := name))
@@ -165,7 +165,7 @@ def testVisual_roundedRects_7_2 : IO Unit :=
 -- ══════════════════════════════════════════════════════════════════
 
 /-- Lean compilation pipeline: Code.lean → Syntax Tree → Core Type Theory → Executable -/
-def pipelineDiagram : Diagram Empty :=
+def pipelineDiagram : Diagram SVG :=
   let resultStyle : TextStyle := { fontSize := (20 : Float), bold := true }
   let result :=
     Diagram.hsep (align := .bottom) 8
@@ -208,9 +208,9 @@ def pipelineDiagram : Diagram Empty :=
       (label := lbl "Kernel\nCheck") (arrowhead := ah)
 where
   ah : Arrowhead := { type := .stealth }
-  lbl (s : String) : Option (Label Empty) :=
+  lbl (s : String) : Option (Label SVG) :=
     some { label := .text s { fontSize := (10 : Float) }, upright := true }
-  box (name : Lean.Name) (label : String) (fontFamily := "sans-serif") : Diagram Empty :=
+  box (name : Lean.Name) (label : String) (fontFamily := "sans-serif") : Diagram SVG :=
     Diagram.text label { fontSize := (12 : Float), fontFamily }
       |>.pad 12
       |>.filledFrame
@@ -232,7 +232,7 @@ def testVisual_pipeline : IO Unit :=
 -- ══════════════════════════════════════════════════════════════════
 
 /-- Memory layout of lean_string: m_header | m_size | m_capacity | m_length | m_data | '\0' -/
-def stringLayoutDiagram : Diagram Empty :=
+def stringLayoutDiagram : Diagram SVG :=
   let braceDepth := 12
   let braceGap := 4
   -- Build each field with its brace as a vertical unit, then hcat them
@@ -252,18 +252,18 @@ def stringLayoutDiagram : Diagram Empty :=
   Diagram.hsep 0 [headerCol, sizeCol, capCol, lenCol, dataCol, nulCol] (align := .top)
 where
   monoStyle : TextStyle := { fontSize := (10 : Float), fontFamily := "monospace" }
-  txt (s : String) : Diagram Empty :=
+  txt (s : String) : Diagram SVG :=
     Diagram.text s { fontSize := (8 : Float), fontFamily := "sans-serif" }
   /-- Stacks a description line above a type line. -/
-  twoLine (description typeLine : String) : Diagram Empty :=
+  twoLine (description typeLine : String) : Diagram SVG :=
     Diagram.vsep 1 [txt description, .text typeLine { fontSize := (8 : Float), fontFamily := "monospace" }]
-  field (name : Lean.Name) (label : String) (w : Float) : Diagram Empty :=
+  field (name : Lean.Name) (label : String) (w : Float) : Diagram SVG :=
     Diagram.atop
       ((Diagram.rect w 28 (fill := .solid { color := Color.white }) (name := name)).padRight (-0.5) |>.padLeft (-0.5))
       (.text label monoStyle)
   /-- Builds a field box with a curly brace and label below it. -/
   fieldWithBrace (name : Lean.Name) (label : String) (w : Float)
-      (braceDepth braceGap : Float) (braceLabel : Diagram Empty) : Diagram Empty :=
+      (braceDepth braceGap : Float) (braceLabel : Diagram SVG) : Diagram SVG :=
     let box := field name label w
     let brace := Diagram.curlyBrace (w - 8) (depth := braceDepth) (label := some braceLabel)
     let braceEnv := brace.getEnvelope
@@ -282,7 +282,7 @@ def testVisual_stringLayout : IO Unit :=
 -- ══════════════════════════════════════════════════════════════════
 
 /-- Lake workspace hierarchy from the Lean reference manual. -/
-def lakeWorkspaceDiagram : Diagram Empty :=
+def lakeWorkspaceDiagram : Diagram SVG :=
   let toolchain := mono "lean-toolchain"
   let rootPkg := borderedBox "Root package" <|
     items [
@@ -294,7 +294,7 @@ def lakeWorkspaceDiagram : Diagram Empty :=
   let depItems := items ["Package configuration file", "Libraries", "Executables", "Artifacts"] 8
   let dep1 := borderedBox "Dependency 1" depItems 9 6
   let dep2 := borderedBox "Dependency 2" depItems 9 6
-  let dots : Diagram Empty := .text "⋯" { fontSize := (14 : Float) }
+  let dots : Diagram SVG := .text "⋯" { fontSize := (14 : Float) }
   let packages := borderedBox "Packages" <|
     Diagram.vsep 8 [Diagram.hsep 12 [dep1, dep2], dots] (align := .left)
   let artifacts := borderedBox "Artifacts" <|
@@ -304,16 +304,16 @@ def lakeWorkspaceDiagram : Diagram Empty :=
   borderedBox "Workspace" <|
     Diagram.vsep 10 [toolchain, rootPkg, lakeDir] (align := .left)
 where
-  txt (s : String) (size : Float := 10) : Diagram Empty :=
+  txt (s : String) (size : Float := 10) : Diagram SVG :=
     .text s { fontSize := size, anchor := TextAnchor.start }
-  bold (s : String) (size : Float := 11) : Diagram Empty :=
+  bold (s : String) (size : Float := 11) : Diagram SVG :=
     .text s { fontSize := size, bold := true, anchor := TextAnchor.start }
-  mono (s : String) (size : Float := 10) : Diagram Empty :=
+  mono (s : String) (size : Float := 10) : Diagram SVG :=
     .text s { fontSize := size, fontFamily := "monospace", anchor := TextAnchor.start }
-  items (ss : List String) (size : Float := 10) : Diagram Empty :=
+  items (ss : List String) (size : Float := 10) : Diagram SVG :=
     Diagram.vsep 3 (ss.map fun s => txt s size) (align := .left)
-  borderedBox (title : String) (content : Diagram Empty)
-      (titleSize : Float := 11) (pad : Float := 8) : Diagram Empty :=
+  borderedBox (title : String) (content : Diagram SVG)
+      (titleSize : Float := 11) (pad : Float := 8) : Diagram SVG :=
     Diagram.vsep 4 [bold title titleSize, content] (align := .left)
       |>.pad pad |>.frame (padding := 2) (cornerRadius := 4)
 
@@ -327,7 +327,7 @@ def testVisual_lakeWorkspace : IO Unit :=
 -- ══════════════════════════════════════════════════════════════════
 
 /-- Coercion chain diagram from the Lean reference manual (coe-chain.tex). -/
-def coeChainDiagram : Diagram Empty :=
+def coeChainDiagram : Diagram SVG :=
   let spacing := 16
   -- Build from inside out: hcat items spanned by each brace, then vsep brace below
   -- Level 1: Coe* with CoeTC brace
@@ -348,16 +348,16 @@ def coeChainDiagram : Diagram Empty :=
   let withCoeDep := Diagram.hsep 30
     [level4, mono "CoeDep" |>.padBottom 3 |>.namedWithAnchors `CoeDep] (align := .bottom)
   -- "or" and CoeT below, named for anchor resolution
-  let orLabel : Diagram Empty :=
+  let orLabel : Diagram SVG :=
     Diagram.text "or" { fontSize := (10 : Float), italic := true } |>.pad 3 |>.namedWithAnchors `or
-  let coeTLabel : Diagram Empty := mono "CoeT" (name := `CoeT)
+  let coeTLabel : Diagram SVG := mono "CoeT" (name := `CoeT)
   let lineStroke : Stroke := .ofWidth 1
   Diagram.vsep 12 [withCoeDep, orLabel, coeTLabel]
     |>.connectL `CoeHTCT.south `or.west (stroke := lineStroke)
     |>.connectL `CoeDep.south `or.east (stroke := lineStroke)
     |>.connectL `or.south `CoeT.north (stroke := lineStroke)
 where
-  mono (s : String) (name : Option Lean.Name := none) : Diagram Empty :=
+  mono (s : String) (name : Option Lean.Name := none) : Diagram SVG :=
     .text s { fontSize := (10 : Float), fontFamily := "monospace" } (name := name)
 
 #diagram coeChainDiagram
@@ -384,7 +384,7 @@ def testVisual_coeChain : IO Unit :=
 #diagram Diagram.paper (width := some 80) (height := some 60) (fill := .solid { color := Color.white })
 
 open Diagram in
-def paperTest : Diagram Empty :=
+def paperTest : Diagram SVG :=
   vsep 20 [
     hsep 20 [
       paper (label := some <| text "Code"),
@@ -410,7 +410,7 @@ def paperTest : Diagram Empty :=
 -- ══════════════════════════════════════════════════════════════════
 
 /-- Grid of stars: rows = point counts (1,2,3,5,6), columns = dash patterns. -/
-def starsDiagram : Diagram Empty :=
+def starsDiagram : Diagram SVG :=
   let pointCounts := [1, 2, 3, 5, 6]
   let dashes : List StrokeDash := [.solid, .dashed, .dotted, .dashDot]
   let dashLabels := ["solid", "dashed", "dotted", "dashDot"]
@@ -444,7 +444,7 @@ def testVisual_stars : IO Unit :=
     (checks := [("stroke-dasharray", "has dashed strokes")])
 
 /-- Three stars (7, 10, 13 points) with point5 of each connected by arrows. -/
-def starAnchorsDiagram : Diagram Empty :=
+def starAnchorsDiagram : Diagram SVG :=
   let fill : Fill := .solid { color := { r := 255, g := 230, b := 100 } }
   let stroke : Stroke := { color := Color.black, width := (1.5 : Float) }
   let s7 := Diagram.star 7 30 15 (fill := fill) (stroke := stroke) (name := some `star7)
@@ -469,7 +469,7 @@ def testVisual_starAnchors : IO Unit :=
 -- ══════════════════════════════════════════════════════════════════
 
 /-- Ellipses with various aspect ratios. -/
-def ellipseDiagram : Diagram Empty :=
+def ellipseDiagram : Diagram SVG :=
   let fill : Fill := .solid { color := { r := 180, g := 210, b := 255 } }
   let stroke : Stroke := { color := Color.black, width := (1.5 : Float) }
   Diagram.hsep 15 [
@@ -489,7 +489,7 @@ def testVisual_ellipse : IO Unit :=
 -- ══════════════════════════════════════════════════════════════════
 
 /-- A labeled arrow shape used to show transform effects. -/
-private def arrowShape : Diagram Empty :=
+private def arrowShape : Diagram SVG :=
   let path := PathData.empty
     |>.moveTo ⟨-15, -8⟩
     |>.lineTo ⟨5, -8⟩
@@ -504,8 +504,8 @@ private def arrowShape : Diagram Empty :=
     (stroke := { color := Color.black, width := (1 : Float) })
 
 /-- Demonstrates scale, rotate, hflip, vflip on an arrow shape. -/
-def transformsDiagram : Diagram Empty :=
-  let label (s : String) : Diagram Empty :=
+def transformsDiagram : Diagram SVG :=
+  let label (s : String) : Diagram SVG :=
     .text s { fontSize := (9 : Float) }
   Diagram.hsep 20 [
     Diagram.vsep 5 [label "original", arrowShape],
@@ -527,11 +527,11 @@ def testVisual_transforms : IO Unit :=
 -- ══════════════════════════════════════════════════════════════════
 
 /-- Demonstrates ghost and refocus. -/
-def ghostRefocusDiagram : Diagram Empty :=
+def ghostRefocusDiagram : Diagram SVG :=
   let red : Fill := .solid { color := Color.red }
   let blue : Fill := .solid { color := Color.blue }
   let green : Fill := .solid { color := { r := 0, g := 160, b := 0, a := 0.8 } }
-  let label (s : String) : Diagram Empty :=
+  let label (s : String) : Diagram SVG :=
     .text s { fontSize := (9 : Float) }
   -- Row 1: normal vs ghost — ghost reserves space but draws nothing
   let box := Diagram.rect 30 30 (fill := red)
@@ -564,8 +564,8 @@ def testVisual_ghostRefocus : IO Unit :=
 -- ══════════════════════════════════════════════════════════════════
 
 /-- Demonstrates cellophane (opacity), clip, pinOver, and pinUnder. -/
-def cellophaneClipDiagram : Diagram Empty :=
-  let label (s : String) : Diagram Empty :=
+def cellophaneClipDiagram : Diagram SVG :=
+  let label (s : String) : Diagram SVG :=
     .text s { fontSize := (9 : Float) }
   let red : Fill := .solid { color := Color.red }
   let blue : Fill := .solid { color := Color.blue }
@@ -622,7 +622,7 @@ def testVisual_cellophaneClip : IO Unit :=
 -- ══════════════════════════════════════════════════════════════════
 
 /-- Circle with rays from four different directions. -/
-def traceCircleDiagram : Diagram Empty :=
+def traceCircleDiagram : Diagram SVG :=
   let c := Diagram.circle 20 (fill := .solid { color := { r := 200, g := 220, b := 255 } })
     (stroke := { color := Color.black, width := (1 : Float) })
   c.showTraces [
@@ -638,7 +638,7 @@ def testVisual_traceCircle : IO Unit :=
   testVisualWrite "trace-circle.svg" traceCircleDiagram
 
 /-- Rectangle with axis-aligned and diagonal rays. -/
-def traceRectDiagram : Diagram Empty :=
+def traceRectDiagram : Diagram SVG :=
   let r := Diagram.rect 40 30 (fill := .solid { color := { r := 255, g := 230, b := 200 } })
     (stroke := { color := Color.black, width := (1 : Float) })
   r.showTraces [
@@ -654,7 +654,7 @@ def testVisual_traceRect : IO Unit :=
   testVisualWrite "trace-rect.svg" traceRectDiagram
 
 /-- Two overlapping shapes (circle + rect) with a ray hitting both. -/
-def traceComposedDiagram : Diagram Empty :=
+def traceComposedDiagram : Diagram SVG :=
   let c := Diagram.circle 15 (fill := .solid { color := { r := 200, g := 200, b := 255, a := 0.5 } })
   let r := Diagram.transform (Matrix.translate 10 0)
     (Diagram.rect 30 20 (fill := .solid { color := { r := 255, g := 200, b := 200, a := 0.5 } }))
@@ -670,7 +670,7 @@ def testVisual_traceComposed : IO Unit :=
   testVisualWrite "trace-composed.svg" traceComposedDiagram
 
 /-- Rotated rectangle with trace rays. -/
-def traceTransformedDiagram : Diagram Empty :=
+def traceTransformedDiagram : Diagram SVG :=
   let r := Diagram.rotate (pi / 6)
     (Diagram.rect 40 20 (fill := .solid { color := { r := 220, g := 255, b := 220 } })
       (stroke := { color := Color.black, width := (1 : Float) }))
@@ -686,7 +686,7 @@ def testVisual_traceTransformed : IO Unit :=
   testVisualWrite "trace-transformed.svg" traceTransformedDiagram
 
 /-- Closed F-shaped path with an oblique ray crossing multiple edges. -/
-def tracePathDiagram : Diagram Empty :=
+def tracePathDiagram : Diagram SVG :=
   -- Outline of a capital letter F as a closed polygon
   let fPath := PathData.empty
     |>.moveTo ⟨0, 0⟩         -- bottom-left of vertical stroke
@@ -715,7 +715,7 @@ def testVisual_tracePath : IO Unit :=
   testVisualWrite "trace-path.svg" tracePathDiagram
 
 /-- Trace-based arrow connections between shapes at non-cardinal angles. -/
-def traceConnectDiagram : Diagram Empty :=
+def traceConnectDiagram : Diagram SVG :=
   let circ := Diagram.circle 15
     (fill := .solid { color := { r := 200, g := 220, b := 255 } })
     (stroke := { color := Color.black, width := (1 : Float) })
@@ -743,7 +743,7 @@ def traceConnectDiagram : Diagram Empty :=
 def testVisual_traceConnect : IO Unit :=
   testVisualWrite "trace-connect.svg" traceConnectDiagram
 
-def traceConnectAngledDiagram (angle3 : Slider "Angle 3" 0 (2 * pi) pi) : Diagram Empty :=
+def traceConnectAngledDiagram (angle3 : Slider "Angle 3" 0 (2 * pi) pi) : Diagram SVG :=
   let circ := Diagram.circle 15
     (fill := .solid { color := { r := 200, g := 220, b := 255 } })
     (stroke := { color := Color.black, width := (1 : Float) })
@@ -792,7 +792,7 @@ def concentricCircles (n : Slider "circles" 0 20 5) : DiagramWithInfo :=
   let n : Nat := n.toUInt64.toNat |> max 1
   let maxRadius : Float := 10 * n.toFloat
   -- Build concentric circles from largest (back) to smallest (front)
-  let diagram := (List.range n).foldl (init := (Diagram.empty : Diagram Empty)) fun acc i =>
+  let diagram := (List.range n).foldl (init := (Diagram.empty : Diagram SVG)) fun acc i =>
     let radius := maxRadius * (n - i).toFloat / n.toFloat
     let color := hueToColor (i.toFloat / n.toFloat)
     let circle := Diagram.tag i
@@ -806,6 +806,22 @@ def concentricCircles (n : Slider "circles" 0 20 5) : DiagramWithInfo :=
   ⟨diagram, regions⟩
 
 #diagram concentricCircles
+
+/-- Three superimposed shapes; the middle one links to lean-lang.org. -/
+def linkDemo : Diagram SVG :=
+  let back := Diagram.rect 120 80
+    (fill := .solid { color := { r := 200, g := 220, b := 255 } })
+    (stroke := { color := Color.black, width := (1 : Float) })
+  let middle := Diagram.foreign (.link "https://lean-lang.org")
+    (Diagram.roundedRect 80 50 8
+      (fill := .solid { color := { r := 255, g := 220, b := 180 } })
+      (stroke := { color := { r := 200, g := 100, b := 0 }, width := (2 : Float) }))
+  let front := Diagram.circle 15
+    (fill := .solid { color := { r := 180, g := 255, b := 180 } })
+    (stroke := { color := Color.black, width := (1 : Float) })
+  Diagram.compose (Diagram.compose back middle) front
+
+#diagram linkDemo
 
 def visualTests : List (String × IO Unit) := [
   ("Visual/roundedRects", testVisual_roundedRects),

@@ -35,7 +35,7 @@ def assertContains (haystack needle label : String) : IO Unit := do
     throw <| IO.userError s!"{label}: expected to find \"{needle}\" in output"
 
 /-- Renders a diagram to SVG, writes it to a file, and runs basic assertions. -/
-def testVisualWrite (filename : String) (diagram : Illuminate.Diagram Empty)
+def testVisualWrite (filename : String) (diagram : Illuminate.Diagram SVG)
     (padding : Float := 15) (checks : List (String × String) := []) : IO Unit := do
   let svg := diagram.renderDiagram (padding := padding)
   IO.FS.writeFile filename svg

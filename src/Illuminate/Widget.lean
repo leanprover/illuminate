@@ -8,6 +8,7 @@ import Lean
 import Std.Data.HashMap
 import Illuminate.Diagram
 import Illuminate.Render
+import Illuminate.Backend.SVG
 
 
 namespace Illuminate
@@ -19,11 +20,11 @@ namespace Illuminate
 /-- A diagram bundled with human-readable labels for tagged regions. -/
 structure DiagramWithInfo where
   /-- The diagram to render. -/
-  diagram : Diagram Empty
+  diagram : Diagram SVG
   /-- Maps tag IDs to human-readable region labels shown on hover. -/
   regions : Std.HashMap Nat String := {}
 
-instance : Coe (Diagram Empty) DiagramWithInfo where
+instance : Coe (Diagram SVG) DiagramWithInfo where
   coe d := { diagram := d }
 
 -- ═══════════════════════════════════════════════════════════════
@@ -143,6 +144,7 @@ export default function(props) {
     return function() { if (timer.current) clearTimeout(timer.current); };
   }, [values]);
 
+
   // Mouse move handler for hit testing
   var onMouseMove = React.useCallback(function(ev) {
     var container = svgRef.current;
@@ -219,12 +221,12 @@ export default function(props) {
 -- Helpers
 -- ═══════════════════════════════════════════════════════════════
 
-/-- Renders a `Diagram Empty` to SVG with default settings. -/
-def diagramToSvg (d : Diagram Empty) : String :=
+/-- Renders a `Diagram SVG` to SVG with default settings. -/
+def diagramToSvg (d : Diagram SVG) : String :=
   d.renderDiagram (padding := 5)
 
-/-- Hit-tests a `Diagram Empty` at the given point. -/
-def diagramHitTest (d : Diagram Empty) (x y : Float) : Click :=
+/-- Hit-tests a `Diagram SVG` at the given point. -/
+def diagramHitTest (d : Diagram SVG) (x y : Float) : Click :=
   d.hitTest (Point.mk x y)
 
 /-- Renders a `DiagramWithInfo` to SVG with default settings. -/
@@ -236,7 +238,7 @@ def dwiHitTest (dwi : DiagramWithInfo) (x y : Float) : Click :=
   dwi.diagram.hitTest (Point.mk x y)
 
 /-- Validates a diagram and returns a list of warning strings. -/
-def validateDiagram (d : Diagram Empty) : List String :=
+def validateDiagram (d : Diagram SVG) : List String :=
   let treeWarnings := collectWarnings d
   let layoutWarnings := match validate d with
     | .ok () => []
@@ -327,7 +329,7 @@ deriving Lean.FromJson, Lean.ToJson
 
 /--
 Applies stored gadget parameter values to a diagram expression, producing the
-fully-applied `Diagram Empty` expression.
+fully-applied `Diagram SVG` expression.
 -/
 private def applyGadgetValues (sd : StoredDiagram) (values : Array Lean.Json)
     : Except String Lean.Expr := do
@@ -556,17 +558,17 @@ unsafe def elabDiagramCmd : CommandElab := fun stx => do
     -- Validate and unify the return type
     let dwiTy := Lean.mkConst ``DiagramWithInfo
     Meta.forallTelescope ty fun _args ret => do
-      let diaTy ← Meta.mkAppM ``Diagram #[.const ``Empty []]
-      -- Try Diagram Empty first (this unifies β = Empty)
+      let diaTy ← Meta.mkAppM ``Diagram #[.const ``SVG []]
+      -- Try Diagram SVG first (this unifies β = SVG)
       unless ← Meta.isDefEq ret diaTy do
         -- Otherwise accept DiagramWithInfo
         unless ← Meta.isDefEq ret dwiTy do
-          throwErrorAt t "Expected `DiagramWithInfo` or `Diagram Empty` but got `{ret}`"
+          throwErrorAt t "Expected `DiagramWithInfo` or `Diagram SVG` but got `{ret}`"
     Term.synthesizeSyntheticMVarsNoPostponing
     let e ← instantiateMVars e
     let ty ← instantiateMVars ty
     let gadgets ← extractGadgets ty
-    -- Check if the return type is DiagramWithInfo (vs Diagram Empty)
+    -- Check if the return type is DiagramWithInfo (vs Diagram SVG)
     let retTy ← Meta.forallTelescope ty fun _args ret => do whnf ret
     let returnsDwi := retTy.isAppOf ``DiagramWithInfo
     let env ← getEnv
@@ -575,14 +577,14 @@ unsafe def elabDiagramCmd : CommandElab := fun stx => do
     -- Apply initial gadget values to get a concrete value
     let initExpr ← if gadgets.isEmpty then pure e
                     else applyInitialGadgetValues e gadgets
-    -- Coerce to DiagramWithInfo (inserts Coe if the term is Diagram Empty)
+    -- Coerce to DiagramWithInfo (inserts Coe if the term is Diagram SVG)
     let initDwi ← Term.ensureHasType dwiTy initExpr
     let initDwi ← instantiateMVars initDwi
     let dwi ← evalExpr DiagramWithInfo dwiTy initDwi (safety := .unsafe)
     let regions := dwi.regions
-    -- Project .diagram to get Diagram Empty for rendering/hit-testing
+    -- Project .diagram to get Diagram SVG for rendering/hit-testing
     let diagExpr := mkApp (mkConst ``DiagramWithInfo.diagram) initDwi
-    -- For RPC, store a Diagram-Empty-producing expression:
+    -- For RPC, store a Diagram-SVG-producing expression:
     -- for static diagrams, store the projected diagram directly;
     -- for parameterized, store the original (RPC applies values then renders)
     let storedExpr := if gadgets.isEmpty then diagExpr else e
