@@ -26,7 +26,7 @@ surrounding the label is used.
 def paper (label : Option (Diagram β) := none)
     (width : Option Float := none) (height : Option Float := none)
     (cornerFold : Float := 0.25)
-    (fill : Fill := {}) (stroke : Stroke := {})
+    (fill : Fill := default) (stroke : Stroke := {})
     (padding : Float := 6)
     (name : Option Lean.Name := none) : Diagram β :=
   let (cf, warn) :=

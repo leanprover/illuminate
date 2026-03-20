@@ -182,9 +182,100 @@ private def roundedRectHits (hw hh : Float) (cr : Float) (p : Point) (v : Vec2)
   return result
 
 /--
+Finds real roots of the cubic equation `a*x³ + b*x² + c*x + d = 0` that lie in `[0, 1]`.
+Handles degenerate cases (quadratic, linear) when leading coefficients are near zero.
+Uses the trigonometric method for three real roots and Cardano's formula otherwise.
+-/
+private def cubicRootsInUnitInterval (a b c d : Float) : Array Float := Id.run do
+  let mut roots : Array Float := #[]
+  -- Tolerance for root validity (slightly outside [0,1] is accepted)
+  let eps := 1e-8
+  let clamp (x : Float) : Float := min 1 (max 0 x)
+  if nearZero a then
+    -- Degenerate: quadratic or linear
+    if nearZero b then
+      -- Linear: c*x + d = 0
+      if !nearZero c then
+        let r := -d / c
+        if r >= -eps && r <= 1 + eps then roots := roots.push (clamp r)
+    else
+      -- Quadratic: b*x² + c*x + d = 0
+      let disc := c * c - 4 * b * d
+      if disc >= 0 then
+        let sq := disc.sqrt
+        for r in [(-c - sq) / (2 * b), (-c + sq) / (2 * b)] do
+          if r >= -eps && r <= 1 + eps then roots := roots.push (clamp r)
+    return roots
+  -- Normalize to monic: x³ + px² + qx + r = 0
+  let p := b / a
+  let q := c / a
+  let r := d / a
+  -- Depress: substitute x = t - p/3 → t³ + pt' + q' = 0
+  let p3 := p / 3
+  let pp := q - p * p3
+  let qq := r - p3 * q + 2 * p3 * p3 * p3
+  let disc := qq * qq / 4 + pp * pp * pp / 27
+  if disc > 1e-12 then
+    -- One real root (Cardano)
+    let sqDisc := disc.sqrt
+    let u := Float.cbrt (-qq / 2 + sqDisc)
+    let vv := Float.cbrt (-qq / 2 - sqDisc)
+    let t := u + vv - p3
+    if t >= -eps && t <= 1 + eps then roots := roots.push (clamp t)
+  else
+    -- Three real roots (trigonometric method)
+    let m := Float.sqrt (-(4 * pp / 3))
+    let theta := Float.acos (min 1 (max (-1) (-4 * qq / (m * m * m)))) / 3
+    let twoPiOver3 := 2 * Float.acos (-1) / 3
+    for k in [0, 1, 2] do
+      let t := m * Float.cos (theta - k.toFloat * twoPiOver3) - p3
+      if t >= -eps && t <= 1 + eps then roots := roots.push (clamp t)
+  return roots
+
+/--
+Computes ray intersections with a cubic Bézier curve from `p0` through
+control points `c1`, `c2` to endpoint `ep`. Solves the intersection
+algebraically by reducing to a cubic polynomial in the Bézier parameter.
+-/
+private def rayCubicBezier (p : Point) (v : Vec2) (p0 c1 c2 ep : Vec2)
+    : Array RawHit := Id.run do
+  -- Bézier in monomial form: B(s) = As³ + Bs² + Cs + D
+  let dx := p0.x
+  let cx := 3 * (c1.x - p0.x)
+  let bx := 3 * (p0.x - 2 * c1.x + c2.x)
+  let ax := -p0.x + 3 * c1.x - 3 * c2.x + ep.x
+  let dy := p0.y
+  let cy := 3 * (c1.y - p0.y)
+  let by_ := 3 * (p0.y - 2 * c1.y + c2.y)
+  let ay := -p0.y + 3 * c1.y - 3 * c2.y + ep.y
+  -- Cross-product equation: v.x*(By(s) - p.y) - v.y*(Bx(s) - p.x) = 0
+  -- Cubic: A's³ + B's² + C's + D' = 0
+  let ca := v.x * ay - v.y * ax
+  let cb := v.x * by_ - v.y * bx
+  let cc := v.x * cy - v.y * cx
+  let cd := v.x * (dy - p.y) - v.y * (dx - p.x)
+  let sRoots := cubicRootsInUnitInterval ca cb cc cd
+  let mut result : Array RawHit := #[]
+  for s in sRoots do
+    -- Evaluate Bézier at s
+    let u := 1 - s
+    let bxs := u*u*u * p0.x + 3*u*u*s * c1.x + 3*u*s*s * c2.x + s*s*s * ep.x
+    let bys := u*u*u * p0.y + 3*u*u*s * c1.y + 3*u*s*s * c2.y + s*s*s * ep.y
+    -- Compute ray parameter t
+    let t := if v.x.abs > v.y.abs then (bxs - p.x) / v.x
+             else (bys - p.y) / v.y
+    if t >= 0 then
+      -- Compute tangent for normal
+      let tx := 3*ax*s*s + 2*bx*s + cx
+      let ty := 3*ay*s*s + 2*by_*s + cy
+      let normal := Vec2.normalize ⟨-ty, tx⟩
+      result := sortedInsertRaw result { t, normal }
+  return result
+
+/--
 Computes ray intersections with a path defined by `PathCmd` commands.
-Line segments are tested exactly. Cubic Béziers are subdivided into
-short line segments for approximate intersection.
+Line segments are tested exactly. Cubic Béziers are solved algebraically
+via cubic polynomial root-finding.
 -/
 private def pathDataHits (commands : Array PathCmd) (p : Point) (v : Vec2)
     : Array RawHit := Id.run do
@@ -201,26 +292,21 @@ private def pathDataHits (commands : Array PathCmd) (p : Point) (v : Vec2)
         result := sortedInsertRaw result hit
       current := pt
     | .curveTo c1 c2 ep =>
-      let nSegs : Nat := 16
-      let p0 := current
-      for _h : i in [0:nSegs] do
-        let sPrev := i.toFloat / nSegs.toFloat
-        let s := (i + 1).toFloat / nSegs.toFloat
-        let evalBez (t : Float) : Vec2 :=
-          let u := 1 - t
-          Vec2.mk
-            (u*u*u * p0.x + 3*u*u*t * c1.x + 3*u*t*t * c2.x + t*t*t * ep.x)
-            (u*u*u * p0.y + 3*u*u*t * c1.y + 3*u*t*t * c2.y + t*t*t * ep.y)
-        let segA := evalBez sPrev
-        let segB := evalBez s
-        if let some hit := raySegment p v segA segB then
-          result := sortedInsertRaw result hit
+      for hit in rayCubicBezier p v current c1 c2 ep do
+        result := sortedInsertRaw result hit
       current := ep
     | .closePath =>
       if let some hit := raySegment p v current subpathStart then
         result := sortedInsertRaw result hit
       current := subpathStart
-  return result
+  -- Deduplicate hits at nearly-identical t values (e.g., at segment join points)
+  let mut deduped : Array RawHit := #[]
+  let mut lastT : Float := -1e20
+  for h : i in [0:result.size] do
+    if (result[i].t - lastT).abs > 1e-6 then
+      deduped := deduped.push result[i]
+      lastT := result[i].t
+  return deduped
 
 -- ═══════════════════════════════════════════════════════════════
 -- Trace

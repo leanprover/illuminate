@@ -19,7 +19,7 @@ def testDrawCmd_empty : IO Unit := do
 def testDrawCmd_rect : IO Unit := do
   let d : Diagram Empty := Diagram.rect 4 4
   let cmds := d.compile
-  -- rect with default fill (black, a=1) and default stroke (black, width=1, a=1) => fillPath + strokePath
+  -- default fill (lightGray, a=1) => fillPath + strokePath
   assertTrue (cmds.length == 2) s!"rect cmds: {cmds.length}"
 
 def testDrawCmd_transform : IO Unit := do
@@ -34,11 +34,11 @@ def testDrawCmd_transform : IO Unit := do
 def testDrawCmd_compose : IO Unit := do
   let d : Diagram Empty := .compose (Diagram.rect 4 4) (Diagram.rect 2 2)
   let cmds := d.compile
-  -- 2 rects × 2 cmds each = 4
+  -- 2 rects × 2 cmds each (fill + stroke) = 4
   assertTrue (cmds.length == 4) s!"compose cmds: {cmds.length}"
 
 def testDrawCmd_annotate : IO Unit := do
-  let d : Diagram Empty := .annotate 42 (Diagram.rect 4 4)
+  let d : Diagram Empty := .tag 42 (Diagram.rect 4 4)
   let cmds := d.compile
   -- pushAnnotation, fillPath, strokePath, popAnnotation
   assertTrue (cmds.length == 4) s!"annotate cmds: {cmds.length}"
@@ -57,7 +57,7 @@ def testSvg_pathData : IO Unit := do
   assertTrue (d.any (· == 'L')) "path has L"
 
 def testSvg_fillPath : IO Unit := do
-  let cmd := DrawCmd.fillPath (PathData.rect 4 4) { color := Color.red }
+  let cmd := DrawCmd.fillPath (PathData.rect 4 4) (.solid { color := Color.red })
   let svg := Svg.renderCmd cmd
   assertContains svg "fill=\"rgb(255,0,0)\"" "fill has red"
 
@@ -102,7 +102,7 @@ def testSvg_transformNested : IO Unit := do
   assertContains svg "</g>" "svg has closing group"
 
 def testSvg_annotationId : IO Unit := do
-  let d : Diagram Empty := .annotate 7 (Diagram.rect 2 2)
+  let d : Diagram Empty := .tag 7 (Diagram.rect 2 2)
   let cmds := d.compile
   let svg := Svg.render cmds { minX := -5, minY := -5, width := 10, height := 10 }
   assertContains svg "data-anno-id=\"7\"" "svg has annotation"
@@ -122,14 +122,14 @@ def smileyYellow : Color := { r := 255, g := 220, b := 50 }
 
 def smileyFace : Diagram Empty :=
   -- Face: yellow circle with black outline
-  let face := Diagram.circle 50 (fill := { color := smileyYellow })
+  let face := Diagram.circle 50 (fill := .solid { color := smileyYellow })
     (stroke := { color := Color.black, width := (3 : Float) })
   -- Left eye: small black circle at (-18, 15)
-  let leftEye := Diagram.circle 5 (fill := { color := Color.black })
+  let leftEye := Diagram.circle 5 (fill := .solid { color := Color.black })
     (stroke := { color := Color.black, width := (0 : Float) })
   let leftEye := Diagram.transform (Matrix.translate (-18) 15) leftEye
   -- Right eye: small black circle at (18, 15)
-  let rightEye := Diagram.circle 5 (fill := { color := Color.black })
+  let rightEye := Diagram.circle 5 (fill := .solid { color := Color.black })
     (stroke := { color := Color.black, width := (0 : Float) })
   let rightEye := Diagram.transform (Matrix.translate 18 15) rightEye
   -- Smile: a curved path (arc from left to right)

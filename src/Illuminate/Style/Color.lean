@@ -38,8 +38,30 @@ def transparent : Color := { r := 0, g := 0, b := 0, a := 0.0 }
 
 end Color
 
-/-- Fill style for closed paths. -/
-structure Fill where
+/-- Specifies the color of a solid fill. -/
+structure FillSpec where
   /-- Fill color. -/
-  color : Color := Color.black
-deriving Repr, BEq, Inhabited
+  color : Color := Color.lightGray
+deriving Repr, BEq
+
+instance : Inhabited FillSpec := ⟨{ color := Color.lightGray }⟩
+
+/--
+Fill style for closed paths.
+
+- `none` — unfilled; the interior is not rendered and not hittable.
+- `solid` — filled with a color; the interior is rendered and hittable,
+  even if the color is fully transparent.
+-/
+inductive Fill where
+  /-- No fill — the interior is not rendered and not hittable. -/
+  | none
+  /-- Solid color fill — the interior is rendered and hittable, even if the color is fully transparent. -/
+  | solid : FillSpec → Fill
+deriving Repr, BEq
+
+instance : Inhabited Fill := ⟨.solid default⟩
+
+instance : Coe Color FillSpec := ⟨FillSpec.mk⟩
+
+instance : Coe FillSpec Fill := ⟨.solid⟩

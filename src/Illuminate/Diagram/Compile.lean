@@ -24,7 +24,10 @@ where
     | .prim p =>
       match p with
       | .core (.path pd fill stroke) =>
-        let acc := if fill.color.a > 0 then acc ++ [.fillPath pd fill] else acc
+        let acc :=
+          match fill with
+          | .solid fs => if fs.color.a > 0 then acc ++ [.fillPath pd fill] else acc
+          | .none => acc
         if stroke.width > 0 && stroke.color.a > 0 then acc ++ [.strokePath pd stroke]
         else acc
       | .core (.text s style) =>
@@ -33,9 +36,9 @@ where
       | .foreign _ (some cp) =>
         go (.prim (.core cp)) acc
       | .foreign _ none => acc
-    | .annotate tag d =>
+    | .tag n d =>
       let inner := go d []
-      acc ++ [.pushAnnotation tag] ++ inner ++ [.popAnnotation]
+      acc ++ [.pushAnnotation n] ++ inner ++ [.popAnnotation]
     | .named _ d => go d acc
     | .transform m d =>
       let inner := go d []

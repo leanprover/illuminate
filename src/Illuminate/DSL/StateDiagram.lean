@@ -55,7 +55,7 @@ private def defaultArrowhead (_ : StateDiagramConfig) : Arrowhead := {}
 def state (cfg : StateDiagramConfig) (i : Nat) (label : String) : Diagram β :=
   Diagram.transform (Matrix.translate (cfg.posOf i).x (cfg.posOf i).y)
     (Diagram.compose
-      (Diagram.circle cfg.radius (fill := { color := cfg.stateColor }) (stroke := cfg.stateStroke))
+      (Diagram.circle cfg.radius (fill := .solid cfg.stateColor) (stroke := cfg.stateStroke))
       (.text label cfg.labelStyle))
 
 /-- Draws an accepting state (double circle) at position `i` with the given label. -/
@@ -64,9 +64,9 @@ def accept (cfg : StateDiagramConfig) (i : Nat) (label : String) : Diagram β :=
   Diagram.transform (Matrix.translate (cfg.posOf i).x (cfg.posOf i).y)
     (Diagram.compose
       (Diagram.compose
-        (Diagram.circle cfg.radius (fill := { color := cfg.acceptColor }) (stroke := cfg.stateStroke))
+        (Diagram.circle cfg.radius (fill := .solid cfg.acceptColor) (stroke := cfg.stateStroke))
         (Diagram.circle (cfg.radius - 4)
-          (fill := { color := transparentAccept })
+          (fill := .solid transparentAccept)
           (stroke := cfg.stateStroke)))
       (.text label cfg.labelStyle))
 

@@ -10,3 +10,4 @@ import Illuminate.Diagram.Arrow
 import Illuminate.Diagram.Paper
 import Illuminate.Diagram.Compile
 import Illuminate.Diagram.Validate
+import Illuminate.Diagram.HitTest

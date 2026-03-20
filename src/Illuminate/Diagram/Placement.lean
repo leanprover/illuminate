@@ -255,7 +255,7 @@ def getEnvelope (d : Diagram β) : Envelope :=
   match d with
   | .empty => Envelope.empty
   | .prim p => p.toEnvelope
-  | .annotate _ d => d.getEnvelope
+  | .tag _ d => d.getEnvelope
   | .named _ d => d.getEnvelope
   | .transform m d => Envelope.transform m d.getEnvelope
   | .compose a b => Envelope.union a.getEnvelope b.getEnvelope
@@ -273,7 +273,7 @@ def getTrace (d : Diagram β) : Trace :=
   match d with
   | .empty => Trace.empty
   | .prim p => p.toTrace
-  | .annotate _ d => d.getTrace
+  | .tag _ d => d.getTrace
   | .named _ d => d.getTrace
   | .transform m d => Trace.transform m d.getTrace
   | .compose a b => Trace.union a.getTrace b.getTrace
@@ -291,7 +291,7 @@ def getStrokeTrace (d : Diagram β) : StrokeTrace :=
   match d with
   | .empty => StrokeTrace.empty
   | .prim p => p.toStrokeTrace
-  | .annotate _ d => d.getStrokeTrace
+  | .tag _ d => d.getStrokeTrace
   | .named _ d => d.getStrokeTrace
   | .transform m d => StrokeTrace.transform m d.getStrokeTrace
   | .compose a b => StrokeTrace.union a.getStrokeTrace b.getStrokeTrace
@@ -310,7 +310,7 @@ def collectNames (d : Diagram β) (xform : Matrix) (pfx : Lean.Name)
   match d with
   | .empty => acc
   | .prim _ => acc
-  | .annotate _ d => collectNames d xform pfx acc
+  | .tag _ d => collectNames d xform pfx acc
   | .named name d =>
     let pos := Matrix.apply xform ⟨0, 0⟩
     let qualName := match pfx with
@@ -341,7 +341,7 @@ where
   go (target : Lean.Name) (pfx : Lean.Name) (xform : Matrix) : Diagram β → Option (Diagram β)
     | .empty => none
     | .prim _ => none
-    | .annotate _ d => go target pfx xform d
+    | .tag _ d => go target pfx xform d
     | .named name d =>
       let qualName := match pfx with
         | .anonymous => name
@@ -723,7 +723,7 @@ def frame (d : Diagram β) (stroke : Stroke := {})
 /--
 Draws a filled and stroked rectangle around the envelope of a diagram. The backdrop is drawn behind the content.
 -/
-def filledFrame (d : Diagram β) (fill : Fill := {}) (stroke : Stroke := {})
+def filledFrame (d : Diagram β) (fill : Fill := default) (stroke : Stroke := {})
     (padding : Float := 0) (cornerRadius : Float := 0) : Diagram β :=
   if let .nonempty env := d.getEnvelope then
     let e := env Vec2.east + padding
@@ -798,7 +798,7 @@ def showEnvelope (d : Diagram β) (samples : Nat := 64)
         pd.close
     let fillColor : Color := { color with a := alpha }
     let overlay : Diagram β := fromPath path
-      (fill := { color := fillColor })
+      (fill := .solid fillColor)
       (stroke := { width := (0 : Float) })
     Diagram.compose d overlay
   else
@@ -844,12 +844,12 @@ private def traceOverlay {β : Type} (trace : Trace) (p : Point) (v : Vec2)
     |>.lineTo (tip + headLen • ld)
     |>.lineTo (tip + headLen • rd)
     |>.close
-  let head : Diagram β := Diagram.fromPath headPath (fill := { color := rayColor }) (stroke := { width := (0 : Float) })
+  let head : Diagram β := Diagram.fromPath headPath (fill := .solid rayColor) (stroke := { width := (0 : Float) })
   let dots : Diagram β := hits.foldl (init := Diagram.empty) fun acc t =>
     let cx := p.x + t * vn.x
     let cy := p.y + t * vn.y
     let dot : Diagram β := Diagram.transform (Matrix.translate cx cy)
-      (Diagram.circle dotRadius (fill := { color := rayColor }))
+      (Diagram.circle dotRadius (fill := .solid rayColor))
     Diagram.compose acc dot
   Diagram.compose (Diagram.compose ray head) dots
 
