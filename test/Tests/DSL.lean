@@ -29,7 +29,7 @@ def testCD_nodeCreation : IO Unit := do
     pure ()
   -- Should produce a non-empty diagram
   let env := d.getEnvelope
-  assertTrue (env Vec2.east > 0) "node has positive extent"
+  assertTrue (env[Vec2.east] > 0) "node has positive extent"
 
 def testCD_twoNodes : IO Unit := do
   let d : Diagram Empty := commDiag do
@@ -37,7 +37,7 @@ def testCD_twoNodes : IO Unit := do
     let b ← CommDiagM.node "B"
     CommDiagM.grid #[#[some a, some b]]
   let env := d.getEnvelope
-  assertTrue (env Vec2.east > 0) "two nodes have extent"
+  assertTrue (env[Vec2.east] > 0) "two nodes have extent"
 
 def testCD_arrow : IO Unit := do
   let d : Diagram Empty := commDiag do

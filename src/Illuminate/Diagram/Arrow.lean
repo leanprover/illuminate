@@ -275,24 +275,35 @@ private def buildArrow {β : Type} (srcPos tgtPos : Vec2)
     let perp := if bulgeCross.abs < 1e-6 then rawPerp
                 else if (rawPerp.x * bulge.x + rawPerp.y * bulge.y) > 0 then rawPerp
                 else -rawPerp
-    let labelEnv := lbl.label.getEnvelope
-    let isUpright := lbl.upright || labelUpright
-    let pos :=
-      if isUpright then
-        let extent := labelEnv (-perp)
-        mid + (extent + stroke.width + 6) • perp + lbl.shift
-      else
-        let labelH := (labelEnv Vec2.north + labelEnv Vec2.south) / 2
-        mid + (labelH + stroke.width + 4) • perp + lbl.shift
-    let labelXform :=
-      if isUpright then
-        Matrix.translate pos.x pos.y
-      else
-        let halfPi := pi / 2
-        let angle := let a := Float.atan2 n.y n.x
-          if a > halfPi || a < -halfPi then a + pi else a
-        Matrix.mul (Matrix.translate pos.x pos.y) (Matrix.rotate angle)
-    Diagram.atop arrow (Diagram.transform labelXform lbl.label)
+    if let .nonempty labelEnv := lbl.label.getEnvelope then
+      let isUpright := lbl.upright || labelUpright
+      let pos :=
+        if isUpright then
+          let extent := labelEnv (-perp)
+          mid + (extent + stroke.width + 6) • perp + lbl.shift
+        else
+          let labelH := (labelEnv Vec2.north + labelEnv Vec2.south) / 2
+          mid + (labelH + stroke.width + 4) • perp + lbl.shift
+      let labelXform :=
+        if isUpright then
+          Matrix.translate pos.x pos.y
+        else
+          let halfPi := pi / 2
+          let angle := let a := Float.atan2 n.y n.x
+            if a > halfPi || a < -halfPi then a + pi else a
+          Matrix.mul (Matrix.translate pos.x pos.y) (Matrix.rotate angle)
+      Diagram.atop arrow (Diagram.transform labelXform lbl.label)
+    else
+      let isUpright := lbl.upright || labelUpright
+      let labelXform :=
+        if isUpright then
+          Matrix.identity
+        else
+          let halfPi := pi / 2
+          let angle := let a := Float.atan2 n.y n.x
+            if a > halfPi || a < -halfPi then a + pi else a
+          Matrix.rotate angle
+      Diagram.atop arrow (Diagram.transform labelXform lbl.label) |>.warning "Label has no envelope"
 
 /--
 Draws a line or arrow between two points.

@@ -154,33 +154,33 @@ def testBounds_negativeLine : IO Unit := do
 def testGetEnv_rect : IO Unit := do
   let d : Diagram Empty := Diagram.rect 6 4
   let env := d.getEnvelope
-  assertApproxEq (env Vec2.east) 3 "rect env east"
-  assertApproxEq (env Vec2.north) 2 "rect env north"
+  assertApproxEq env[Vec2.east] 3 "rect env east"
+  assertApproxEq env[Vec2.north] 2 "rect env north"
 
 def testGetEnv_circle : IO Unit := do
   let d : Diagram Empty := Diagram.circle 5
   let env := d.getEnvelope
-  assertApproxEq (env Vec2.east) 5 "circle env east" (tol := 0.01)
-  assertApproxEq (env Vec2.north) 5 "circle env north" (tol := 0.01)
+  assertApproxEq env[Vec2.east] 5 "circle env east" (tol := 0.01)
+  assertApproxEq env[Vec2.north] 5 "circle env north" (tol := 0.01)
 
 def testGetEnv_empty : IO Unit := do
   let d : Diagram Empty := .empty
   let env := d.getEnvelope
-  assertApproxEq (env Vec2.east) 0 "empty env east"
+  assertApproxEq env[Vec2.east] 0 "empty env east"
 
 def testGetEnv_transformed : IO Unit := do
   let d : Diagram Empty := .transform (Matrix.translate 10 0) (Diagram.rect 2 2)
   let env := d.getEnvelope
-  assertApproxEq (env Vec2.east) 11 "translated rect env east"
-  assertApproxEq (env Vec2.west) (-9) "translated rect env west"
+  assertApproxEq env[Vec2.east] 11 "translated rect env east"
+  assertApproxEq env[Vec2.west] (-9) "translated rect env west"
 
 def testGetEnv_compose : IO Unit := do
   let a : Diagram Empty := Diagram.rect 4 2
   let b : Diagram Empty := Diagram.rect 2 6
   let d := Diagram.compose a b
   let env := d.getEnvelope
-  assertApproxEq (env Vec2.east) 2 "compose env east = max(2,1)"
-  assertApproxEq (env Vec2.north) 3 "compose env north = max(1,3)"
+  assertApproxEq env[Vec2.east] 2 "compose env east = max(2,1)"
+  assertApproxEq env[Vec2.north] 3 "compose env north = max(1,3)"
 
 -- ══════════════════════════════════════════════════════════════════
 -- Layer 3: hjoin / vjoin / beside
@@ -192,15 +192,15 @@ def testHcomp_envelopeWidth : IO Unit := do
   let d := Diagram.hjoin a b
   let env := d.getEnvelope
   -- total width = 4+6 = 10, centered → east=5, west=5
-  assertApproxEq (env Vec2.east) 5 "hjoin east" (tol := 0.01)
-  assertApproxEq (env Vec2.west) 5 "hjoin west" (tol := 0.01)
+  assertApproxEq env[Vec2.east] 5 "hjoin east" (tol := 0.01)
+  assertApproxEq env[Vec2.west] 5 "hjoin west" (tol := 0.01)
 
 def testHcomp_height : IO Unit := do
   let a : Diagram Empty := Diagram.rect 2 4  -- half-height 2
   let b : Diagram Empty := Diagram.rect 2 8  -- half-height 4
   let d := Diagram.hjoin a b
   let env := d.getEnvelope
-  assertApproxEq (env Vec2.north) 4 "hjoin north = max height" (tol := 0.01)
+  assertApproxEq env[Vec2.north] 4 "hjoin north = max height" (tol := 0.01)
 
 def testVcomp_envelopeHeight : IO Unit := do
   let a : Diagram Empty := Diagram.rect 2 4  -- half-height 2
@@ -208,8 +208,8 @@ def testVcomp_envelopeHeight : IO Unit := do
   let d := Diagram.vjoin a b
   let env := d.getEnvelope
   -- total height = 4+6 = 10, centered → north=5, south=5
-  assertApproxEq (env Vec2.north) 5 "vjoin north" (tol := 0.01)
-  assertApproxEq (env Vec2.south) 5 "vjoin south" (tol := 0.01)
+  assertApproxEq env[Vec2.north] 5 "vjoin north" (tol := 0.01)
+  assertApproxEq env[Vec2.south] 5 "vjoin south" (tol := 0.01)
 
 def testBeside_withGap : IO Unit := do
   let a : Diagram Empty := Diagram.rect 4 2
@@ -217,13 +217,13 @@ def testBeside_withGap : IO Unit := do
   let d := Diagram.beside Vec2.east 5 a b
   let env := d.getEnvelope
   -- a east=2, b west=2, gap=5 → total width=13, centered → east=6.5
-  assertApproxEq (env Vec2.east) 6.5 "beside gap east" (tol := 0.01)
+  assertApproxEq env[Vec2.east] 6.5 "beside gap east" (tol := 0.01)
 
 def testHcomp_empty : IO Unit := do
   let a : Diagram Empty := Diagram.rect 4 2
   let d := Diagram.hjoin a (Diagram.emptyDiagram : Diagram Empty)
   let env := d.getEnvelope
-  assertApproxEq (env Vec2.east) 2 "hjoin with empty east" (tol := 0.01)
+  assertApproxEq env[Vec2.east] 2 "hjoin with empty east" (tol := 0.01)
 
 -- ══════════════════════════════════════════════════════════════════
 -- Layer 3: hcat / vcat
@@ -234,31 +234,31 @@ def testHcat_three : IO Unit := do
   let d := Diagram.hcat boxes
   let env := d.getEnvelope
   -- Three 2-wide boxes: total width = 6, centered → east = west = 3.
-  assertApproxEq (env Vec2.east) 3 "hcat three east" (tol := 0.01)
+  assertApproxEq env[Vec2.east] 3 "hcat three east" (tol := 0.01)
 
 def testVcat_two : IO Unit := do
   let boxes : List (Diagram Empty) := [Diagram.rect 2 4, Diagram.rect 2 4]
   let d := Diagram.vcat boxes
   let env := d.getEnvelope
   -- Two 4-tall boxes: total height = 8, centered → south = north = 4.
-  assertApproxEq (env Vec2.south) 4 "vcat two south" (tol := 0.01)
+  assertApproxEq env[Vec2.south] 4 "vcat two south" (tol := 0.01)
 
 def testHcat_empty : IO Unit := do
   let d : Diagram Empty := Diagram.hcat []
   let env := d.getEnvelope
-  assertApproxEq (env Vec2.east) 0 "hcat empty"
+  assertApproxEq env[Vec2.east] 0 "hcat empty"
 
 def testVcat_single : IO Unit := do
   let d : Diagram Empty := Diagram.vcat [Diagram.rect 6 4]
   let env := d.getEnvelope
   -- Single element stays at origin. rect 6 4 has half-height 2.
-  assertApproxEq (env Vec2.south) 2 "vcat single south" (tol := 0.01)
+  assertApproxEq env[Vec2.south] 2 "vcat single south" (tol := 0.01)
 
 def testHcat_singleBox : IO Unit := do
   let d : Diagram Empty := Diagram.hcat [Diagram.rect 4 2]
   let env := d.getEnvelope
   -- Single element stays at origin. rect 4 2 has half-width 2.
-  assertApproxEq (env Vec2.east) 2 "hcat single east" (tol := 0.01)
+  assertApproxEq env[Vec2.east] 2 "hcat single east" (tol := 0.01)
 
 -- ══════════════════════════════════════════════════════════════════
 -- Layer 3: grid
@@ -269,7 +269,7 @@ def testGrid_2x2 : IO Unit := do
   let d := Diagram.grid #[#[some cell, some cell], #[some cell, some cell]]
   let env := d.getEnvelope
   -- 2x2 grid of 2×2 cells: total width = 4, centered → east = west = 2.
-  assertApproxEq (env Vec2.east) 2 "grid 2x2 east" (tol := 0.1)
+  assertApproxEq env[Vec2.east] 2 "grid 2x2 east" (tol := 0.1)
 
 def testGrid_empty : IO Unit := do
   let d : Diagram Empty := Diagram.grid #[]
@@ -282,21 +282,21 @@ def testGrid_withNone : IO Unit := do
   let d := Diagram.grid #[#[some cell, none], #[none, some cell]]
   let env := d.getEnvelope
   -- Should still produce a 2x2 grid with uniform cell sizes
-  assertTrue (env Vec2.east > 0) "grid with holes has positive extent"
+  assertTrue (env[Vec2.east] > 0) "grid with holes has positive extent"
 
 def testGrid_singleCell : IO Unit := do
   let cell : Diagram Empty := Diagram.rect 6 4
   let d := Diagram.grid #[#[some cell]]
   let env := d.getEnvelope
   -- 1x1 grid. Cell gets uniform envelope ofRect 3 2. Single element at origin.
-  assertApproxEq (env Vec2.east) 3 "grid single east" (tol := 0.1)
+  assertApproxEq env[Vec2.east] 3 "grid single east" (tol := 0.1)
 
 def testGrid_1x3 : IO Unit := do
   let cell : Diagram Empty := Diagram.rect 2 2
   let d := Diagram.grid #[#[some cell, some cell, some cell]]
   let env := d.getEnvelope
   -- 1×3 grid of 2×2 cells: total width = 6, centered → east = west = 3.
-  assertApproxEq (env Vec2.east) 3 "grid 1x3 east" (tol := 0.1)
+  assertApproxEq env[Vec2.east] 3 "grid 1x3 east" (tol := 0.1)
 
 -- ══════════════════════════════════════════════════════════════════
 -- Layer 3: anchor / named
@@ -305,8 +305,8 @@ def testGrid_1x3 : IO Unit := do
 def testAnchor_zeroEnvelope : IO Unit := do
   let d : Diagram Empty := Diagram.anchor `myPoint
   let env := d.getEnvelope
-  assertApproxEq (env Vec2.east) 0 "anchor zero east"
-  assertApproxEq (env Vec2.north) 0 "anchor zero north"
+  assertApproxEq env[Vec2.east] 0 "anchor zero east"
+  assertApproxEq env[Vec2.north] 0 "anchor zero north"
 
 def testAnchor_isNamed : IO Unit := do
   let d : Diagram Empty := Diagram.anchor `pt
@@ -318,13 +318,13 @@ def testAnchor_composedEnvelope : IO Unit := do
   let box : Diagram Empty := Diagram.rect 4 2
   let d := Diagram.atop box (Diagram.anchor `center)
   let env := d.getEnvelope
-  assertApproxEq (env Vec2.east) 2 "anchor in compose doesn't change envelope"
+  assertApproxEq env[Vec2.east] 2 "anchor in compose doesn't change envelope"
 
 def testNamed_preservesEnvelope : IO Unit := do
   let d : Diagram Empty := .named `box (Diagram.rect 6 4)
   let env := d.getEnvelope
-  assertApproxEq (env Vec2.east) 3 "named preserves east"
-  assertApproxEq (env Vec2.north) 2 "named preserves north"
+  assertApproxEq env[Vec2.east] 3 "named preserves east"
+  assertApproxEq env[Vec2.north] 2 "named preserves north"
 
 def testNamed_nestedLookup : IO Unit := do
   let inner : Diagram Empty := .named `inner (Diagram.rect 2 2)
@@ -340,14 +340,14 @@ def testNamed_nestedLookup : IO Unit := do
 def testFloating_zeroEnvelope : IO Unit := do
   let d : Diagram Empty := Diagram.floating (Diagram.rect 10 10)
   let env := d.getEnvelope
-  assertApproxEq (env Vec2.east) 0 "floating zero east"
-  assertApproxEq (env Vec2.north) 0 "floating zero north"
+  assertApproxEq env[Vec2.east] 0 "floating zero east"
+  assertApproxEq env[Vec2.north] 0 "floating zero north"
 
 def testStrut_envelope : IO Unit := do
   let d : Diagram Empty := Diagram.strut (Envelope.ofRect 5 3)
   let env := d.getEnvelope
-  assertApproxEq (env Vec2.east) 5 "strut east"
-  assertApproxEq (env Vec2.north) 3 "strut north"
+  assertApproxEq env[Vec2.east] 5 "strut east"
+  assertApproxEq env[Vec2.north] 3 "strut north"
 
 def testStrut_invisible : IO Unit := do
   let d : Diagram Empty := Diagram.strut (Envelope.ofRect 5 3)
@@ -358,7 +358,7 @@ def testStrut_invisible : IO Unit := do
 def testWithEnvelope_override : IO Unit := do
   let d : Diagram Empty := Diagram.withEnvelope (Envelope.ofRect 100 100) (Diagram.rect 2 2)
   let env := d.getEnvelope
-  assertApproxEq (env Vec2.east) 100 "withEnvelope override east"
+  assertApproxEq env[Vec2.east] 100 "withEnvelope override east"
 
 def testFloating_inCompose : IO Unit := do
   let box : Diagram Empty := Diagram.rect 4 2
@@ -367,7 +367,7 @@ def testFloating_inCompose : IO Unit := do
   let env := d.getEnvelope
   -- floating has zero envelope, so hjoin should place it at east edge of box
   -- dist = 2 + 0 = 2, floating at (2,0). Union: east = max(2, 2+0) = 2
-  assertApproxEq (env Vec2.east) 2 "floating doesn't extend hjoin" (tol := 0.01)
+  assertApproxEq env[Vec2.east] 2 "floating doesn't extend hjoin" (tol := 0.01)
 
 -- ══════════════════════════════════════════════════════════════════
 -- Layer 3: padding
@@ -376,33 +376,33 @@ def testFloating_inCompose : IO Unit := do
 def testPad_uniform : IO Unit := do
   let d : Diagram Empty := Diagram.pad 3 (Diagram.rect 4 2)
   let env := d.getEnvelope
-  assertApproxEq (env Vec2.east) 5 "pad east 2+3"
-  assertApproxEq (env Vec2.north) 4 "pad north 1+3"
+  assertApproxEq env[Vec2.east] 5 "pad east 2+3"
+  assertApproxEq env[Vec2.north] 4 "pad north 1+3"
 
 def testPadRight_only : IO Unit := do
   let d : Diagram Empty := Diagram.padRight 5 (Diagram.rect 4 2)
   let env := d.getEnvelope
-  assertApproxEq (env Vec2.east) 7 "padRight east 2+5"
-  assertApproxEq (env Vec2.west) 2 "padRight west unchanged"
+  assertApproxEq env[Vec2.east] 7 "padRight east 2+5"
+  assertApproxEq env[Vec2.west] 2 "padRight west unchanged"
 
 def testPadLRTB : IO Unit := do
   let d : Diagram Empty := Diagram.padLRTB 1 2 3 4 (Diagram.rect 4 2)
   let env := d.getEnvelope
-  assertApproxEq (env Vec2.west) 3 "padLRTB west 2+1"
-  assertApproxEq (env Vec2.east) 4 "padLRTB east 2+2"
-  assertApproxEq (env Vec2.north) 4 "padLRTB north 1+3"
-  assertApproxEq (env Vec2.south) 5 "padLRTB south 1+4"
+  assertApproxEq env[Vec2.west] 3 "padLRTB west 2+1"
+  assertApproxEq env[Vec2.east] 4 "padLRTB east 2+2"
+  assertApproxEq env[Vec2.north] 4 "padLRTB north 1+3"
+  assertApproxEq env[Vec2.south] 5 "padLRTB south 1+4"
 
 def testPadXY : IO Unit := do
   let d : Diagram Empty := Diagram.padXY 2 3 (Diagram.rect 4 2)
   let env := d.getEnvelope
-  assertApproxEq (env Vec2.east) 4 "padXY east 2+2"
-  assertApproxEq (env Vec2.north) 4 "padXY north 1+3"
+  assertApproxEq env[Vec2.east] 4 "padXY east 2+2"
+  assertApproxEq env[Vec2.north] 4 "padXY north 1+3"
 
 def testPad_zero : IO Unit := do
   let d : Diagram Empty := Diagram.pad 0 (Diagram.rect 4 2)
   let env := d.getEnvelope
-  assertApproxEq (env Vec2.east) 2 "pad zero east unchanged"
+  assertApproxEq env[Vec2.east] 2 "pad zero east unchanged"
 
 -- ══════════════════════════════════════════════════════════════════
 -- Layer 3: setEnvelope / hGap / vGap
@@ -411,25 +411,25 @@ def testPad_zero : IO Unit := do
 def testSetEnvelopeRight : IO Unit := do
   let d : Diagram Empty := Diagram.setEnvelopeRight 10 (Diagram.rect 4 2)
   let env := d.getEnvelope
-  assertApproxEq (env Vec2.east) 10 "setEnvelopeRight east"
-  assertApproxEq (env Vec2.west) 2 "setEnvelopeRight west unchanged"
+  assertApproxEq env[Vec2.east] 10 "setEnvelopeRight east"
+  assertApproxEq env[Vec2.west] 2 "setEnvelopeRight west unchanged"
 
 def testSetEnvelopeTop : IO Unit := do
   let d : Diagram Empty := Diagram.setEnvelopeTop 20 (Diagram.rect 4 2)
   let env := d.getEnvelope
-  assertApproxEq (env Vec2.north) 20 "setEnvelopeTop north"
+  assertApproxEq env[Vec2.north] 20 "setEnvelopeTop north"
 
 def testHGap : IO Unit := do
   let d : Diagram Empty := Diagram.hGap 8
   let env := d.getEnvelope
-  assertApproxEq (env Vec2.east) 4 "hGap east = half width"
-  assertApproxEq (env Vec2.north) 0 "hGap zero height"
+  assertApproxEq env[Vec2.east] 4 "hGap east = half width"
+  assertApproxEq env[Vec2.north] 0 "hGap zero height"
 
 def testVGap : IO Unit := do
   let d : Diagram Empty := Diagram.vGap 6
   let env := d.getEnvelope
-  assertApproxEq (env Vec2.north) 3 "vGap north = half height"
-  assertApproxEq (env Vec2.east) 0 "vGap zero width"
+  assertApproxEq env[Vec2.north] 3 "vGap north = half height"
+  assertApproxEq env[Vec2.east] 0 "vGap zero width"
 
 def testHGap_inCompose : IO Unit := do
   let a : Diagram Empty := Diagram.rect 4 2
@@ -438,7 +438,7 @@ def testHGap_inCompose : IO Unit := do
   let d := Diagram.hcat [a, gap, b]
   let env := d.getEnvelope
   -- rect4 + gap6 + rect4 = total width 14, centered → east = west = 7.
-  assertApproxEq (env Vec2.east) 7 "hGap in compose east" (tol := 0.01)
+  assertApproxEq env[Vec2.east] 7 "hGap in compose east" (tol := 0.01)
 
 -- ══════════════════════════════════════════════════════════════════
 -- Layer 3: hAppendAlign
@@ -452,8 +452,8 @@ def testAlignFraction_bottom : IO Unit := do
   -- fraction 0 = align bottoms. a bottom at -2, b bottom at -4.
   -- dy = aY - bY = (-2) - (-4) = 2. b shifted up by 2.
   -- b north at 2+4=6, b south at 2-4=-2
-  assertApproxEq (env Vec2.north) 6 "align bottom north" (tol := 0.01)
-  assertApproxEq (env Vec2.south) 2 "align bottom south" (tol := 0.01)
+  assertApproxEq env[Vec2.north] 6 "align bottom north" (tol := 0.01)
+  assertApproxEq env[Vec2.south] 2 "align bottom south" (tol := 0.01)
 
 def testAlignFraction_top : IO Unit := do
   let a : Diagram Empty := Diagram.rect 2 4  -- half-height 2
@@ -463,8 +463,8 @@ def testAlignFraction_top : IO Unit := do
   -- fraction 1 = align tops. a top at 2, b top at 4.
   -- dy = 2 - 4 = -2. b shifted down by 2.
   -- b north at -2+4=2, b south at -2-4=-6
-  assertApproxEq (env Vec2.north) 2 "align top north" (tol := 0.01)
-  assertApproxEq (env Vec2.south) 6 "align top south" (tol := 0.01)
+  assertApproxEq env[Vec2.north] 2 "align top north" (tol := 0.01)
+  assertApproxEq env[Vec2.south] 6 "align top south" (tol := 0.01)
 
 def testAlignFraction_center : IO Unit := do
   let a : Diagram Empty := Diagram.rect 2 4  -- half-height 2
@@ -473,8 +473,8 @@ def testAlignFraction_center : IO Unit := do
   let env := d.getEnvelope
   -- fraction 0.5 = align centers. Both centered at 0.
   -- dy = 0 - 0 = 0. Same as normal hAppend.
-  assertApproxEq (env Vec2.north) 4 "align center north" (tol := 0.01)
-  assertApproxEq (env Vec2.south) 4 "align center south" (tol := 0.01)
+  assertApproxEq env[Vec2.north] 4 "align center north" (tol := 0.01)
+  assertApproxEq env[Vec2.south] 4 "align center south" (tol := 0.01)
 
 def testAlignFraction_sameHeight : IO Unit := do
   let a : Diagram Empty := Diagram.rect 2 4
@@ -482,8 +482,8 @@ def testAlignFraction_sameHeight : IO Unit := do
   let d := Diagram.hAppendAlign (.fraction 0) a b
   let env := d.getEnvelope
   -- Same height, any alignment should give same result
-  assertApproxEq (env Vec2.north) 2 "align same height north" (tol := 0.01)
-  assertApproxEq (env Vec2.south) 2 "align same height south" (tol := 0.01)
+  assertApproxEq env[Vec2.north] 2 "align same height north" (tol := 0.01)
+  assertApproxEq env[Vec2.south] 2 "align same height south" (tol := 0.01)
 
 def testAlignAnchor_fallback : IO Unit := do
   let a : Diagram Empty := Diagram.rect 2 4
@@ -491,7 +491,7 @@ def testAlignAnchor_fallback : IO Unit := do
   -- anchor alignment falls back to center for now
   let d := Diagram.hAppendAlign (.anchor `baseline) a b
   let env := d.getEnvelope
-  assertApproxEq (env Vec2.north) 4 "anchor fallback north" (tol := 0.01)
+  assertApproxEq env[Vec2.north] 4 "anchor fallback north" (tol := 0.01)
 
 -- ══════════════════════════════════════════════════════════════════
 -- HorizontalAlignment / VerticalAlignment
@@ -503,8 +503,8 @@ def testHcat_topAlign : IO Unit := do
   let d := Diagram.hcat [a, b] (align := .top)
   let env := d.getEnvelope
   -- Top-aligned, then centered: north=2, south=6 → both = 4.
-  assertApproxEq (env Vec2.north) 4 "hcat top north" (tol := 0.01)
-  assertApproxEq (env Vec2.south) 4 "hcat top south" (tol := 0.01)
+  assertApproxEq env[Vec2.north] 4 "hcat top north" (tol := 0.01)
+  assertApproxEq env[Vec2.south] 4 "hcat top south" (tol := 0.01)
 
 def testHcat_bottomAlign : IO Unit := do
   let a : Diagram Empty := Diagram.rect 2 4  -- half-height 2
@@ -512,8 +512,8 @@ def testHcat_bottomAlign : IO Unit := do
   let d := Diagram.hcat [a, b] (align := .bottom)
   let env := d.getEnvelope
   -- Bottom-aligned, then centered: north=6, south=2 → both = 4.
-  assertApproxEq (env Vec2.north) 4 "hcat bottom north" (tol := 0.01)
-  assertApproxEq (env Vec2.south) 4 "hcat bottom south" (tol := 0.01)
+  assertApproxEq env[Vec2.north] 4 "hcat bottom north" (tol := 0.01)
+  assertApproxEq env[Vec2.south] 4 "hcat bottom south" (tol := 0.01)
 
 def testVcat_leftAlign : IO Unit := do
   let a : Diagram Empty := Diagram.rect 4 2  -- half-width 2
@@ -521,8 +521,8 @@ def testVcat_leftAlign : IO Unit := do
   let d := Diagram.vcat [a, b] (align := .left)
   let env := d.getEnvelope
   -- Left-aligned, then centered: east=6, west=2 → both = 4.
-  assertApproxEq (env Vec2.east) 4 "vcat left east" (tol := 0.01)
-  assertApproxEq (env Vec2.west) 4 "vcat left west" (tol := 0.01)
+  assertApproxEq env[Vec2.east] 4 "vcat left east" (tol := 0.01)
+  assertApproxEq env[Vec2.west] 4 "vcat left west" (tol := 0.01)
 
 def testVcat_rightAlign : IO Unit := do
   let a : Diagram Empty := Diagram.rect 4 2  -- half-width 2
@@ -530,8 +530,8 @@ def testVcat_rightAlign : IO Unit := do
   let d := Diagram.vcat [a, b] (align := .right)
   let env := d.getEnvelope
   -- Right-aligned, then centered: east=2, west=6 → both = 4.
-  assertApproxEq (env Vec2.east) 4 "vcat right east" (tol := 0.01)
-  assertApproxEq (env Vec2.west) 4 "vcat right west" (tol := 0.01)
+  assertApproxEq env[Vec2.east] 4 "vcat right east" (tol := 0.01)
+  assertApproxEq env[Vec2.west] 4 "vcat right west" (tol := 0.01)
 
 def testHsep_topAlign : IO Unit := do
   let a : Diagram Empty := Diagram.rect 2 4  -- half-height 2
@@ -539,8 +539,8 @@ def testHsep_topAlign : IO Unit := do
   let d := Diagram.hsep 5 [a, b] (align := .top)
   let env := d.getEnvelope
   -- Same vertical alignment as hcat top, centered → north = south = 4.
-  assertApproxEq (env Vec2.north) 4 "hsep top north" (tol := 0.01)
-  assertApproxEq (env Vec2.south) 4 "hsep top south" (tol := 0.01)
+  assertApproxEq env[Vec2.north] 4 "hsep top north" (tol := 0.01)
+  assertApproxEq env[Vec2.south] 4 "hsep top south" (tol := 0.01)
 
 def testVsep_leftAlign : IO Unit := do
   let a : Diagram Empty := Diagram.rect 4 2  -- half-width 2
@@ -548,8 +548,8 @@ def testVsep_leftAlign : IO Unit := do
   let d := Diagram.vsep 5 [a, b] (align := .left)
   let env := d.getEnvelope
   -- Same horizontal alignment as vcat left, centered → east = west = 4.
-  assertApproxEq (env Vec2.east) 4 "vsep left east" (tol := 0.01)
-  assertApproxEq (env Vec2.west) 4 "vsep left west" (tol := 0.01)
+  assertApproxEq env[Vec2.east] 4 "vsep left east" (tol := 0.01)
+  assertApproxEq env[Vec2.west] 4 "vsep left west" (tol := 0.01)
 
 -- ══════════════════════════════════════════════════════════════════
 -- Envelope convexity

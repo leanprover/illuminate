@@ -375,7 +375,7 @@ unsafe def elabDiagramCmd : CommandElab := fun stx => do
     let ty ← instantiateMVars ty
     let gadgets ← extractGadgets ty
     if gadgets.isEmpty then
-      -- Static diagram: existing behavior
+      -- Static diagram
       let diagramType ← mkAppM ``Diagram #[mkConst ``Empty]
       let e ← Term.ensureHasType diagramType e
       let e ← instantiateMVars e

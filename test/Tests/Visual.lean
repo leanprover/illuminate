@@ -267,7 +267,7 @@ where
     let box := field name label w
     let brace := Diagram.curlyBrace (w - 8) (depth := braceDepth) (label := some braceLabel)
     let braceEnv := brace.getEnvelope
-    let excess := braceEnv Vec2.east - w / 2
+    let excess := braceEnv[Vec2.east] - w / 2
     let brace := if excess > 0 then brace |>.padLeft (-excess) |>.padRight (-excess) else brace
     Diagram.vsep braceGap [box, brace]
 

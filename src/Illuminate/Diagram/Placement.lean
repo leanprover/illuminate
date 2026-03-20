@@ -207,7 +207,7 @@ where
 
 /-- Names a diagram and adds cardinal anchors derived from its envelope. -/
 def namedWithAnchors (n : Lean.Name) (d : Diagram β) : Diagram β :=
-  let env := d.getEnvelope
+  let env := match d.getEnvelope with | .empty => fun _ => 0.0 | .nonempty f => f
   -- Envelope values are always positive extents from the origin.
   -- West and south anchors are negated to place them in negative x/y.
   let e := env Vec2.east
@@ -223,13 +223,17 @@ def namedWithAnchors (n : Lean.Name) (d : Diagram β) : Diagram β :=
 
 /-- Computes the total width of a diagram from its envelope. -/
 def width (d : Diagram β) : Float :=
-  let env := d.getEnvelope
-  env Vec2.east + env Vec2.west
+  match d.getEnvelope with
+  | .empty => 0
+  | .nonempty env =>
+    env Vec2.east + env Vec2.west
 
 /-- Computes the total height of a diagram from its envelope. -/
 def height (d : Diagram β) : Float :=
-  let env := d.getEnvelope
-  env Vec2.north + env Vec2.south
+  match d.getEnvelope with
+  | .empty => 0
+  | .nonempty env =>
+    env Vec2.north + env Vec2.south
 
 -- ═══════════════════════════════════════════════════════════════
 -- Alignment types
@@ -264,11 +268,13 @@ Translates a diagram so the center of its envelope is at the origin.
 The envelope is adjusted to match.
 -/
 private def centerOrigin (d : Diagram β) : Diagram β :=
-  let env := d.getEnvelope
-  let cx := (env Vec2.east - env Vec2.west) / 2
-  let cy := (env Vec2.north - env Vec2.south) / 2
-  if cx.abs < 0.001 && cy.abs < 0.001 then d
-  else .transform (Matrix.translate (-cx) (-cy)) d
+  match d.getEnvelope with
+  | .empty => d
+  | .nonempty env =>
+    let cx := (env Vec2.east - env Vec2.west) / 2
+    let cy := (env Vec2.north - env Vec2.south) / 2
+    if cx.abs < 0.001 && cy.abs < 0.001 then d
+    else .transform (Matrix.translate (-cx) (-cy)) d
 
 /-- Layers `b` atop `a`, sharing the origin. `a` is drawn first (behind), `b` on top. -/
 def atop (a b : Diagram β) : Diagram β := .compose a b
@@ -281,7 +287,7 @@ The result is re-centered at the origin.
 def beside (v : Vec2) (gap : Float := 0) (a b : Diagram β) : Diagram β :=
   let envA := a.getEnvelope
   let envB := b.getEnvelope
-  let dist := envA v + envB (-v) + gap
+  let dist := envA[v] + envB[-v] + gap
   let offset := dist • v
   centerOrigin (.compose a (.transform (Matrix.translate offset.x offset.y) b))
 
@@ -293,14 +299,14 @@ private def besideH (gap : Float) (align : HorizontalAlignment)
     (a b : Diagram β) : Diagram β :=
   let envA := a.getEnvelope
   let envB := b.getEnvelope
-  let dx := envA Vec2.east + envB Vec2.west + gap
+  let dx := envA[Vec2.east] + envB[Vec2.west] + gap
   let dy := match align with
-    | .top => envA Vec2.north - envB Vec2.north
+    | .top => envA[Vec2.north] - envB[Vec2.north]
     | .center =>
-      let centerA := (envA Vec2.north - envA Vec2.south) / 2
-      let centerB := (envB Vec2.north - envB Vec2.south) / 2
+      let centerA := (envA[Vec2.north] - envA[Vec2.south]) / 2
+      let centerB := (envB[Vec2.north] - envB[Vec2.south]) / 2
       centerA - centerB
-    | .bottom => envB Vec2.south - envA Vec2.south
+    | .bottom => envB[Vec2.south] - envA[Vec2.south]
   .compose a (.transform (Matrix.translate dx dy) b)
 
 /--
@@ -311,14 +317,14 @@ private def besideV (gap : Float) (align : VerticalAlignment)
     (a b : Diagram β) : Diagram β :=
   let envA := a.getEnvelope
   let envB := b.getEnvelope
-  let dy := -(envA Vec2.south + envB Vec2.north + gap)
+  let dy := -(envA[Vec2.south] + envB[Vec2.north] + gap)
   let dx := match align with
-    | .left => envB Vec2.west - envA Vec2.west
+    | .left => envB[Vec2.west] - envA[Vec2.west]
     | .center =>
-      let centerA := (envA Vec2.east - envA Vec2.west) / 2
-      let centerB := (envB Vec2.east - envB Vec2.west) / 2
+      let centerA := (envA[Vec2.east]- envA[Vec2.west]) / 2
+      let centerB := (envB[Vec2.east] - envB[Vec2.west]) / 2
       centerA - centerB
-    | .right => envA Vec2.east - envB Vec2.east
+    | .right => envA[Vec2.east] - envB[Vec2.east]
   .compose a (.transform (Matrix.translate dx dy) b)
 
 /-- Places `b` to the right of `a` with zero gap. -/
@@ -374,7 +380,7 @@ def grid (rows : Array (Array (Option (Diagram β))))
         match row[c]? with
         | some (some d) =>
           let env := d.getEnvelope
-          Max.max mx (env Vec2.east + env Vec2.west)
+          Max.max mx (env[Vec2.east] + env[Vec2.west])
         | _ => mx
     -- Per-row heights: max height of any cell in that row
     let rowHeights := rows.map fun row =>
@@ -382,7 +388,7 @@ def grid (rows : Array (Array (Option (Diagram β))))
         match cell with
         | some d =>
           let env := d.getEnvelope
-          Max.max mh (env Vec2.north + env Vec2.south)
+          Max.max mh (env[Vec2.north] + env[Vec2.south])
         | none => mh
     -- Build the grid row by row
     let diagramRows := rows.mapIdx fun r row =>
@@ -412,35 +418,35 @@ def anchor (name : Lean.Name) : Diagram β :=
 /-- Uniform padding on all sides. -/
 def pad (amount : Float) (d : Diagram β) : Diagram β :=
   let env := d.getEnvelope
-  let padded : Envelope := fun v => env v + amount
+  let padded : Envelope := env.modify fun f v => f v + amount
   .withEnv padded d
 
 /-- Pads only the right side (positive x). -/
 def padRight (amount : Float) (d : Diagram β) : Diagram β :=
   let env := d.getEnvelope
-  let padded : Envelope := fun v =>
-    if v == Vec2.east then env v + amount else env v
+  let padded : Envelope := env.modify fun f v =>
+    if v == Vec2.east then f v + amount else f v
   .withEnv padded d
 
 /-- Pads only the left side (negative x). -/
 def padLeft (amount : Float) (d : Diagram β) : Diagram β :=
   let env := d.getEnvelope
-  let padded : Envelope := fun v =>
-    if v == Vec2.west then env v + amount else env v
+  let padded : Envelope := env.modify fun f v =>
+    if v == Vec2.west then f v + amount else f v
   .withEnv padded d
 
 /-- Pads only the top (positive y). -/
 def padTop (amount : Float) (d : Diagram β) : Diagram β :=
   let env := d.getEnvelope
-  let padded : Envelope := fun v =>
-    if v == Vec2.north then env v + amount else env v
+  let padded : Envelope := env.modify fun f v =>
+    if v == Vec2.north then f v + amount else f v
   .withEnv padded d
 
 /-- Pads only the bottom (negative y). -/
 def padBottom (amount : Float) (d : Diagram β) : Diagram β :=
   let env := d.getEnvelope
-  let padded : Envelope := fun v =>
-    if v == Vec2.south then env v + amount else env v
+  let padded : Envelope := env.modify fun f v =>
+    if v == Vec2.south then f v + amount else f v
   .withEnv padded d
 
 /-- Pad horizontally and vertically by different amounts. -/
@@ -473,29 +479,29 @@ def strut (env : Envelope) : Diagram β :=
 /-- Set the rightward (east) extent of the envelope. -/
 def setEnvelopeRight (extent : Float) (d : Diagram β) : Diagram β :=
   let env := d.getEnvelope
-  let adjusted : Envelope := fun v =>
-    if v == Vec2.east then extent else env v
+  let adjusted : Envelope := env.modify fun f v =>
+    if v == Vec2.east then extent else f v
   .withEnv adjusted d
 
 /-- Set the leftward (west) extent of the envelope. -/
 def setEnvelopeLeft (extent : Float) (d : Diagram β) : Diagram β :=
   let env := d.getEnvelope
-  let adjusted : Envelope := fun v =>
-    if v == Vec2.west then extent else env v
+  let adjusted : Envelope := env.modify fun f v =>
+    if v == Vec2.west then extent else f v
   .withEnv adjusted d
 
 /-- Set the upward (north) extent of the envelope. -/
 def setEnvelopeTop (extent : Float) (d : Diagram β) : Diagram β :=
   let env := d.getEnvelope
-  let adjusted : Envelope := fun v =>
-    if v == Vec2.north then extent else env v
+  let adjusted : Envelope := env.modify fun f v =>
+    if v == Vec2.north then extent else f v
   .withEnv adjusted d
 
 /-- Set the downward (south) extent of the envelope. -/
 def setEnvelopeBottom (extent : Float) (d : Diagram β) : Diagram β :=
   let env := d.getEnvelope
-  let adjusted : Envelope := fun v =>
-    if v == Vec2.south then extent else env v
+  let adjusted : Envelope := env.modify fun f v =>
+    if v == Vec2.south then extent else f v
   .withEnv adjusted d
 
 -- ═══════════════════════════════════════════════════════════════
@@ -519,68 +525,70 @@ Draws a stroked rectangle around the envelope of a diagram. The border is drawn 
 -/
 def frame (d : Diagram β) (stroke : Stroke := {})
     (padding : Float := 0) (cornerRadius : Float := 0) : Diagram β :=
-  let env := d.getEnvelope
-  let e := env Vec2.east + padding
-  let w := env Vec2.west + padding
-  let n := env Vec2.north + padding
-  let s := env Vec2.south + padding
-  let width := e + w
-  let height := n + s
-  let cx := (e - w) / 2
-  let cy := (n - s) / 2
-  let border :=
-    if cornerRadius > 0 then
-      Diagram.transform (Matrix.translate cx cy)
-        (Diagram.fromStroke (PathData.roundedRect width height cornerRadius) stroke)
-    else
-      let tl : Vec2 := ⟨-w, n⟩
-      let tr : Vec2 := ⟨e, n⟩
-      let br : Vec2 := ⟨e, -s⟩
-      let bl : Vec2 := ⟨-w, -s⟩
-      Diagram.fromStroke
-        (PathData.empty
-          |>.moveTo tl
-          |>.lineTo tr
-          |>.lineTo br
-          |>.lineTo bl
-          |>.close)
-        stroke
-  let halfStroke := stroke.width / 2
-  Diagram.pad halfStroke (Diagram.compose border d)
+  if let .nonempty env := d.getEnvelope then
+    let e := env Vec2.east + padding
+    let w := env Vec2.west + padding
+    let n := env Vec2.north + padding
+    let s := env Vec2.south + padding
+    let width := e + w
+    let height := n + s
+    let cx := (e - w) / 2
+    let cy := (n - s) / 2
+    let border :=
+      if cornerRadius > 0 then
+        Diagram.transform (Matrix.translate cx cy)
+          (Diagram.fromStroke (PathData.roundedRect width height cornerRadius) stroke)
+      else
+        let tl : Vec2 := ⟨-w, n⟩
+        let tr : Vec2 := ⟨e, n⟩
+        let br : Vec2 := ⟨e, -s⟩
+        let bl : Vec2 := ⟨-w, -s⟩
+        Diagram.fromStroke
+          (PathData.empty
+            |>.moveTo tl
+            |>.lineTo tr
+            |>.lineTo br
+            |>.lineTo bl
+            |>.close)
+          stroke
+    let halfStroke := stroke.width / 2
+    Diagram.pad halfStroke (Diagram.compose border d)
+  else d
 
 /--
 Draws a filled and stroked rectangle around the envelope of a diagram. The backdrop is drawn behind the content.
 -/
 def filledFrame (d : Diagram β) (fill : Fill := {}) (stroke : Stroke := {})
     (padding : Float := 0) (cornerRadius : Float := 0) : Diagram β :=
-  let env := d.getEnvelope
-  let e := env Vec2.east + padding
-  let w := env Vec2.west + padding
-  let n := env Vec2.north + padding
-  let s := env Vec2.south + padding
-  let width := e + w
-  let height := n + s
-  let cx := (e - w) / 2
-  let cy := (n - s) / 2
-  let border :=
-    if cornerRadius > 0 then
-      Diagram.transform (Matrix.translate cx cy)
-        (Diagram.fromPath (PathData.roundedRect width height cornerRadius) fill stroke)
-    else
-      let tl : Vec2 := ⟨-w, n⟩
-      let tr : Vec2 := ⟨e, n⟩
-      let br : Vec2 := ⟨e, -s⟩
-      let bl : Vec2 := ⟨-w, -s⟩
-      Diagram.fromPath
-        (PathData.empty
-          |>.moveTo tl
-          |>.lineTo tr
-          |>.lineTo br
-          |>.lineTo bl
-          |>.close)
-        fill stroke
-  let halfStroke := stroke.width / 2
-  Diagram.pad halfStroke (Diagram.compose border d)
+  if let .nonempty env := d.getEnvelope then
+    let e := env Vec2.east + padding
+    let w := env Vec2.west + padding
+    let n := env Vec2.north + padding
+    let s := env Vec2.south + padding
+    let width := e + w
+    let height := n + s
+    let cx := (e - w) / 2
+    let cy := (n - s) / 2
+    let border :=
+      if cornerRadius > 0 then
+        Diagram.transform (Matrix.translate cx cy)
+          (Diagram.fromPath (PathData.roundedRect width height cornerRadius) fill stroke)
+      else
+        let tl : Vec2 := ⟨-w, n⟩
+        let tr : Vec2 := ⟨e, n⟩
+        let br : Vec2 := ⟨e, -s⟩
+        let bl : Vec2 := ⟨-w, -s⟩
+        Diagram.fromPath
+          (PathData.empty
+            |>.moveTo tl
+            |>.lineTo tr
+            |>.lineTo br
+            |>.lineTo bl
+            |>.close)
+          fill stroke
+    let halfStroke := stroke.width / 2
+    Diagram.pad halfStroke (Diagram.compose border d)
+  else d
 
 -- ═══════════════════════════════════════════════════════════════
 -- Envelope visualization
@@ -601,7 +609,7 @@ def showEnvelope (d : Diagram β) (samples : Nat := 64)
   let dirs := List.range n |>.map fun i =>
     let θ := i.toFloat * step
     let dir : Vec2 := ⟨Float.cos θ, Float.sin θ⟩
-    (dir, env dir)
+    (dir, env[dir])
   -- Compute boundary vertices as intersections of adjacent tangent lines.
   -- Each tangent line is { p | p · dᵢ = eᵢ }. The intersection of adjacent
   -- lines p · d₁ = e₁ and p · d₂ = e₂ gives a vertex of the convex shape.
@@ -666,31 +674,31 @@ def hAppendAlign (guide : AlignGuide) (a b : Diagram β) : Diagram β :=
     let envA := a.getEnvelope
     let envB := b.getEnvelope
     -- Vertical extent
-    let aBot := envA Vec2.south
-    let aTop := envA Vec2.north
-    let bBot := envB Vec2.south
-    let bTop := envB Vec2.north
+    let aBot := envA[Vec2.south]
+    let aTop := envA[Vec2.north]
+    let bBot := envB[Vec2.south]
+    let bTop := envB[Vec2.north]
     -- The alignment point in each diagram's local coords
     -- fraction 0 = bottom, 1 = top
     let aY := -aBot + f * (aTop + aBot)  -- -aBot .. aTop
     let bY := -bBot + f * (bTop + bBot)
     let dy := aY - bY
     -- Horizontal placement: same as hAppend
-    let dist := envA Vec2.east + envB Vec2.west
+    let dist := envA[Vec2.east] + envB[Vec2.west]
     .compose a (.transform (Matrix.translate dist dy) b)
   | .anchor _ =>
     -- Named anchor alignment requires the name table (Layer 5).
     -- For now, fall back to center alignment (same as fraction 0.5).
     let envA := a.getEnvelope
     let envB := b.getEnvelope
-    let aBot := envA Vec2.south
-    let aTop := envA Vec2.north
-    let bBot := envB Vec2.south
-    let bTop := envB Vec2.north
+    let aBot := envA[Vec2.south]
+    let aTop := envA[Vec2.north]
+    let bBot := envB[Vec2.south]
+    let bTop := envB[Vec2.north]
     let aY := -aBot + 0.5 * (aTop + aBot)
     let bY := -bBot + 0.5 * (bTop + bBot)
     let dy := aY - bY
-    let dist := envA Vec2.east + envB Vec2.west
+    let dist := envA[Vec2.east] + envB[Vec2.west]
     .compose a (.transform (Matrix.translate dist dy) b)
 
 -- ═══════════════════════════════════════════════════════════════

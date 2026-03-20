@@ -55,14 +55,17 @@ where
 
 /-- Renders a diagram to an SVG string. -/
 def renderDiagram (d : Diagram β) (padding : Float := 2) : String :=
-  let env := d.getEnvelope
-  let east := env Vec2.east
-  let west := env Vec2.west
-  let north := env Vec2.north
-  let south := env Vec2.south
-  let minX := -(west + padding)
-  let minY := -(north + padding)
-  let w := west + east + 2 * padding
-  let h := north + south + 2 * padding
-  let cmds := d.compile
-  Svg.render cmds (minX, minY, w, h)
+  if let .nonempty env := d.getEnvelope then
+    let east := env Vec2.east
+    let west := env Vec2.west
+    let north := env Vec2.north
+    let south := env Vec2.south
+    let minX := -(west + padding)
+    let minY := -(north + padding)
+    let w := west + east + 2 * padding
+    let h := north + south + 2 * padding
+    let cmds := d.compile
+    Svg.render cmds (minX, minY, w, h)
+  else
+    let cmds := d.warning "Diagram has no envelope, defaulting to 640x480" |>.compile
+    Svg.render cmds (-320, -240, 320, 240)
