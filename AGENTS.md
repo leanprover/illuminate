@@ -159,8 +159,8 @@ lean-toolchain           Lean 4 toolchain pin (v4.28.0)
 - **No vertical alignment**: Do not pad field names or `:=` with extra
   spaces to align columns. Write `a := ...` not `a  := ...`.
 - **No trailing `end`**: A file must never end with `end Namespace`.
-  The end of a file implicitly closes all open namespace blocks, so
-  a trailing `end` is always redundant. Simply delete it.
+  The end of a file implicitly closes all open namespace blocks, so a
+  trailing `end` is always redundant. Simply delete it.
 - `Diagram beta` is parameterized by a foreign primitive type; use
   `Empty` for pure geometric diagrams.
 - The SVG backend applies a `scale(1,-1)` y-flip so that +y points up
