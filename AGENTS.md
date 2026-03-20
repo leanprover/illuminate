@@ -83,6 +83,19 @@ intentional and the user has confirmed it.
 lake test --wfail && uv run test_playwright.py
 ```
 
+### Formatting
+
+Before finishing work, run Prettier to format non-Lean files
+(Markdown, Python, JSON, YAML):
+
+```sh
+npx prettier --write .
+```
+
+CI has a Prettier bot that auto-commits formatting fixes, but pushes
+from `github-actions[bot]` do not re-trigger CI. Running Prettier
+locally avoids this problem.
+
 ## Project structure
 
 ```
