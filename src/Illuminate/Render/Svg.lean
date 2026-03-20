@@ -11,6 +11,18 @@ import Illuminate.Render.DrawCmd
 
 namespace Illuminate
 
+/-- SVG viewBox specification: the visible region of the coordinate space. -/
+structure ViewBox where
+  /-- Left edge of the visible region. -/
+  minX : Float
+  /-- Top edge of the visible region (in SVG coordinates, before y-flip). -/
+  minY : Float
+  /-- Width of the visible region. -/
+  width : Float
+  /-- Height of the visible region. -/
+  height : Float
+deriving Repr, BEq, Inhabited
+
 namespace Svg
 
 /-- Formats a Float with reasonable precision, trimming trailing zeros. -/
@@ -122,13 +134,9 @@ def renderCmd (cmd : DrawCmd) : String :=
     s!"<defs><clipPath id=\"clip{clipId}\"><path d=\"{d}\"/></clipPath></defs><g clip-path=\"url(#clip{clipId})\">"
   | .popClip => "</g>"
 
-/--
-Renders a list of draw commands to a complete SVG document string.
-The viewBox is specified as `(minX, minY, width, height)`.
--/
-def render (cmds : List DrawCmd) (viewBox : Float × Float × Float × Float) : String :=
-  let (vx, vy, vw, vh) := viewBox
-  let header := s!"<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"{fmtNum vx} {fmtNum vy} {fmtNum vw} {fmtNum vh}\">"
+/-- Renders a list of draw commands to a complete SVG document string. -/
+def render (cmds : List DrawCmd) (viewBox : ViewBox) : String :=
+  let header := s!"<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"{fmtNum viewBox.minX} {fmtNum viewBox.minY} {fmtNum viewBox.width} {fmtNum viewBox.height}\">"
   let body := cmds.map renderCmd |>.foldl (· ++ "\n" ++ ·) ""
   -- Flip y-axis: SVG y points down, diagram y points up
   header ++ "\n<g transform=\"scale(1,-1)\">" ++ body ++ "\n</g>\n</svg>"

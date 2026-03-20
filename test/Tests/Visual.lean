@@ -743,6 +743,35 @@ def traceConnectDiagram : Diagram Empty :=
 def testVisual_traceConnect : IO Unit :=
   testVisualWrite "trace-connect.svg" traceConnectDiagram
 
+def traceConnectAngledDiagram (angle3 : Slider "Angle 3" 0 (2 * pi) pi) : Diagram Empty :=
+  let circ := Diagram.circle 15
+    (fill := { color := { r := 200, g := 220, b := 255 } })
+    (stroke := { color := Color.black, width := (1 : Float) })
+    (name := some `circ)
+  let box := Diagram.roundedRect 40 25 4
+    (fill := { color := { r := 255, g := 230, b := 200 } })
+    (stroke := { color := Color.black, width := (1 : Float) })
+    (name := some `box)
+  let ell := Diagram.star 5 20 12
+    (fill := { color := { r := 220, b := 220, g := 255 } })
+    (stroke := { color := Color.black, width := (1 : Float) })
+    (name := some `ell)
+  -- Arrange in a triangle layout
+  let top := Diagram.transform (Matrix.translate 0 50) circ
+  let botLeft := Diagram.transform (Matrix.translate (-50) (-20)) box
+  let botRight := Diagram.transform (Matrix.translate 50 (-20)) ell
+  let d := Diagram.compose (Diagram.compose top botLeft) botRight
+  d
+    |>.connectEdge {point := `circ, angle := some (1.5 * pi)} { point := `box, arrowhead := some { type := .stealth }, angle := some pi, pull := 3 }
+    |>.connectEdge `circ { point := `ell, arrowhead := some { type := .latex } }
+    |>.connectEdge {point := `box, pull := 1} { point := `ell, arrowhead := some { type := .triangle }, angle := some angle3, pull := 1.5 }
+
+#diagram traceConnectAngledDiagram
+
+def testVisual_traceConnectAngled : IO Unit :=
+  testVisualWrite "trace-connect-angled.svg" (traceConnectAngledDiagram (1.2 * pi))
+
+
 def visualTests : List (String × IO Unit) := [
   ("Visual/roundedRects", testVisual_roundedRects),
   ("Visual/roundedRects_2_5", testVisual_roundedRects_2_5),
@@ -764,5 +793,6 @@ def visualTests : List (String × IO Unit) := [
   ("Visual/traceComposed", testVisual_traceComposed),
   ("Visual/traceTransformed", testVisual_traceTransformed),
   ("Visual/tracePath", testVisual_tracePath),
-  ("Visual/traceConnect", testVisual_traceConnect)
+  ("Visual/traceConnect", testVisual_traceConnect),
+  ("Visual/traceConnectAngled", testVisual_traceConnectAngled)
 ]

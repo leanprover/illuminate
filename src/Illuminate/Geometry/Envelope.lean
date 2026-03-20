@@ -117,8 +117,12 @@ def ofBounds (lo hi : Vec2) : Envelope := .nonempty fun v =>
   x * v.x + y * v.y
 
 /-- Envelope of a convex hull of vertices: `max(v · pᵢ)` over all points. -/
-def ofVertices (pts : List Vec2) : Envelope := fun v =>
-  pts.foldl (fun acc p => Max.max acc (p.dot v)) 0
+def ofVertices (pts : List Vec2) : Envelope :=
+  if pts.isEmpty then .empty
+  else
+    .nonempty fun v =>
+      pts.foldl (init := 0) fun acc p =>
+        Max.max acc (p.dot v)
 
 /-- Query the extent in a given direction. -/
 def query (env : Envelope) (direction : Vec2) : Option Float := env[direction]
@@ -169,13 +173,13 @@ def fromEnvelope (env : Envelope) : Option CardinalAnchors :=
     let centerX := (e - w) / 2
     let centerY := (n - s) / 2
     some {
-      north := northPt,
-      south := southPt,
-      east := eastPt,
-      west := westPt,
-      northeast := ne • Vec2.northeast,
-      northwest := nw • Vec2.northwest,
-      southeast := se • Vec2.southeast,
-      southwest := sw • Vec2.southwest,
+      north := northPt
+      south := southPt
+      east := eastPt
+      west := westPt
+      northeast := ne • Vec2.northeast
+      northwest := nw • Vec2.northwest
+      southeast := se • Vec2.southeast
+      southwest := sw • Vec2.southwest
       center := ⟨centerX, centerY⟩
     }

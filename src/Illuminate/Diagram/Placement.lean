@@ -18,10 +18,46 @@ namespace Illuminate
 namespace PathData
 
 /--
-Computes the axis-aligned bounding box of a path.
-Returns `(lo, hi)` where `lo` is the min corner and `hi` is the max corner.
-For cubic Béziers, uses the control-point hull (conservative).
+Evaluates a cubic Bézier at parameter `t`.
 -/
+private def evalBezier (p0 c1 c2 p3 : Vec2) (t : Float) : Vec2 :=
+  let u := 1 - t
+  Vec2.mk
+    (u*u*u * p0.x + 3*u*u*t * c1.x + 3*u*t*t * c2.x + t*t*t * p3.x)
+    (u*u*u * p0.y + 3*u*u*t * c1.y + 3*u*t*t * c2.y + t*t*t * p3.y)
+
+/--
+Computes the exact extremal points of a cubic Bézier curve by solving the derivative
+(a quadratic) for each axis independently. Returns the two endpoints plus any interior
+extrema where `t ∈ (0, 1)`.
+-/
+private def bezierExtrema (p0 c1 c2 p3 : Vec2) : List Vec2 :=
+  let solve (v0 v1 v2 v3 : Float) : List Float :=
+    -- Derivative of cubic Bézier component: 3(1-t)²(v1-v0) + 6(1-t)t(v2-v1) + 3t²(v3-v2)
+    -- = at² + bt + c where:
+    let a := -3*v0 + 9*v1 - 9*v2 + 3*v3
+    let b := 6*v0 - 12*v1 + 6*v2
+    let c := -3*v0 + 3*v1
+    if nearZero a then
+      -- Linear: bt + c = 0
+      if nearZero b then []
+      else
+        let t := -c / b
+        if t > 0 && t < 1 then [t] else []
+    else
+      let disc := b * b - 4 * a * c
+      if disc < 0 then []
+      else
+        let sqrtDisc := disc.sqrt
+        let t1 := (-b - sqrtDisc) / (2 * a)
+        let t2 := (-b + sqrtDisc) / (2 * a)
+        let ts := if t1 > 0 && t1 < 1 then [t1] else []
+        if t2 > 0 && t2 < 1 then ts ++ [t2] else ts
+  let xRoots := solve p0.x c1.x c2.x p3.x
+  let yRoots := solve p0.y c1.y c2.y p3.y
+  let allT := xRoots ++ yRoots
+  [p0, p3] ++ allT.map (evalBezier p0 c1 c2 p3)
+
 private def extendBounds (acc : Option (Vec2 × Vec2)) (p : Vec2) : Option (Vec2 × Vec2) :=
   match acc with
   | none => some (p, p)
@@ -31,13 +67,15 @@ private def extendBounds (acc : Option (Vec2 × Vec2)) (p : Vec2) : Option (Vec2
 
 /-- Computes the axis-aligned bounding box of a path as `(lo, hi)` corners. -/
 def bounds (pd : PathData) : Vec2 × Vec2 :=
-  let acc := pd.commands.foldl (init := none) fun acc cmd =>
+  let acc := pd.commands.foldl (init := (none, Vec2.mk 0 0)) fun (acc, cur) cmd =>
     match cmd with
-    | .moveTo p => extendBounds acc p
-    | .lineTo p => extendBounds acc p
-    | .curveTo c1 c2 ep => extendBounds (extendBounds (extendBounds acc c1) c2) ep
-    | .closePath => acc
-  acc.getD (⟨0, 0⟩, ⟨0, 0⟩)
+    | .moveTo p => (extendBounds acc p, p)
+    | .lineTo p => (extendBounds acc p, p)
+    | .curveTo c1 c2 ep =>
+      let pts := bezierExtrema cur c1 c2 ep
+      (pts.foldl extendBounds acc, ep)
+    | .closePath => (acc, cur)
+  acc.1.getD (⟨0, 0⟩, ⟨0, 0⟩)
 
 end PathData
 
@@ -55,13 +93,13 @@ Real text sizes require the monadic measurement pass and are not available here.
 def toEnvelope (cp : CorePrimitive) : Envelope :=
   match cp with
   | .path pd _ _ =>
-    let pts := pd.commands.foldl (init := []) fun acc cmd =>
+    let pts := pd.commands.foldl (init := ([], Vec2.mk 0 0)) fun (acc, cur) cmd =>
       match cmd with
-      | .moveTo p => p :: acc
-      | .lineTo p => p :: acc
-      | .curveTo c1 c2 ep => ep :: c2 :: c1 :: acc
-      | .closePath => acc
-    Envelope.ofVertices pts
+      | .moveTo p => (p :: acc, p)
+      | .lineTo p => (p :: acc, p)
+      | .curveTo c1 c2 ep => (PathData.bezierExtrema cur c1 c2 ep ++ acc, ep)
+      | .closePath => (acc, cur)
+    Envelope.ofVertices pts.1
   | .text s style =>
     let fontSize := style.fontSize
     let anchor := style.anchor
@@ -332,19 +370,21 @@ where
 
 /-- Names a diagram and adds cardinal anchors derived from its envelope. -/
 def namedWithAnchors (n : Lean.Name) (d : Diagram β) : Diagram β :=
-  let env := match d.getEnvelope with | .empty => fun _ => 0.0 | .nonempty f => f
-  -- Envelope values are always positive extents from the origin.
-  -- West and south anchors are negated to place them in negative x/y.
-  let e := env Vec2.east
-  let w := env Vec2.west
-  let no := env Vec2.north
-  let s := env Vec2.south
-  withNameAndAnchors d n [
-    (`north, ⟨0, no⟩), (`south, ⟨0, -s⟩),
-    (`east, ⟨e, 0⟩), (`west, ⟨-w, 0⟩),
-    (`northeast, ⟨e, no⟩), (`northwest, ⟨-w, no⟩),
-    (`southeast, ⟨e, -s⟩), (`southwest, ⟨-w, -s⟩)
-  ]
+  match d.getEnvelope with
+  | .empty => .named n d
+  | .nonempty env =>
+    -- Envelope values are always positive extents from the origin.
+    -- West and south anchors are negated to place them in negative x/y.
+    let e := env Vec2.east
+    let w := env Vec2.west
+    let no := env Vec2.north
+    let s := env Vec2.south
+    withNameAndAnchors d n [
+      (`north, ⟨0, no⟩), (`south, ⟨0, -s⟩),
+      (`east, ⟨e, 0⟩), (`west, ⟨-w, 0⟩),
+      (`northeast, ⟨e, no⟩), (`northwest, ⟨-w, no⟩),
+      (`southeast, ⟨e, -s⟩), (`southwest, ⟨-w, -s⟩)
+    ]
 
 /-- Computes the total width of a diagram from its envelope. -/
 def width (d : Diagram β) : Float :=
@@ -727,41 +767,42 @@ Useful for debugging layout and envelope behavior.
 def showEnvelope (d : Diagram β) (samples : Nat := 64)
     (color : Color := { r := 255, g := 153, b := 153 })
     (alpha : Float := 0.2) : Diagram β :=
-  let env := d.getEnvelope
-  let n := max samples 8
-  let step := 2 * pi / n.toFloat
-  -- Sample envelope directions and extents
-  let dirs := List.range n |>.map fun i =>
-    let θ := i.toFloat * step
-    let dir : Vec2 := ⟨Float.cos θ, Float.sin θ⟩
-    (dir, env[dir])
-  -- Compute boundary vertices as intersections of adjacent tangent lines.
-  -- Each tangent line is { p | p · dᵢ = eᵢ }. The intersection of adjacent
-  -- lines p · d₁ = e₁ and p · d₂ = e₂ gives a vertex of the convex shape.
-  let vertices := dirs.mapIdx fun i (d1, e1) =>
-    let (d2, e2) := match dirs[((i : Nat) + 1) % n]? with
-      | some v => v
-      | none => (d1, e1)
-    -- Solve: d1.x * x + d1.y * y = e1, d2.x * x + d2.y * y = e2
-    let det := d1.x * d2.y - d1.y * d2.x
-    if det.abs < 1e-10 then
-      -- Nearly parallel: fall back to polar point
-      e1 • d1
-    else
-      ⟨(e1 * d2.y - e2 * d1.y) / det, (d1.x * e2 - d2.x * e1) / det⟩
-  -- Build a closed polygon path
-  let path := match vertices with
-    | [] => PathData.empty
-    | p :: rest =>
-      let pd := PathData.empty |>.moveTo p
-      let pd := rest.foldl (fun acc pt => acc.lineTo pt) pd
-      pd.close
-  let fillColor : Color := { color with a := alpha }
-  let overlay : Diagram β := fromPath path
-    (fill := { color := fillColor })
-    (stroke := { width := (0 : Float) })
-  Diagram.compose d overlay
-
+  if let .nonempty env := d.getEnvelope then
+    let n := max samples 8
+    let step := 2 * pi / n.toFloat
+    -- Sample envelope directions and extents
+    let dirs := List.range n |>.map fun i =>
+      let θ := i.toFloat * step
+      let dir : Vec2 := ⟨Float.cos θ, Float.sin θ⟩
+      (dir, env dir)
+    -- Compute boundary vertices as intersections of adjacent tangent lines.
+    -- Each tangent line is { p | p · dᵢ = eᵢ }. The intersection of adjacent
+    -- lines p · d₁ = e₁ and p · d₂ = e₂ gives a vertex of the convex shape.
+    let vertices := dirs.mapIdx fun i (d1, e1) =>
+      let (d2, e2) := match dirs[((i : Nat) + 1) % n]? with
+        | some v => v
+        | none => (d1, e1)
+      -- Solve: d1.x * x + d1.y * y = e1, d2.x * x + d2.y * y = e2
+      let det := d1.x * d2.y - d1.y * d2.x
+      if det.abs < 1e-10 then
+        -- Nearly parallel: fall back to polar point
+        e1 • d1
+      else
+        ⟨(e1 * d2.y - e2 * d1.y) / det, (d1.x * e2 - d2.x * e1) / det⟩
+    -- Build a closed polygon path
+    let path := match vertices with
+      | [] => PathData.empty
+      | p :: rest =>
+        let pd := PathData.empty |>.moveTo p
+        let pd := rest.foldl (fun acc pt => acc.lineTo pt) pd
+        pd.close
+    let fillColor : Color := { color with a := alpha }
+    let overlay : Diagram β := fromPath path
+      (fill := { color := fillColor })
+      (stroke := { width := (0 : Float) })
+    Diagram.compose d overlay
+  else
+    d.warning "Attempted to show empty envelope"
 /--
 Overlays a small red X at the origin of the diagram's coordinate system.
 Useful for debugging layout and positioning.

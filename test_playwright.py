@@ -371,6 +371,11 @@ def test_cellophane_clip_visual():
     _run_visual_test("cellophane-clip.svg", "cellophane-clip")
 
 
+def test_trace_connect_angled_visual():
+    """Compare trace-connect-angled rendering against expected baseline."""
+    _run_visual_test("trace-connect-angled.svg", "trace-connect-angled")
+
+
 # ---------------------------------------------------------------------------
 # Direct runner (not pytest)
 # ---------------------------------------------------------------------------
@@ -416,6 +421,7 @@ def main():
         test_transforms_visual,
         test_ghost_refocus_visual,
         test_cellophane_clip_visual,
+        test_trace_connect_angled_visual,
     ]
 
     passed = 0
