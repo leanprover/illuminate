@@ -772,6 +772,41 @@ def testVisual_traceConnectAngled : IO Unit :=
   testVisualWrite "trace-connect-angled.svg" (traceConnectAngledDiagram (1.2 * pi))
 
 
+-- ══════════════════════════════════════════════════════════════════
+-- Concentric circles with hit-test labels
+-- ══════════════════════════════════════════════════════════════════
+
+private def hueToColor (h : Float) : Color :=
+  let h := h - h.floor  -- normalize to [0,1)
+  let x := (1 - (h * 6 - (h * 6 / 2).floor * 2 - 1).abs)
+  let (r, g, b) :=
+    if h < 1.0 / 6 then (1.0, x, 0.0)
+    else if h < 2.0 / 6 then (x, 1.0, 0.0)
+    else if h < 3.0 / 6 then (0.0, 1.0, x)
+    else if h < 4.0 / 6 then (0.0, x, 1.0)
+    else if h < 5.0 / 6 then (x, 0.0, 1.0)
+    else (1.0, 0.0, x)
+  { r := (r * 255).toUInt8, g := (g * 255).toUInt8, b := (b * 255).toUInt8 }
+
+def concentricCircles (n : Slider "circles" 0 20 5) : DiagramWithInfo :=
+  let n : Nat := n.toUInt64.toNat |> max 1
+  let maxRadius : Float := 10 * n.toFloat
+  -- Build concentric circles from largest (back) to smallest (front)
+  let diagram := (List.range n).foldl (init := (Diagram.empty : Diagram Empty)) fun acc i =>
+    let radius := maxRadius * (n - i).toFloat / n.toFloat
+    let color := hueToColor (i.toFloat / n.toFloat)
+    let circle := Diagram.tag i
+      (Diagram.circle radius (fill := .solid { color })
+        (stroke := { color := Color.black, width := 1 }))
+    Diagram.compose acc circle
+  -- Build regions map
+  let regions : Std.HashMap Nat String := (List.range n).foldl
+    (init := .emptyWithCapacity 0) fun acc i =>
+    acc.insert i s!"Circle {i + 1}"
+  ⟨diagram, regions⟩
+
+#diagram concentricCircles
+
 def visualTests : List (String × IO Unit) := [
   ("Visual/roundedRects", testVisual_roundedRects),
   ("Visual/roundedRects_2_5", testVisual_roundedRects_2_5),
