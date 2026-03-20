@@ -117,7 +117,7 @@ def text (s : String) (style : TextStyle := {})
     let h := if nLines == 1 then fs / 2
              else lineHeight * nLines.toFloat / 2
     let (left, right) : Float × Float := match style.anchor with
-      | .start  => (0, totalW)
+      | .start => (0, totalW)
       | .«end» => (-totalW, 0)
       | .middle => (-totalW / 2, totalW / 2)
     withNameAndAnchors d n [

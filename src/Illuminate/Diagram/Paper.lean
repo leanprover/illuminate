@@ -36,9 +36,9 @@ def paper (label : Option (Diagram β) := none)
   let a4Ratio := 297.0 / 210.0
   let (w, h) := match width, height with
     | some w, some h => (w, h)
-    | some w, none   => (w, w * a4Ratio)
-    | none,   some h => (h / a4Ratio, h)
-    | none,   none   =>
+    | some w, none => (w, w * a4Ratio)
+    | none, some h => (h / a4Ratio, h)
+    | none, none =>
       match label with
       | some lbl =>
         let env := lbl.getEnvelope

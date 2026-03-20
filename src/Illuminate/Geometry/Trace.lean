@@ -474,4 +474,3 @@ short line segments for approximate intersection.
 def ofPathData (commands : Array PathCmd) (strokeWidth : Float) : StrokeTrace :=
   ⟨fun p v => rawToStroke (pathDataHits commands p v) v strokeWidth⟩
 
-end StrokeTrace
