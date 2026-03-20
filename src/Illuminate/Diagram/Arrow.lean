@@ -382,3 +382,31 @@ def Diagram.connectL {β : Type} (start stop : LineEnd)
   let srcPoint := (d.find start.point).origin
   let tgtPoint := (d.find stop.point).origin
   d.connectL' srcPoint tgtPoint start stop bend stroke
+
+/--
+Draws a line or arrow between two named shapes using trace-based boundary detection.
+Instead of connecting to explicit anchor points (like `node.north`), this finds the
+named subdiagrams, computes the direction between their centers, and uses traces to
+find where the arrow should start and end on each shape's boundary.
+-/
+def Diagram.connectEdge {β : Type} (start stop : LineEnd)
+    (stroke : Stroke := .defaultArrow)
+    (arrowhead : Option Arrowhead := none)
+    (label : Option (Label β) := none)
+    (d : Diagram β) : Diagram β :=
+  let stop' := { stop with arrowhead := stop.arrowhead <|> arrowhead }
+  let srcSub := d.find start.point
+  let tgtSub := d.find stop'.point
+  let srcCenter := srcSub.origin.toVec2
+  let tgtCenter := tgtSub.origin.toVec2
+  let dir := (tgtCenter - srcCenter).normalize
+  -- Find boundary points using stroke-aware traces so arrows clear the painted edge
+  let srcTrace := srcSub.getStrokeTrace
+  let tgtTrace := tgtSub.getStrokeTrace
+  let src := match srcTrace.closest (Point.ofVec2 srcCenter) dir with
+    | some hit => srcCenter + (hit.edge + hit.width) • dir + start.shift
+    | none => srcCenter + start.shift
+  let tgt := match tgtTrace.closest (Point.ofVec2 tgtCenter) (-dir) with
+    | some hit => tgtCenter - (hit.edge + hit.width) • dir + stop'.shift
+    | none => tgtCenter + stop'.shift
+  .compose d (buildArrow src tgt start stop' stroke label)

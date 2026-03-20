@@ -115,6 +115,95 @@ def toEnvelope (p : Primitive β) : Envelope :=
 
 end Primitive
 
+-- ═══════════════════════════════════════════════════════════════
+-- Trace computation from primitives
+-- ═══════════════════════════════════════════════════════════════
+
+namespace CorePrimitive
+
+/--
+Computes the trace of a core primitive.
+Path primitives use `Trace.ofPathData`. Text and image use bounding-box traces.
+-/
+def toTrace (cp : CorePrimitive) : Trace :=
+  match cp with
+  | .path pd _ _ => Trace.ofPathData pd.commands
+  | .text s style =>
+    let fontSize := style.fontSize
+    let lines := s.splitOn "\n"
+    let nLines := Max.max 1 lines.length
+    let totalW := lines.foldl (fun acc line => Max.max acc (estimateTextWidth fontSize line)) 0
+    let h := if nLines == 1 then fontSize / 2
+             else fontSize * 1.2 * nLines.toFloat / 2
+    match style.anchor with
+    | .start => Trace.ofRect (totalW / 2) h |> Trace.translateBy ⟨totalW / 2, 0⟩
+    | .«end» => Trace.ofRect (totalW / 2) h |> Trace.translateBy ⟨-totalW / 2, 0⟩
+    | .middle => Trace.ofRect (totalW / 2) h
+  | .image ref => Trace.ofRect (ref.width / 2) (ref.height / 2)
+
+end CorePrimitive
+
+namespace Primitive
+
+variable {β : Type}
+
+/--
+Computes the trace of a primitive. Foreign primitives with a core fallback
+use the fallback's trace; otherwise they have an empty trace.
+-/
+def toTrace (p : Primitive β) : Trace :=
+  match p with
+  | .core cp => cp.toTrace
+  | .foreign _ (some cp) => cp.toTrace
+  | .foreign _ none => Trace.empty
+
+end Primitive
+
+-- ═══════════════════════════════════════════════════════════════
+-- StrokeTrace computation from primitives
+-- ═══════════════════════════════════════════════════════════════
+
+namespace CorePrimitive
+
+/--
+Computes the stroke-aware trace of a core primitive.
+Path primitives use `StrokeTrace.ofPathData`. Text and image use bounding-box traces
+with zero stroke width.
+-/
+def toStrokeTrace (cp : CorePrimitive) : StrokeTrace :=
+  match cp with
+  | .path pd _ stroke => StrokeTrace.ofPathData pd.commands stroke.width
+  | .text s style =>
+    let fontSize := style.fontSize
+    let lines := s.splitOn "\n"
+    let nLines := Max.max 1 lines.length
+    let totalW := lines.foldl (fun acc line => Max.max acc (estimateTextWidth fontSize line)) 0
+    let h := if nLines == 1 then fontSize / 2
+             else fontSize * 1.2 * nLines.toFloat / 2
+    match style.anchor with
+    | .start => StrokeTrace.ofRect (totalW / 2) h 0 |> StrokeTrace.translateBy ⟨totalW / 2, 0⟩
+    | .«end» => StrokeTrace.ofRect (totalW / 2) h 0 |> StrokeTrace.translateBy ⟨-totalW / 2, 0⟩
+    | .middle => StrokeTrace.ofRect (totalW / 2) h 0
+  | .image ref => StrokeTrace.ofRect (ref.width / 2) (ref.height / 2) 0
+
+end CorePrimitive
+
+namespace Primitive
+
+variable {β : Type}
+
+/--
+Computes the stroke-aware trace of a primitive. Foreign primitives with a core fallback
+use the fallback's stroke trace; otherwise they have an empty stroke trace.
+-/
+def toStrokeTrace (p : Primitive β) : StrokeTrace :=
+  match p with
+  | .core cp => cp.toStrokeTrace
+  | .foreign _ (some cp) => cp.toStrokeTrace
+  | .foreign _ none => StrokeTrace.empty
+
+end Primitive
+
 namespace Diagram
 
 variable {β : Type}
@@ -136,6 +225,42 @@ def getEnvelope (d : Diagram β) : Envelope :=
   | .warning _ d => d.getEnvelope
   | .cellophane _ d => d.getEnvelope
   | .clip _ d => d.getEnvelope
+
+-- ═══════════════════════════════════════════════════════════════
+-- Trace extraction
+-- ═══════════════════════════════════════════════════════════════
+
+/-- Computes the trace of a diagram by recursive traversal. -/
+def getTrace (d : Diagram β) : Trace :=
+  match d with
+  | .empty => Trace.empty
+  | .prim p => p.toTrace
+  | .annotate _ d => d.getTrace
+  | .named _ d => d.getTrace
+  | .transform m d => Trace.transform m d.getTrace
+  | .compose a b => Trace.union a.getTrace b.getTrace
+  | .withEnv _ d => d.getTrace
+  | .warning _ d => d.getTrace
+  | .cellophane _ d => d.getTrace
+  | .clip _ d => d.getTrace
+
+-- ═══════════════════════════════════════════════════════════════
+-- StrokeTrace extraction
+-- ═══════════════════════════════════════════════════════════════
+
+/-- Computes the stroke-aware trace of a diagram by recursive traversal. -/
+def getStrokeTrace (d : Diagram β) : StrokeTrace :=
+  match d with
+  | .empty => StrokeTrace.empty
+  | .prim p => p.toStrokeTrace
+  | .annotate _ d => d.getStrokeTrace
+  | .named _ d => d.getStrokeTrace
+  | .transform m d => StrokeTrace.transform m d.getStrokeTrace
+  | .compose a b => StrokeTrace.union a.getStrokeTrace b.getStrokeTrace
+  | .withEnv _ d => d.getStrokeTrace
+  | .warning _ d => d.getStrokeTrace
+  | .cellophane _ d => d.getStrokeTrace
+  | .clip _ d => d.getStrokeTrace
 
 -- ═══════════════════════════════════════════════════════════════
 -- Name resolution
@@ -648,6 +773,66 @@ def showOrigin (d : Diagram β) (size : Float := 5)
     (Diagram.fromStroke (PathData.line ⟨-size, -size⟩ ⟨size, size⟩) stroke)
     (Diagram.fromStroke (PathData.line ⟨-size, size⟩ ⟨size, -size⟩) stroke)
   Diagram.atop d cross
+
+/--
+Renders the ray, arrowhead, and intersection dots for a single trace query.
+Returns just the overlay diagram (without the original diagram).
+-/
+private def traceOverlay {β : Type} (trace : Trace) (p : Point) (v : Vec2)
+    (dotRadius : Float) (rayColor : Color) : Diagram β :=
+  let vn := v.normalize
+  let hits : Array Float := trace.query p vn
+  let rayLen :=
+    if hits.isEmpty then 10
+    else
+      let maxT := hits.foldl (init := 0.0) fun acc t => Max.max acc t
+      maxT * 1.3
+  let rayEnd : Vec2 := ⟨p.x + rayLen * vn.x, p.y + rayLen * vn.y⟩
+  let rayStart : Vec2 := ⟨p.x, p.y⟩
+  let stroke : Stroke := { color := rayColor, width := (1 : Float) }
+  let ray : Diagram β := Diagram.fromStroke (PathData.line rayStart rayEnd) stroke
+  let headLen := 5.0
+  let halfAngle := 0.4
+  let cosA := Float.cos halfAngle
+  let sinA := Float.sin halfAngle
+  let ld : Vec2 := ⟨-(vn.x * cosA - vn.y * sinA), -(vn.y * cosA + vn.x * sinA)⟩
+  let rd : Vec2 := ⟨-(vn.x * cosA + vn.y * sinA), -(vn.y * cosA - vn.x * sinA)⟩
+  let tip := rayEnd + (headLen * 0.5) • vn
+  let headPath := PathData.empty
+    |>.moveTo tip
+    |>.lineTo (tip + headLen • ld)
+    |>.lineTo (tip + headLen • rd)
+    |>.close
+  let head : Diagram β := Diagram.fromPath headPath (fill := { color := rayColor }) (stroke := { width := (0 : Float) })
+  let dots : Diagram β := hits.foldl (init := Diagram.empty) fun acc t =>
+    let cx := p.x + t * vn.x
+    let cy := p.y + t * vn.y
+    let dot : Diagram β := Diagram.transform (Matrix.translate cx cy)
+      (Diagram.circle dotRadius (fill := { color := rayColor }))
+    Diagram.compose acc dot
+  Diagram.compose (Diagram.compose ray head) dots
+
+/--
+Overlays a ray and intersection dots to visualize a trace query.
+The ray extends from `p` along `v`; if the trace returns hits, the ray
+goes 30% past the last hit, otherwise it is 10 units long. Each
+intersection point is marked with a small filled circle.
+-/
+def showTrace (d : Diagram β) (p : Point) (v : Vec2)
+    (dotRadius : Float := 2) (rayColor : Color := Color.red) : Diagram β :=
+  Diagram.compose d (traceOverlay d.getTrace p v dotRadius rayColor)
+
+/--
+Overlays multiple trace rays on a diagram. Each ray is computed against the
+original diagram's trace independently, so rays do not interfere with each
+other's intersection results.
+-/
+def showTraces (d : Diagram β) (specs : List (Point × Vec2 × Color))
+    (dotRadius : Float := 2) : Diagram β :=
+  let trace := d.getTrace
+  let overlay := specs.foldl (init := (Diagram.empty : Diagram β)) fun acc (p, v, c) =>
+    Diagram.compose acc (traceOverlay trace p v dotRadius c)
+  Diagram.compose d overlay
 
 -- ═══════════════════════════════════════════════════════════════
 -- Aligned composition
