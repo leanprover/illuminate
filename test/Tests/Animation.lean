@@ -32,6 +32,12 @@ def easingTests : List (String × IO Unit) :=
       assertApproxEq (Easing.easeInOut 0) 0 "easeInOut(0)"
       assertApproxEq (Easing.easeInOut 1) 1 "easeInOut(1)"
       assertApproxEq (Easing.easeInOut 0.5) 0.5 "easeInOut(0.5)")
+  , ("easing: sineInOut 0→0, 1→1", do
+      assertApproxEq (Easing.sineInOut 0) 0 "sineInOut(0)" (tol := 1e-6)
+      assertApproxEq (Easing.sineInOut 1) 1 "sineInOut(1)" (tol := 1e-6)
+      assertApproxEq (Easing.sineInOut 0.25) 0.14645 "sineInOut(0.25)" (tol := 1e-4)
+      assertApproxEq (Easing.sineInOut 0.5) 0.5 "sineInOut(0.5)" (tol := 1e-6)
+      assertApproxEq (Easing.sineInOut 0.75) 0.85355 "sineInOut(0.75)" (tol := 1e-4))
   , ("easing: backOut 0→0, 1→1", do
       assertApproxEq (Easing.backOut 0) 0 "backOut(0)" (tol := 1e-6)
       assertApproxEq (Easing.backOut 1) 1 "backOut(1)" (tol := 1e-6))
@@ -239,6 +245,56 @@ def compilationTests : List (String × IO Unit) :=
         (fps := 10)
       let pauseSteps := compiled.steps.filter (·.pause)
       assertTrue (pauseSteps.size == 1) s!"expected 1 pause step, got {pauseSteps.size}")
+  , ("compile: write standalone HTML for seek test", do
+      let steps : List Step := [step 1.0]
+      let compiled := compileAnimation steps
+        (fun progress =>
+          let r := Interpolate.interpolate 10.0 50.0 progress[0]
+          Diagram.circle r (fill := .solid { color := Color.red }))
+        (fps := 10)
+      let html := compiled.renderHTML
+      IO.FS.writeFile "anim-seek-test.html" html
+      IO.println s!"  → wrote anim-seek-test.html ({html.length} bytes)")
+  , ("compile: write standalone HTML for loop test", do
+      let steps : List Step := [{ duration := 1.0, loop := true }]
+      let compiled := compileAnimation steps
+        (fun progress =>
+          let t := progress[0]
+          let x := Interpolate.interpolate (-40.0) 40.0 t
+          Diagram.transform (Matrix.translate x 0)
+            (Diagram.circle 10 (fill := .solid { color := Color.blue })))
+        (fps := 10)
+      let html := compiled.renderHTML
+      IO.FS.writeFile "anim-loop-test.html" html
+      IO.println s!"  → wrote anim-loop-test.html ({html.length} bytes)")
+  , ("compile: write dual-animation HTML for global clobbering test", do
+      -- Animation A: red circle grows
+      let stepsA : List Step := [step 1.0]
+      let compiledA := compileAnimation stepsA
+        (fun progress =>
+          let r := Interpolate.interpolate 10.0 30.0 progress[0]
+          Diagram.circle r (fill := .solid { color := Color.red }))
+        (fps := 10)
+      -- Animation B: blue square shrinks
+      let stepsB : List Step := [step 1.0]
+      let compiledB := compileAnimation stepsB
+        (fun progress =>
+          let sz := Interpolate.interpolate 60.0 20.0 progress[0]
+          Diagram.rect sz sz (fill := .solid { color := Color.blue }))
+        (fps := 10)
+      let snippetA := compiledA.renderRevealHTML "#anim-a"
+      let snippetB := compiledB.renderRevealHTML "#anim-b"
+      let html := s!"<!DOCTYPE html>
+<html><head><meta charset=\"utf-8\"></head>
+<body>
+<div id=\"anim-a\"></div>
+<hr>
+<div id=\"anim-b\"></div>
+{snippetA}
+{snippetB}
+</body></html>"
+      IO.FS.writeFile "anim-dual-test.html" html
+      IO.println s!"  → wrote anim-dual-test.html ({html.length} bytes)")
   ]
 
 -- ═══════════════════════════════════════════════════════════════

@@ -377,6 +377,100 @@ def test_trace_connect_angled_visual():
 
 
 # ---------------------------------------------------------------------------
+# Standalone animation player tests
+# ---------------------------------------------------------------------------
+
+def test_standalone_player_seek_updates_content(page):
+    """Scrubbing the standalone player to a different frame should change the displayed SVG.
+
+    The standalone playerJs always resets container.innerHTML to seg.sync (frame 0)
+    instead of using paramMap/params for DOM patching or seg.svgs[local] for full
+    frame replacement. This means seeking to a later frame shows stale content.
+    """
+    html_path = ROOT / "anim-seek-test.html"
+    assert html_path.exists(), "anim-seek-test.html not found — run lake test first"
+    page.goto(f"file://{html_path}")
+
+    # Get the SVG content at frame 0
+    frame0_svg = page.evaluate("document.getElementById('anim-container').innerHTML")
+    assert "<svg" in frame0_svg, "Container should have SVG at frame 0"
+
+    # Seek to the last frame via the scrubber
+    last_frame = page.evaluate("parseInt(document.getElementById('anim-scrub').max)")
+    page.evaluate(f"""
+        var scrubber = document.getElementById('anim-scrub');
+        scrubber.value = {last_frame};
+        scrubber.dispatchEvent(new Event('input'));
+    """)
+
+    # Get the SVG content at the last frame
+    last_frame_svg = page.evaluate("document.getElementById('anim-container').innerHTML")
+    assert "<svg" in last_frame_svg, "Container should have SVG at last frame"
+
+    # The circle grows from radius 10 to ~50, so the path data MUST differ.
+    # If they're equal, the player is showing stale sync-frame content.
+    assert frame0_svg != last_frame_svg, (
+        "Seeking to the last frame should change the displayed SVG "
+        "(circle grows from r=10 to r≈50), but the content is identical — "
+        "the standalone player is not applying per-frame updates"
+    )
+
+
+def test_standalone_player_loop_does_not_stop(page):
+    """A single looping step should never reach 'stopped' state.
+
+    The standalone playerJs tick() function does not handle the loop flag on
+    steps. When frame >= totalFrames, it unconditionally sets playing = false
+    and shows the play button, even though a looping step should wrap around.
+    """
+    html_path = ROOT / "anim-loop-test.html"
+    assert html_path.exists(), "anim-loop-test.html not found — run lake test first"
+    page.goto(f"file://{html_path}")
+
+    # Click play to start the animation
+    page.click("#anim-play")
+
+    # Wait long enough for the animation to have played through at least once
+    # (the animation is 1 second at 10fps = 10 frames)
+    page.wait_for_timeout(1500)
+
+    # If loop handling works, the animation should still be playing.
+    # The play button text should be the pause icon (⏸ = \u23F8), not play (▶ = \u25B6).
+    btn_text = page.evaluate("document.getElementById('anim-play').textContent")
+    assert btn_text == "\u23F8", (
+        f"After 1.5s, a 1s looping animation should still be playing "
+        f"(button should show ⏸), but button shows '{btn_text}' — "
+        f"the standalone player does not handle looping steps"
+    )
+
+
+def test_standalone_player_dual_animation_independence(page):
+    """Two animations embedded in the same page should each render into their own container.
+
+    Each renderRevealHTML call targets a different CSS selector, so both
+    animations should render independently without clobbering each other.
+    """
+    html_path = ROOT / "anim-dual-test.html"
+    assert html_path.exists(), "anim-dual-test.html not found — run lake test first"
+    page.goto(f"file://{html_path}")
+
+    anim_a_svg = page.evaluate("document.querySelector('#anim-a')?.innerHTML || ''")
+    anim_b_svg = page.evaluate("document.querySelector('#anim-b')?.innerHTML || ''")
+
+    # Both containers should have SVG content
+    assert "<svg" in anim_a_svg, "Animation A container should have SVG content"
+    assert "<svg" in anim_b_svg, "Animation B container should have SVG content"
+
+    # Animation A is a red circle, animation B is a blue rectangle.
+    # They should have DIFFERENT content because they're different animations.
+    assert anim_a_svg != anim_b_svg, (
+        "Two different animations (red circle vs blue rectangle) should show "
+        "different SVG content, but they are identical — one animation's "
+        "data may have clobbered the other"
+    )
+
+
+# ---------------------------------------------------------------------------
 # Direct runner (not pytest)
 # ---------------------------------------------------------------------------
 
@@ -401,6 +495,9 @@ def main():
         test_commdiag_node_positions,
         test_stars_structure,
         test_cellophane_clip_structure,
+        test_standalone_player_seek_updates_content,
+        test_standalone_player_loop_does_not_stop,
+        test_standalone_player_dual_animation_independence,
     ]
 
     visual_tests = [

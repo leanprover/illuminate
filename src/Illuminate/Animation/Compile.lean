@@ -235,11 +235,9 @@ def compileAnimation (steps : List Step)
       return { minX := -320, minY := -240, width := 640, height := 480 }
     else
       return { minX := minX, minY := minY, width := maxX - minX, height := maxY - minY }
-  -- Render all frames with the unified viewBox
+  -- Render all frames with the unified viewBox (reuse already-compiled draw lists)
   let allSvgs : Array String :=
-    frameDiagrams.map fun d =>
-      let cmds := d.compile
-      Svg.render cmds unifiedViewBox
+    frameDrawLists.map fun cmds => Svg.render cmds unifiedViewBox
   -- Segment by structural identity, also splitting at step boundaries
   let stepFrames : Array Nat := Id.run do
     let mut arr : Array Nat := #[]

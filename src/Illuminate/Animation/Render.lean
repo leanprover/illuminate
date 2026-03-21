@@ -59,12 +59,26 @@ def compiledAnimationToJson (ca : CompiledAnimation) : String :=
 -- HTML player
 -- ═══════════════════════════════════════════════════════════════
 
-/-- The JavaScript player code for SVG DOM playback. -/
+/-- Escapes a string for safe inclusion in a JavaScript single-quoted string literal. -/
+private def escapeJs (s : String) : String :=
+  s.foldl (init := "") fun acc c =>
+    acc ++ match c with
+    | '\\' => "\\\\"
+    | '\'' => "\\'"
+    | '\n' => "\\n"
+    | c => c.toString
+
+/--
+The JavaScript player code for SVG DOM playback.
+
+Uses `__DATA__` and `__SELECTOR__` as placeholders that callers replace
+with the serialized animation JSON and a CSS selector string, respectively.
+-/
 private def playerJs : String :=
   "
 (function() {
-  var data = window.__ANIM_DATA__;
-  var container = document.getElementById('anim-container');
+  var data = __DATA__;
+  var container = document.querySelector('__SELECTOR__');
   var playBtn = document.getElementById('anim-play');
   var scrubber = document.getElementById('anim-scrub');
   var currentSeg = null;
@@ -94,8 +108,8 @@ private def playerJs : String :=
       currentSeg = seg;
     }
 
-    if (local > 0 && seg.params.length > local) {
-      container.innerHTML = seg.sync;
+    if (local > 0 && seg.svgs && seg.svgs[local]) {
+      container.innerHTML = seg.svgs[local];
     }
 
     scrubber.value = frame;
@@ -114,6 +128,21 @@ private def playerJs : String :=
     if (startTime === null) startTime = timestamp;
     var elapsed = (timestamp - startTime) / 1000;
     var frame = pauseFrame + Math.round(elapsed * data.fps);
+
+    // Handle looping steps: wrap frame within step boundaries
+    var stepInfo = data.steps[currentStep];
+    if (stepInfo && stepInfo.loop) {
+      var stepStart = stepInfo.frame;
+      var stepEnd = (currentStep + 1 < data.steps.length)
+        ? data.steps[currentStep + 1].frame : data.totalFrames;
+      var stepLen = stepEnd - stepStart;
+      if (stepLen > 0 && frame >= stepEnd) {
+        var overshoot = (frame - stepStart) % stepLen;
+        frame = stepStart + overshoot;
+        startTime = timestamp;
+        pauseFrame = stepStart;
+      }
+    }
 
     if (frame >= data.totalFrames) {
       frame = data.totalFrames - 1;
@@ -187,8 +216,12 @@ private def playerJs : String :=
 "
 
 /-- Renders a `CompiledAnimation` to a self-contained HTML file. -/
-def CompiledAnimation.renderHTML (ca : CompiledAnimation) : String :=
+def CompiledAnimation.renderHTML (ca : CompiledAnimation)
+    (selector : String := "#anim-container") : String :=
   let dataJson := compiledAnimationToJson ca
+  let js := playerJs
+    |>.replace "__DATA__" dataJson
+    |>.replace "__SELECTOR__" (escapeJs selector)
   s!"<!DOCTYPE html>
 <html>
 <head>
@@ -209,22 +242,22 @@ body \{ margin: 0; display: flex; flex-direction: column; align-items: center; j
   <input type=\"range\" id=\"anim-scrub\" min=\"0\" value=\"0\">
 </div>
 <script>
-window.__ANIM_DATA__ = {dataJson};
-{playerJs}
+{js}
 </script>
 </body>
 </html>"
 
-/-- Renders a `CompiledAnimation` as an HTML snippet for embedding in reveal.js slides. -/
-def CompiledAnimation.renderRevealHTML (ca : CompiledAnimation) : String :=
+/-- Renders a `CompiledAnimation` as a `<script>` snippet that initializes playback into
+    the first element matching the given CSS selector. Designed for embedding in reveal.js
+    slides or any page with multiple animations. -/
+def CompiledAnimation.renderRevealHTML (ca : CompiledAnimation)
+    (selector : String) : String :=
   let dataJson := compiledAnimationToJson ca
-  s!"<div class=\"illuminate-anim\">
-<div id=\"anim-container\"></div>
-<script>
+  let sel := escapeJs selector
+  s!"<script>
 (function() \{
-  window.__ANIM_DATA__ = {dataJson};
-  var data = window.__ANIM_DATA__;
-  var container = document.getElementById('anim-container');
+  var data = {dataJson};
+  var container = document.querySelector('{sel}');
   var currentSeg = null;
 
   function findSegment(frame) \{
@@ -270,5 +303,4 @@ def CompiledAnimation.renderRevealHTML (ca : CompiledAnimation) : String :=
     });
   }
 })();
-</script>
-</div>"
+</script>"
