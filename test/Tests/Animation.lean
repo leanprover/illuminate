@@ -246,52 +246,126 @@ def compilationTests : List (String × IO Unit) :=
       let pauseSteps := compiled.steps.filter (·.pause)
       assertTrue (pauseSteps.size == 1) s!"expected 1 pause step, got {pauseSteps.size}")
   , ("compile: write standalone HTML for seek test", do
-      let steps : List Step := [step 1.0]
+      let steps : List Step := [step 3.0]
       let compiled := compileAnimation steps
         (fun progress =>
-          let r := Interpolate.interpolate 10.0 50.0 progress[0]
+          let t := Easing.easeInOut progress[0]
+          let r := Interpolate.interpolate 10.0 50.0 t
           Diagram.circle r (fill := .solid { color := Color.red }))
-        (fps := 10)
+        (fps := 60)
       let html := compiled.renderHTML
       IO.FS.writeFile "anim-seek-test.html" html
       IO.println s!"  → wrote anim-seek-test.html ({html.length} bytes)")
   , ("compile: write standalone HTML for loop test", do
-      let steps : List Step := [{ duration := 1.0, loop := true }]
+      let steps : List Step := [{ duration := 2.0, loop := true }]
       let compiled := compileAnimation steps
         (fun progress =>
           let t := progress[0]
-          let x := Interpolate.interpolate (-40.0) 40.0 t
-          Diagram.transform (Matrix.translate x 0)
+          let angle := t * 2 * pi
+          let x := 40.0 * Float.cos angle
+          let y := 40.0 * Float.sin angle
+          Diagram.transform (Matrix.translate x y)
             (Diagram.circle 10 (fill := .solid { color := Color.blue })))
-        (fps := 10)
+        (fps := 60)
       let html := compiled.renderHTML
       IO.FS.writeFile "anim-loop-test.html" html
       IO.println s!"  → wrote anim-loop-test.html ({html.length} bytes)")
   , ("compile: write dual-animation HTML for global clobbering test", do
-      -- Animation A: red circle grows
-      let stepsA : List Step := [step 1.0]
-      let compiledA := compileAnimation stepsA
+      -- Animation A: red circle grows, pulses color in a loop, then grows again
+      let compiledA := compileAnimation
+        [{ duration := 0, pause := true }, step 1.5,
+         { duration := 1.0, loop := true, pause := true },
+         { duration := 0, pause := true }, step 2.0]
         (fun progress =>
-          let r := Interpolate.interpolate 10.0 30.0 progress[0]
-          Diagram.circle r (fill := .solid { color := Color.red }))
-        (fps := 10)
-      -- Animation B: blue square shrinks
-      let stepsB : List Step := [step 1.0]
-      let compiledB := compileAnimation stepsB
+          let r1 := Interpolate.interpolate 10.0 25.0 progress[1]
+          let r := Interpolate.interpolate r1 40.0 progress[4]
+          let pulse := progress[2]
+          let t := 0.5 + 0.5 * Float.sin (pulse * 2 * pi)
+          let color := Interpolate.interpolate Color.red Color.blue t
+          Diagram.circle r (fill := .solid { color }))
+        (fps := 60)
+      -- Animation B: blue square shrinks in 2 pause-driven stages
+      let compiledB := compileAnimation
+        [{ duration := 0, pause := true }, step 2.0,
+         { duration := 0, pause := true }, step 1.5]
         (fun progress =>
-          let sz := Interpolate.interpolate 60.0 20.0 progress[0]
+          let s1 := Interpolate.interpolate 60.0 40.0 progress[1]
+          let sz := Interpolate.interpolate s1 20.0 progress[3]
           Diagram.rect sz sz (fill := .solid { color := Color.blue }))
-        (fps := 10)
+        (fps := 60)
       let snippetA := compiledA.renderRevealHTML "#anim-a"
       let snippetB := compiledB.renderRevealHTML "#anim-b"
+      -- Minimal Reveal mock: click advances, right-click/backspace goes back.
+      -- Must appear BEFORE animation snippets so window.Reveal exists when they
+      -- call addEventListener. Fragments are queried lazily since they are
+      -- created by the animation snippets that run after this script.
+      let revealMock := "
+<script>
+(function() {
+  window.Reveal = {
+    listeners: { shown: [], hidden: [] },
+    addEventListener: function(type, fn) {
+      if (type === 'fragmentshown') this.listeners.shown.push(fn);
+      if (type === 'fragmenthidden') this.listeners.hidden.push(fn);
+    }
+  };
+})();
+</script>"
+      let harness := "
+<script>
+(function() {
+  var shown = 0;
+  function getFragments() { return document.querySelectorAll('.fragment'); }
+  function advance() {
+    var fragments = getFragments();
+    if (shown < fragments.length) {
+      var e = new CustomEvent('fragmentshown', { detail: {} });
+      e.fragment = fragments[shown];
+      Reveal.listeners.shown.forEach(function(fn) { fn(e); });
+      shown++;
+    }
+  }
+  function back() {
+    if (shown > 0) {
+      shown--;
+      var fragments = getFragments();
+      var e = new CustomEvent('fragmenthidden', { detail: {} });
+      e.fragment = fragments[shown];
+      Reveal.listeners.hidden.forEach(function(fn) { fn(e); });
+    }
+  }
+  document.addEventListener('click', function(e) {
+    if (e.button === 0) advance();
+  });
+  document.addEventListener('contextmenu', function(e) {
+    e.preventDefault(); back();
+  });
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'ArrowRight' || e.key === ' ') advance();
+    if (e.key === 'ArrowLeft' || e.key === 'Backspace') back();
+  });
+})();
+</script>"
       let html := s!"<!DOCTYPE html>
-<html><head><meta charset=\"utf-8\"></head>
+<html><head><meta charset=\"utf-8\">
+<style>
+body \{ margin: 0; display: flex; flex-direction: column; align-items: center;
+  justify-content: center; min-height: 100vh; gap: 20px;
+  background: #f5f5f5; font-family: sans-serif; cursor: pointer; }
+#anim-a, #anim-b \{ background: white; border: 1px solid #ddd; border-radius: 4px;
+  padding: 10px; width: min(400px, 90vw); }
+#anim-a svg, #anim-b svg \{ display: block; width: 100%; height: auto; }
+p \{ color: #888; font-size: 14px; }
+</style>
+</head>
 <body>
+<p>Click / → to advance, right-click / ← to go back</p>
 <div id=\"anim-a\"></div>
-<hr>
 <div id=\"anim-b\"></div>
+{revealMock}
 {snippetA}
 {snippetB}
+{harness}
 </body></html>"
       IO.FS.writeFile "anim-dual-test.html" html
       IO.println s!"  → wrote anim-dual-test.html ({html.length} bytes)")

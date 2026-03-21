@@ -98,7 +98,7 @@ private def playerJs : String :=
     return data.segments[data.segments.length - 1];
   }
 
-  function seekTo(frame) {
+  function showFrame(frame) {
     frame = Math.max(0, Math.min(frame, data.totalFrames - 1));
     var seg = findSegment(frame);
     var local = frame - seg.sf;
@@ -113,7 +113,6 @@ private def playerJs : String :=
     }
 
     scrubber.value = frame;
-    pauseFrame = frame;
   }
 
   function findCurrentStep(frame) {
@@ -146,6 +145,7 @@ private def playerJs : String :=
 
     if (frame >= data.totalFrames) {
       frame = data.totalFrames - 1;
+      pauseFrame = frame;
       playing = false;
       playBtn.textContent = '\\u25B6';
     }
@@ -155,9 +155,10 @@ private def playerJs : String :=
       for (var s = currentStep + 1; s <= step; s++) {
         if (data.steps[s].pause) {
           frame = data.steps[s].frame;
+          pauseFrame = frame;
           waitingForClick = true;
           currentStep = s;
-          seekTo(frame);
+          showFrame(frame);
           playBtn.textContent = '\\u25B6';
           return;
         }
@@ -165,7 +166,7 @@ private def playerJs : String :=
       currentStep = step;
     }
 
-    seekTo(frame);
+    showFrame(frame);
     if (playing) requestAnimationFrame(tick);
   }
 
@@ -178,6 +179,7 @@ private def playerJs : String :=
       requestAnimationFrame(tick);
     } else if (playing) {
       playing = false;
+      pauseFrame = parseInt(scrubber.value);
       playBtn.textContent = '\\u25B6';
     } else {
       if (pauseFrame >= data.totalFrames - 1) {
@@ -207,11 +209,12 @@ private def playerJs : String :=
     waitingForClick = false;
     playBtn.textContent = '\\u25B6';
     var frame = parseInt(scrubber.value);
+    pauseFrame = frame;
     currentStep = findCurrentStep(frame);
-    seekTo(frame);
+    showFrame(frame);
   });
 
-  seekTo(0);
+  showFrame(0);
 })();
 "
 
@@ -228,8 +231,8 @@ def CompiledAnimation.renderHTML (ca : CompiledAnimation)
 <meta charset=\"utf-8\">
 <style>
 body \{ margin: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; background: #f5f5f5; font-family: sans-serif; }
-#anim-container \{ background: white; border: 1px solid #ddd; border-radius: 4px; padding: 10px; }
-#anim-container svg \{ display: block; max-width: 90vw; max-height: 70vh; }
+#anim-container \{ background: white; border: 1px solid #ddd; border-radius: 4px; padding: 10px; width: min(400px, 90vw); }
+#anim-container svg \{ display: block; width: 100%; height: auto; max-width: 90vw; max-height: 70vh; }
 .controls \{ margin-top: 12px; display: flex; align-items: center; gap: 8px; }
 #anim-play \{ font-size: 18px; width: 36px; height: 36px; border: 1px solid #ccc; border-radius: 4px; background: white; cursor: pointer; }
 #anim-scrub \{ width: 300px; }
@@ -259,6 +262,8 @@ def CompiledAnimation.renderRevealHTML (ca : CompiledAnimation)
   var data = {dataJson};
   var container = document.querySelector('{sel}');
   var currentSeg = null;
+  var currentFrame = 0;
+  var animId = null;
 
   function findSegment(frame) \{
     for (var i = 0; i < data.segments.length; i++) \{
@@ -268,11 +273,72 @@ def CompiledAnimation.renderRevealHTML (ca : CompiledAnimation)
     return data.segments[data.segments.length - 1];
   }
 
-  function seekTo(frame) \{
+  function showFrame(frame) \{
+    frame = Math.max(0, Math.min(frame, data.totalFrames - 1));
     var seg = findSegment(frame);
+    var local = frame - seg.sf;
     if (seg !== currentSeg) \{
       container.innerHTML = seg.sync;
       currentSeg = seg;
+    }
+    if (local > 0 && seg.svgs && seg.svgs[local]) \{
+      container.innerHTML = seg.svgs[local];
+    }
+    currentFrame = frame;
+  }
+
+  function stopAnim() \{
+    if (animId !== null) \{ cancelAnimationFrame(animId); animId = null; }
+  }
+
+  function findStepEnd(stepFrame) \{
+    for (var i = 0; i < data.steps.length; i++) \{
+      if (data.steps[i].frame === stepFrame) \{
+        for (var j = i + 1; j < data.steps.length; j++) \{
+          if (data.steps[j].frame > stepFrame) return data.steps[j].frame;
+        }
+        return data.totalFrames;
+      }
+    }
+    return data.totalFrames;
+  }
+
+  function startLoop(loopStart, loopEnd) \{
+    var loopLen = loopEnd - loopStart;
+    if (loopLen <= 0) return;
+    var startTime = null;
+    function tick(timestamp) \{
+      if (startTime === null) startTime = timestamp;
+      var elapsed = (timestamp - startTime) / 1000;
+      var offset = Math.round(elapsed * data.fps) % loopLen;
+      showFrame(loopStart + offset);
+      animId = requestAnimationFrame(tick);
+    }
+    animId = requestAnimationFrame(tick);
+  }
+
+  function animateTo(targetFrame, onComplete) \{
+    stopAnim();
+    var startFrame = currentFrame;
+    var startTime = null;
+    var dir = targetFrame > startFrame ? 1 : -1;
+    function tick(timestamp) \{
+      if (startTime === null) startTime = timestamp;
+      var elapsed = (timestamp - startTime) / 1000;
+      var frame = startFrame + dir * Math.round(elapsed * data.fps);
+      if ((dir > 0 && frame >= targetFrame) || (dir < 0 && frame <= targetFrame)) \{
+        showFrame(targetFrame);
+        animId = null;
+        if (onComplete) onComplete();
+        return;
+      }
+      showFrame(frame);
+      animId = requestAnimationFrame(tick);
+    }
+    if (startFrame === targetFrame) \{
+      if (onComplete) onComplete();
+    } else \{
+      animId = requestAnimationFrame(tick);
     }
   }
 
@@ -285,20 +351,33 @@ def CompiledAnimation.renderRevealHTML (ca : CompiledAnimation)
     container.parentElement.appendChild(frag);
   });
 
-  seekTo(0);
+  showFrame(0);
 
   if (typeof Reveal !== 'undefined') \{
     Reveal.addEventListener('fragmentshown', function(e) \{
+      stopAnim();
       var idx = parseInt(e.fragment.dataset.fragmentIndex);
       if (!isNaN(idx) && idx < pauseSteps.length) \{
-        seekTo(pauseSteps[idx].frame);
+        var ps = pauseSteps[idx];
+        animateTo(ps.frame, function() \{
+          if (ps.loop) \{
+            startLoop(ps.frame, findStepEnd(ps.frame));
+          }
+        });
       }
     });
     Reveal.addEventListener('fragmenthidden', function(e) \{
+      stopAnim();
       var idx = parseInt(e.fragment.dataset.fragmentIndex);
       if (!isNaN(idx)) \{
-        var prevFrame = idx > 0 ? pauseSteps[idx - 1].frame : 0;
-        seekTo(prevFrame);
+        var prevIdx = idx - 1;
+        if (prevIdx >= 0 && pauseSteps[prevIdx].loop) \{
+          var ps = pauseSteps[prevIdx];
+          startLoop(ps.frame, findStepEnd(ps.frame));
+        } else \{
+          var prevFrame = prevIdx >= 0 ? pauseSteps[prevIdx].frame : 0;
+          animateTo(prevFrame);
+        }
       }
     });
   }
