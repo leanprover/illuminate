@@ -126,7 +126,7 @@ end CommDiagM
 
 namespace CommDiag
 
-variable {β : Type}
+variable {β : Type} [Backend β]
 
 /-- Default cell spacing for grid layout. -/
 def cellSpacing : Float := 60
@@ -258,5 +258,5 @@ def compile (m : CommDiagM Unit) : Diagram β :=
 end CommDiag
 
 /-- Builds a commutative diagram from the DSL. -/
-def commDiag {β : Type} (m : CommDiagM Unit) : Diagram β :=
+def commDiag {β : Type} [Backend β] (m : CommDiagM Unit) : Diagram β :=
   CommDiag.compile m

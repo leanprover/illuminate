@@ -42,34 +42,34 @@ def testCorePrim_beq : IO Unit := do
 -- ══════════════════════════════════════════════════════════════════
 
 def testDiag_empty : IO Unit := do
-  let d : Diagram Empty := Diagram.emptyDiagram
+  let d : Diagram SVG := Diagram.emptyDiagram
   match d with
   | .empty => pure ()
   | _ => throw <| IO.userError "expected empty"
 
 def testDiag_rect : IO Unit := do
-  let d : Diagram Empty := Diagram.rect 4 2
+  let d : Diagram SVG := Diagram.rect 4 2
   match d with
-  | .prim (.core (.path _ _ _)) => pure ()
+  | .prim (.path _ _ _) => pure ()
   | _ => throw <| IO.userError "expected prim/core/path"
 
 def testDiag_circle : IO Unit := do
-  let d : Diagram Empty := Diagram.circle 5
+  let d : Diagram SVG := Diagram.circle 5
   match d with
-  | .withEnv _ (.prim (.core (.path _ _ _))) => pure ()
+  | .withEnv _ (.prim (.path _ _ _)) => pure ()
   | _ => throw <| IO.userError "expected withEnv/prim/core/path"
 
 def testDiag_text : IO Unit := do
-  let d : Diagram Empty := .text "hello"
+  let d : Diagram SVG := .text "hello"
   match d with
-  | .prim (.core (.text s _)) => assertTrue (s == "hello") "text content"
+  | .prim (.text s _) => assertTrue (s == "hello") "text content"
   | _ => throw <| IO.userError "expected prim/core/text"
 
 def testDiag_line : IO Unit := do
-  let d : Diagram Empty := Diagram.line ⟨0, 0⟩ ⟨1, 1⟩
+  let d : Diagram SVG := Diagram.line ⟨0, 0⟩ ⟨1, 1⟩
   match d with
-  | .prim (.core (.path _ .none _)) => pure ()
-  | .prim (.core (.path _ (.solid _) _)) => throw <| IO.userError "expected no fill on line"
+  | .prim (.path _ .none _) => pure ()
+  | .prim (.path _ (.solid _) _) => throw <| IO.userError "expected no fill on line"
   | _ => throw <| IO.userError "expected prim/core/path"
 
 -- ══════════════════════════════════════════════════════════════════
@@ -77,33 +77,33 @@ def testDiag_line : IO Unit := do
 -- ══════════════════════════════════════════════════════════════════
 
 def testDiagTree_compose : IO Unit := do
-  let a : Diagram Empty := Diagram.rect 1 1
-  let b : Diagram Empty := Diagram.circle 1
+  let a : Diagram SVG := Diagram.rect 1 1
+  let b : Diagram SVG := Diagram.circle 1
   let d := Diagram.compose a b
   match d with
   | .compose _ _ => pure ()
   | _ => throw <| IO.userError "expected compose"
 
 def testDiagTree_transform : IO Unit := do
-  let d : Diagram Empty := Diagram.transform (Matrix.translate 5 0) (Diagram.rect 1 1)
+  let d : Diagram SVG := Diagram.transform (Matrix.translate 5 0) (Diagram.rect 1 1)
   match d with
   | .transform _ (.prim _) => pure ()
   | _ => throw <| IO.userError "expected transform wrapping prim"
 
 def testDiagTree_annotate : IO Unit := do
-  let d : Diagram Empty := Diagram.tag 42 (Diagram.rect 1 1)
+  let d : Diagram SVG := Diagram.tag 42 (Diagram.rect 1 1)
   match d with
   | .tag tag _ => assertTrue (tag == 42) "annotation tag"
   | _ => throw <| IO.userError "expected tag"
 
 def testDiagTree_named : IO Unit := do
-  let d : Diagram Empty := Diagram.named `myBox (Diagram.rect 1 1)
+  let d : Diagram SVG := Diagram.named `myBox (Diagram.rect 1 1)
   match d with
   | .named n _ => assertTrue (n == `myBox) "name matches"
   | _ => throw <| IO.userError "expected named"
 
 def testDiagTree_nested : IO Unit := do
-  let inner : Diagram Empty := Diagram.compose (Diagram.rect 1 1) (Diagram.circle 2)
+  let inner : Diagram SVG := Diagram.compose (Diagram.rect 1 1) (Diagram.circle 2)
   let d := Diagram.transform (Matrix.rotate 0.5) (Diagram.named `group inner)
   match d with
   | .transform _ inner2 =>
@@ -153,31 +153,31 @@ def testBounds_negativeLine : IO Unit := do
 -- ══════════════════════════════════════════════════════════════════
 
 def testGetEnv_rect : IO Unit := do
-  let d : Diagram Empty := Diagram.rect 6 4
+  let d : Diagram SVG := Diagram.rect 6 4
   let env := d.getEnvelope
   assertApproxEq env[Vec2.east] 3 "rect env east"
   assertApproxEq env[Vec2.north] 2 "rect env north"
 
 def testGetEnv_circle : IO Unit := do
-  let d : Diagram Empty := Diagram.circle 5
+  let d : Diagram SVG := Diagram.circle 5
   let env := d.getEnvelope
   assertApproxEq env[Vec2.east] 5 "circle env east" (tol := 0.01)
   assertApproxEq env[Vec2.north] 5 "circle env north" (tol := 0.01)
 
 def testGetEnv_empty : IO Unit := do
-  let d : Diagram Empty := .empty
+  let d : Diagram SVG := .empty
   let env := d.getEnvelope
   assertApproxEq env[Vec2.east] 0 "empty env east"
 
 def testGetEnv_transformed : IO Unit := do
-  let d : Diagram Empty := .transform (Matrix.translate 10 0) (Diagram.rect 2 2)
+  let d : Diagram SVG := .transform (Matrix.translate 10 0) (Diagram.rect 2 2)
   let env := d.getEnvelope
   assertApproxEq env[Vec2.east] 11 "translated rect env east"
   assertApproxEq env[Vec2.west] (-9) "translated rect env west"
 
 def testGetEnv_compose : IO Unit := do
-  let a : Diagram Empty := Diagram.rect 4 2
-  let b : Diagram Empty := Diagram.rect 2 6
+  let a : Diagram SVG := Diagram.rect 4 2
+  let b : Diagram SVG := Diagram.rect 2 6
   let d := Diagram.compose a b
   let env := d.getEnvelope
   assertApproxEq env[Vec2.east] 2 "compose env east = max(2,1)"
@@ -188,8 +188,8 @@ def testGetEnv_compose : IO Unit := do
 -- ══════════════════════════════════════════════════════════════════
 
 def testHcomp_envelopeWidth : IO Unit := do
-  let a : Diagram Empty := Diagram.rect 4 2  -- half-width 2
-  let b : Diagram Empty := Diagram.rect 6 2  -- half-width 3
+  let a : Diagram SVG := Diagram.rect 4 2  -- half-width 2
+  let b : Diagram SVG := Diagram.rect 6 2  -- half-width 3
   let d := Diagram.hjoin a b
   let env := d.getEnvelope
   -- total width = 4+6 = 10, centered → east=5, west=5
@@ -197,15 +197,15 @@ def testHcomp_envelopeWidth : IO Unit := do
   assertApproxEq env[Vec2.west] 5 "hjoin west" (tol := 0.01)
 
 def testHcomp_height : IO Unit := do
-  let a : Diagram Empty := Diagram.rect 2 4  -- half-height 2
-  let b : Diagram Empty := Diagram.rect 2 8  -- half-height 4
+  let a : Diagram SVG := Diagram.rect 2 4  -- half-height 2
+  let b : Diagram SVG := Diagram.rect 2 8  -- half-height 4
   let d := Diagram.hjoin a b
   let env := d.getEnvelope
   assertApproxEq env[Vec2.north] 4 "hjoin north = max height" (tol := 0.01)
 
 def testVcomp_envelopeHeight : IO Unit := do
-  let a : Diagram Empty := Diagram.rect 2 4  -- half-height 2
-  let b : Diagram Empty := Diagram.rect 2 6  -- half-height 3
+  let a : Diagram SVG := Diagram.rect 2 4  -- half-height 2
+  let b : Diagram SVG := Diagram.rect 2 6  -- half-height 3
   let d := Diagram.vjoin a b
   let env := d.getEnvelope
   -- total height = 4+6 = 10, centered → north=5, south=5
@@ -213,16 +213,16 @@ def testVcomp_envelopeHeight : IO Unit := do
   assertApproxEq env[Vec2.south] 5 "vjoin south" (tol := 0.01)
 
 def testBeside_withGap : IO Unit := do
-  let a : Diagram Empty := Diagram.rect 4 2
-  let b : Diagram Empty := Diagram.rect 4 2
+  let a : Diagram SVG := Diagram.rect 4 2
+  let b : Diagram SVG := Diagram.rect 4 2
   let d := Diagram.beside Vec2.east 5 a b
   let env := d.getEnvelope
   -- a east=2, b west=2, gap=5 → total width=13, centered → east=6.5
   assertApproxEq env[Vec2.east] 6.5 "beside gap east" (tol := 0.01)
 
 def testHcomp_empty : IO Unit := do
-  let a : Diagram Empty := Diagram.rect 4 2
-  let d := Diagram.hjoin a (Diagram.emptyDiagram : Diagram Empty)
+  let a : Diagram SVG := Diagram.rect 4 2
+  let d := Diagram.hjoin a (Diagram.emptyDiagram : Diagram SVG)
   let env := d.getEnvelope
   assertApproxEq env[Vec2.east] 2 "hjoin with empty east" (tol := 0.01)
 
@@ -231,32 +231,32 @@ def testHcomp_empty : IO Unit := do
 -- ══════════════════════════════════════════════════════════════════
 
 def testHcat_three : IO Unit := do
-  let boxes : List (Diagram Empty) := [Diagram.rect 2 2, Diagram.rect 2 2, Diagram.rect 2 2]
+  let boxes : List (Diagram SVG) := [Diagram.rect 2 2, Diagram.rect 2 2, Diagram.rect 2 2]
   let d := Diagram.hcat boxes
   let env := d.getEnvelope
   -- Three 2-wide boxes: total width = 6, centered → east = west = 3.
   assertApproxEq env[Vec2.east] 3 "hcat three east" (tol := 0.01)
 
 def testVcat_two : IO Unit := do
-  let boxes : List (Diagram Empty) := [Diagram.rect 2 4, Diagram.rect 2 4]
+  let boxes : List (Diagram SVG) := [Diagram.rect 2 4, Diagram.rect 2 4]
   let d := Diagram.vcat boxes
   let env := d.getEnvelope
   -- Two 4-tall boxes: total height = 8, centered → south = north = 4.
   assertApproxEq env[Vec2.south] 4 "vcat two south" (tol := 0.01)
 
 def testHcat_empty : IO Unit := do
-  let d : Diagram Empty := Diagram.hcat []
+  let d : Diagram SVG := Diagram.hcat []
   let env := d.getEnvelope
   assertApproxEq env[Vec2.east] 0 "hcat empty"
 
 def testVcat_single : IO Unit := do
-  let d : Diagram Empty := Diagram.vcat [Diagram.rect 6 4]
+  let d : Diagram SVG := Diagram.vcat [Diagram.rect 6 4]
   let env := d.getEnvelope
   -- Single element stays at origin. rect 6 4 has half-height 2.
   assertApproxEq env[Vec2.south] 2 "vcat single south" (tol := 0.01)
 
 def testHcat_singleBox : IO Unit := do
-  let d : Diagram Empty := Diagram.hcat [Diagram.rect 4 2]
+  let d : Diagram SVG := Diagram.hcat [Diagram.rect 4 2]
   let env := d.getEnvelope
   -- Single element stays at origin. rect 4 2 has half-width 2.
   assertApproxEq env[Vec2.east] 2 "hcat single east" (tol := 0.01)
@@ -266,34 +266,34 @@ def testHcat_singleBox : IO Unit := do
 -- ══════════════════════════════════════════════════════════════════
 
 def testGrid_2x2 : IO Unit := do
-  let cell : Diagram Empty := Diagram.rect 2 2
+  let cell : Diagram SVG := Diagram.rect 2 2
   let d := Diagram.grid #[#[some cell, some cell], #[some cell, some cell]]
   let env := d.getEnvelope
   -- 2x2 grid of 2×2 cells: total width = 4, centered → east = west = 2.
   assertApproxEq env[Vec2.east] 2 "grid 2x2 east" (tol := 0.1)
 
 def testGrid_empty : IO Unit := do
-  let d : Diagram Empty := Diagram.grid #[]
+  let d : Diagram SVG := Diagram.grid #[]
   match d with
   | .empty => pure ()
   | _ => throw <| IO.userError "empty grid should be .empty"
 
 def testGrid_withNone : IO Unit := do
-  let cell : Diagram Empty := Diagram.rect 4 4
+  let cell : Diagram SVG := Diagram.rect 4 4
   let d := Diagram.grid #[#[some cell, none], #[none, some cell]]
   let env := d.getEnvelope
   -- Should still produce a 2x2 grid with uniform cell sizes
   assertTrue (env[Vec2.east] > 0) "grid with holes has positive extent"
 
 def testGrid_singleCell : IO Unit := do
-  let cell : Diagram Empty := Diagram.rect 6 4
+  let cell : Diagram SVG := Diagram.rect 6 4
   let d := Diagram.grid #[#[some cell]]
   let env := d.getEnvelope
   -- 1x1 grid. Cell gets uniform envelope ofRect 3 2. Single element at origin.
   assertApproxEq env[Vec2.east] 3 "grid single east" (tol := 0.1)
 
 def testGrid_1x3 : IO Unit := do
-  let cell : Diagram Empty := Diagram.rect 2 2
+  let cell : Diagram SVG := Diagram.rect 2 2
   let d := Diagram.grid #[#[some cell, some cell, some cell]]
   let env := d.getEnvelope
   -- 1×3 grid of 2×2 cells: total width = 6, centered → east = west = 3.
@@ -304,31 +304,31 @@ def testGrid_1x3 : IO Unit := do
 -- ══════════════════════════════════════════════════════════════════
 
 def testAnchor_zeroEnvelope : IO Unit := do
-  let d : Diagram Empty := Diagram.anchor `myPoint
+  let d : Diagram SVG := Diagram.anchor `myPoint
   let env := d.getEnvelope
   assertApproxEq env[Vec2.east] 0 "anchor zero east"
   assertApproxEq env[Vec2.north] 0 "anchor zero north"
 
 def testAnchor_isNamed : IO Unit := do
-  let d : Diagram Empty := Diagram.anchor `pt
+  let d : Diagram SVG := Diagram.anchor `pt
   match d with
   | .named n (.empty) => assertTrue (n == `pt) "anchor name"
   | _ => throw <| IO.userError "anchor should be named empty"
 
 def testAnchor_composedEnvelope : IO Unit := do
-  let box : Diagram Empty := Diagram.rect 4 2
+  let box : Diagram SVG := Diagram.rect 4 2
   let d := Diagram.atop box (Diagram.anchor `center)
   let env := d.getEnvelope
   assertApproxEq env[Vec2.east] 2 "anchor in compose doesn't change envelope"
 
 def testNamed_preservesEnvelope : IO Unit := do
-  let d : Diagram Empty := .named `box (Diagram.rect 6 4)
+  let d : Diagram SVG := .named `box (Diagram.rect 6 4)
   let env := d.getEnvelope
   assertApproxEq env[Vec2.east] 3 "named preserves east"
   assertApproxEq env[Vec2.north] 2 "named preserves north"
 
 def testNamed_nestedLookup : IO Unit := do
-  let inner : Diagram Empty := .named `inner (Diagram.rect 2 2)
+  let inner : Diagram SVG := .named `inner (Diagram.rect 2 2)
   let outer := Diagram.named `outer inner
   match outer with
   | .named `outer (.named `inner _) => pure ()
@@ -339,31 +339,31 @@ def testNamed_nestedLookup : IO Unit := do
 -- ══════════════════════════════════════════════════════════════════
 
 def testFloating_zeroEnvelope : IO Unit := do
-  let d : Diagram Empty := Diagram.floating (Diagram.rect 10 10)
+  let d : Diagram SVG := Diagram.floating (Diagram.rect 10 10)
   let env := d.getEnvelope
   assertApproxEq env[Vec2.east] 0 "floating zero east"
   assertApproxEq env[Vec2.north] 0 "floating zero north"
 
 def testStrut_envelope : IO Unit := do
-  let d : Diagram Empty := Diagram.strut (Envelope.ofRect 5 3)
+  let d : Diagram SVG := Diagram.strut (Envelope.ofRect 5 3)
   let env := d.getEnvelope
   assertApproxEq env[Vec2.east] 5 "strut east"
   assertApproxEq env[Vec2.north] 3 "strut north"
 
 def testStrut_invisible : IO Unit := do
-  let d : Diagram Empty := Diagram.strut (Envelope.ofRect 5 3)
+  let d : Diagram SVG := Diagram.strut (Envelope.ofRect 5 3)
   match d with
   | .withEnv _ .empty => pure ()
   | _ => throw <| IO.userError "strut should be withEnv over empty"
 
 def testWithEnvelope_override : IO Unit := do
-  let d : Diagram Empty := Diagram.withEnvelope (Envelope.ofRect 100 100) (Diagram.rect 2 2)
+  let d : Diagram SVG := Diagram.withEnvelope (Envelope.ofRect 100 100) (Diagram.rect 2 2)
   let env := d.getEnvelope
   assertApproxEq env[Vec2.east] 100 "withEnvelope override east"
 
 def testFloating_inCompose : IO Unit := do
-  let box : Diagram Empty := Diagram.rect 4 2
-  let floatingBox : Diagram Empty := Diagram.floating (Diagram.rect 100 100)
+  let box : Diagram SVG := Diagram.rect 4 2
+  let floatingBox : Diagram SVG := Diagram.floating (Diagram.rect 100 100)
   let d := Diagram.hjoin box floatingBox
   let env := d.getEnvelope
   -- floating has zero envelope, so hjoin should place it at east edge of box
@@ -375,19 +375,19 @@ def testFloating_inCompose : IO Unit := do
 -- ══════════════════════════════════════════════════════════════════
 
 def testPad_uniform : IO Unit := do
-  let d : Diagram Empty := Diagram.pad 3 (Diagram.rect 4 2)
+  let d : Diagram SVG := Diagram.pad 3 (Diagram.rect 4 2)
   let env := d.getEnvelope
   assertApproxEq env[Vec2.east] 5 "pad east 2+3"
   assertApproxEq env[Vec2.north] 4 "pad north 1+3"
 
 def testPadRight_only : IO Unit := do
-  let d : Diagram Empty := Diagram.padRight 5 (Diagram.rect 4 2)
+  let d : Diagram SVG := Diagram.padRight 5 (Diagram.rect 4 2)
   let env := d.getEnvelope
   assertApproxEq env[Vec2.east] 7 "padRight east 2+5"
   assertApproxEq env[Vec2.west] 2 "padRight west unchanged"
 
 def testPadLRTB : IO Unit := do
-  let d : Diagram Empty := Diagram.padLRTB 1 2 3 4 (Diagram.rect 4 2)
+  let d : Diagram SVG := Diagram.padLRTB 1 2 3 4 (Diagram.rect 4 2)
   let env := d.getEnvelope
   assertApproxEq env[Vec2.west] 3 "padLRTB west 2+1"
   assertApproxEq env[Vec2.east] 4 "padLRTB east 2+2"
@@ -395,13 +395,13 @@ def testPadLRTB : IO Unit := do
   assertApproxEq env[Vec2.south] 5 "padLRTB south 1+4"
 
 def testPadXY : IO Unit := do
-  let d : Diagram Empty := Diagram.padXY 2 3 (Diagram.rect 4 2)
+  let d : Diagram SVG := Diagram.padXY 2 3 (Diagram.rect 4 2)
   let env := d.getEnvelope
   assertApproxEq env[Vec2.east] 4 "padXY east 2+2"
   assertApproxEq env[Vec2.north] 4 "padXY north 1+3"
 
 def testPad_zero : IO Unit := do
-  let d : Diagram Empty := Diagram.pad 0 (Diagram.rect 4 2)
+  let d : Diagram SVG := Diagram.pad 0 (Diagram.rect 4 2)
   let env := d.getEnvelope
   assertApproxEq env[Vec2.east] 2 "pad zero east unchanged"
 
@@ -410,32 +410,32 @@ def testPad_zero : IO Unit := do
 -- ══════════════════════════════════════════════════════════════════
 
 def testSetEnvelopeRight : IO Unit := do
-  let d : Diagram Empty := Diagram.setEnvelopeRight 10 (Diagram.rect 4 2)
+  let d : Diagram SVG := Diagram.setEnvelopeRight 10 (Diagram.rect 4 2)
   let env := d.getEnvelope
   assertApproxEq env[Vec2.east] 10 "setEnvelopeRight east"
   assertApproxEq env[Vec2.west] 2 "setEnvelopeRight west unchanged"
 
 def testSetEnvelopeTop : IO Unit := do
-  let d : Diagram Empty := Diagram.setEnvelopeTop 20 (Diagram.rect 4 2)
+  let d : Diagram SVG := Diagram.setEnvelopeTop 20 (Diagram.rect 4 2)
   let env := d.getEnvelope
   assertApproxEq env[Vec2.north] 20 "setEnvelopeTop north"
 
 def testHGap : IO Unit := do
-  let d : Diagram Empty := Diagram.hGap 8
+  let d : Diagram SVG := Diagram.hGap 8
   let env := d.getEnvelope
   assertApproxEq env[Vec2.east] 4 "hGap east = half width"
   assertApproxEq env[Vec2.north] 0 "hGap zero height"
 
 def testVGap : IO Unit := do
-  let d : Diagram Empty := Diagram.vGap 6
+  let d : Diagram SVG := Diagram.vGap 6
   let env := d.getEnvelope
   assertApproxEq env[Vec2.north] 3 "vGap north = half height"
   assertApproxEq env[Vec2.east] 0 "vGap zero width"
 
 def testHGap_inCompose : IO Unit := do
-  let a : Diagram Empty := Diagram.rect 4 2
-  let gap : Diagram Empty := Diagram.hGap 6
-  let b : Diagram Empty := Diagram.rect 4 2
+  let a : Diagram SVG := Diagram.rect 4 2
+  let gap : Diagram SVG := Diagram.hGap 6
+  let b : Diagram SVG := Diagram.rect 4 2
   let d := Diagram.hcat [a, gap, b]
   let env := d.getEnvelope
   -- rect4 + gap6 + rect4 = total width 14, centered → east = west = 7.
@@ -446,8 +446,8 @@ def testHGap_inCompose : IO Unit := do
 -- ══════════════════════════════════════════════════════════════════
 
 def testAlignFraction_bottom : IO Unit := do
-  let a : Diagram Empty := Diagram.rect 2 4  -- half-height 2
-  let b : Diagram Empty := Diagram.rect 2 8  -- half-height 4
+  let a : Diagram SVG := Diagram.rect 2 4  -- half-height 2
+  let b : Diagram SVG := Diagram.rect 2 8  -- half-height 4
   let d := Diagram.hAppendAlign (.fraction 0) a b
   let env := d.getEnvelope
   -- fraction 0 = align bottoms. a bottom at -2, b bottom at -4.
@@ -457,8 +457,8 @@ def testAlignFraction_bottom : IO Unit := do
   assertApproxEq env[Vec2.south] 2 "align bottom south" (tol := 0.01)
 
 def testAlignFraction_top : IO Unit := do
-  let a : Diagram Empty := Diagram.rect 2 4  -- half-height 2
-  let b : Diagram Empty := Diagram.rect 2 8  -- half-height 4
+  let a : Diagram SVG := Diagram.rect 2 4  -- half-height 2
+  let b : Diagram SVG := Diagram.rect 2 8  -- half-height 4
   let d := Diagram.hAppendAlign (.fraction 1) a b
   let env := d.getEnvelope
   -- fraction 1 = align tops. a top at 2, b top at 4.
@@ -468,8 +468,8 @@ def testAlignFraction_top : IO Unit := do
   assertApproxEq env[Vec2.south] 6 "align top south" (tol := 0.01)
 
 def testAlignFraction_center : IO Unit := do
-  let a : Diagram Empty := Diagram.rect 2 4  -- half-height 2
-  let b : Diagram Empty := Diagram.rect 2 8  -- half-height 4
+  let a : Diagram SVG := Diagram.rect 2 4  -- half-height 2
+  let b : Diagram SVG := Diagram.rect 2 8  -- half-height 4
   let d := Diagram.hAppendAlign (.fraction 0.5) a b
   let env := d.getEnvelope
   -- fraction 0.5 = align centers. Both centered at 0.
@@ -478,8 +478,8 @@ def testAlignFraction_center : IO Unit := do
   assertApproxEq env[Vec2.south] 4 "align center south" (tol := 0.01)
 
 def testAlignFraction_sameHeight : IO Unit := do
-  let a : Diagram Empty := Diagram.rect 2 4
-  let b : Diagram Empty := Diagram.rect 2 4
+  let a : Diagram SVG := Diagram.rect 2 4
+  let b : Diagram SVG := Diagram.rect 2 4
   let d := Diagram.hAppendAlign (.fraction 0) a b
   let env := d.getEnvelope
   -- Same height, any alignment should give same result
@@ -487,8 +487,8 @@ def testAlignFraction_sameHeight : IO Unit := do
   assertApproxEq env[Vec2.south] 2 "align same height south" (tol := 0.01)
 
 def testAlignAnchor_fallback : IO Unit := do
-  let a : Diagram Empty := Diagram.rect 2 4
-  let b : Diagram Empty := Diagram.rect 2 8
+  let a : Diagram SVG := Diagram.rect 2 4
+  let b : Diagram SVG := Diagram.rect 2 8
   -- anchor alignment falls back to center for now
   let d := Diagram.hAppendAlign (.anchor `baseline) a b
   let env := d.getEnvelope
@@ -499,8 +499,8 @@ def testAlignAnchor_fallback : IO Unit := do
 -- ══════════════════════════════════════════════════════════════════
 
 def testHcat_topAlign : IO Unit := do
-  let a : Diagram Empty := Diagram.rect 2 4  -- half-height 2
-  let b : Diagram Empty := Diagram.rect 2 8  -- half-height 4
+  let a : Diagram SVG := Diagram.rect 2 4  -- half-height 2
+  let b : Diagram SVG := Diagram.rect 2 8  -- half-height 4
   let d := Diagram.hcat [a, b] (align := .top)
   let env := d.getEnvelope
   -- Top-aligned, then centered: north=2, south=6 → both = 4.
@@ -508,8 +508,8 @@ def testHcat_topAlign : IO Unit := do
   assertApproxEq env[Vec2.south] 4 "hcat top south" (tol := 0.01)
 
 def testHcat_bottomAlign : IO Unit := do
-  let a : Diagram Empty := Diagram.rect 2 4  -- half-height 2
-  let b : Diagram Empty := Diagram.rect 2 8  -- half-height 4
+  let a : Diagram SVG := Diagram.rect 2 4  -- half-height 2
+  let b : Diagram SVG := Diagram.rect 2 8  -- half-height 4
   let d := Diagram.hcat [a, b] (align := .bottom)
   let env := d.getEnvelope
   -- Bottom-aligned, then centered: north=6, south=2 → both = 4.
@@ -517,8 +517,8 @@ def testHcat_bottomAlign : IO Unit := do
   assertApproxEq env[Vec2.south] 4 "hcat bottom south" (tol := 0.01)
 
 def testVcat_leftAlign : IO Unit := do
-  let a : Diagram Empty := Diagram.rect 4 2  -- half-width 2
-  let b : Diagram Empty := Diagram.rect 8 2  -- half-width 4
+  let a : Diagram SVG := Diagram.rect 4 2  -- half-width 2
+  let b : Diagram SVG := Diagram.rect 8 2  -- half-width 4
   let d := Diagram.vcat [a, b] (align := .left)
   let env := d.getEnvelope
   -- Left-aligned, then centered: east=6, west=2 → both = 4.
@@ -526,8 +526,8 @@ def testVcat_leftAlign : IO Unit := do
   assertApproxEq env[Vec2.west] 4 "vcat left west" (tol := 0.01)
 
 def testVcat_rightAlign : IO Unit := do
-  let a : Diagram Empty := Diagram.rect 4 2  -- half-width 2
-  let b : Diagram Empty := Diagram.rect 8 2  -- half-width 4
+  let a : Diagram SVG := Diagram.rect 4 2  -- half-width 2
+  let b : Diagram SVG := Diagram.rect 8 2  -- half-width 4
   let d := Diagram.vcat [a, b] (align := .right)
   let env := d.getEnvelope
   -- Right-aligned, then centered: east=2, west=6 → both = 4.
@@ -535,8 +535,8 @@ def testVcat_rightAlign : IO Unit := do
   assertApproxEq env[Vec2.west] 4 "vcat right west" (tol := 0.01)
 
 def testHsep_topAlign : IO Unit := do
-  let a : Diagram Empty := Diagram.rect 2 4  -- half-height 2
-  let b : Diagram Empty := Diagram.rect 2 8  -- half-height 4
+  let a : Diagram SVG := Diagram.rect 2 4  -- half-height 2
+  let b : Diagram SVG := Diagram.rect 2 8  -- half-height 4
   let d := Diagram.hsep 5 [a, b] (align := .top)
   let env := d.getEnvelope
   -- Same vertical alignment as hcat top, centered → north = south = 4.
@@ -544,8 +544,8 @@ def testHsep_topAlign : IO Unit := do
   assertApproxEq env[Vec2.south] 4 "hsep top south" (tol := 0.01)
 
 def testVsep_leftAlign : IO Unit := do
-  let a : Diagram Empty := Diagram.rect 4 2  -- half-width 2
-  let b : Diagram Empty := Diagram.rect 8 2  -- half-width 4
+  let a : Diagram SVG := Diagram.rect 4 2  -- half-width 2
+  let b : Diagram SVG := Diagram.rect 8 2  -- half-width 4
   let d := Diagram.vsep 5 [a, b] (align := .left)
   let env := d.getEnvelope
   -- Same horizontal alignment as vcat left, centered → east = west = 4.
@@ -557,24 +557,24 @@ def testVsep_leftAlign : IO Unit := do
 -- ══════════════════════════════════════════════════════════════════
 
 def testConvex_rect : IO Unit := do
-  let env := (Diagram.rect 6 4 : Diagram Empty).getEnvelope
+  let env := (Diagram.rect 6 4 : Diagram SVG).getEnvelope
   assertEnvelopeConvex env "rect"
 
 def testConvex_circle : IO Unit := do
-  let env := (Diagram.circle 5 : Diagram Empty).getEnvelope
+  let env := (Diagram.circle 5 : Diagram SVG).getEnvelope
   assertEnvelopeConvex env "circle"
 
 def testConvex_union : IO Unit := do
-  let a := (Diagram.rect 10 2 : Diagram Empty).getEnvelope
-  let b := (Diagram.rect 2 10 : Diagram Empty).getEnvelope
+  let a := (Diagram.rect 10 2 : Diagram SVG).getEnvelope
+  let b := (Diagram.rect 2 10 : Diagram SVG).getEnvelope
   assertEnvelopeConvex (Envelope.union a b) "union of cross rects"
 
 def testConvex_transformed : IO Unit := do
-  let env := (Diagram.rotate (pi / 6) (Diagram.rect 8 3) : Diagram Empty).getEnvelope
+  let env := (Diagram.rotate (pi / 6) (Diagram.rect 8 3) : Diagram SVG).getEnvelope
   assertEnvelopeConvex env "rotated rect"
 
 def testConvex_multilineText : IO Unit := do
-  let env := (Diagram.text "short\nabcdefghij\nhi" : Diagram Empty).getEnvelope
+  let env := (Diagram.text "short\nabcdefghij\nhi" : Diagram SVG).getEnvelope
   assertEnvelopeConvex env "multiline text"
 
 def diagramTests : List (String × IO Unit) := [

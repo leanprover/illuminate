@@ -137,22 +137,6 @@ def toEnvelope (cp : CorePrimitive) : Envelope :=
 
 end CorePrimitive
 
-namespace Primitive
-
-variable {β : Type}
-
-/--
-Computes the envelope of a primitive. Foreign primitives with a core fallback
-use the fallback's envelope; otherwise they have zero envelope.
--/
-def toEnvelope (p : Primitive β) : Envelope :=
-  match p with
-  | .core cp => cp.toEnvelope
-  | .foreign _ (some cp) => cp.toEnvelope
-  | .foreign _ none => Envelope.empty
-
-end Primitive
-
 -- ═══════════════════════════════════════════════════════════════
 -- Trace computation from primitives
 -- ═══════════════════════════════════════════════════════════════
@@ -186,21 +170,6 @@ def toTrace (cp : CorePrimitive) : Trace :=
 
 end CorePrimitive
 
-namespace Primitive
-
-variable {β : Type}
-
-/--
-Computes the trace of a primitive. Foreign primitives with a core fallback
-use the fallback's trace; otherwise they have an empty trace.
--/
-def toTrace (p : Primitive β) : Trace :=
-  match p with
-  | .core cp => cp.toTrace
-  | .foreign _ (some cp) => cp.toTrace
-  | .foreign _ none => Trace.empty
-
-end Primitive
 
 -- ═══════════════════════════════════════════════════════════════
 -- StrokeTrace computation from primitives
@@ -226,25 +195,10 @@ def toStrokeTrace (cp : CorePrimitive) : StrokeTrace :=
 
 end CorePrimitive
 
-namespace Primitive
-
-variable {β : Type}
-
-/--
-Computes the stroke-aware trace of a primitive. Foreign primitives with a core fallback
-use the fallback's stroke trace; otherwise they have an empty stroke trace.
--/
-def toStrokeTrace (p : Primitive β) : StrokeTrace :=
-  match p with
-  | .core cp => cp.toStrokeTrace
-  | .foreign _ (some cp) => cp.toStrokeTrace
-  | .foreign _ none => StrokeTrace.empty
-
-end Primitive
 
 namespace Diagram
 
-variable {β : Type}
+variable {β : Type} [Backend β]
 
 -- ═══════════════════════════════════════════════════════════════
 -- Envelope extraction
@@ -254,7 +208,8 @@ variable {β : Type}
 def getEnvelope (d : Diagram β) : Envelope :=
   match d with
   | .empty => Envelope.empty
-  | .prim p => p.toEnvelope
+  | .prim cp => cp.toEnvelope
+  | .foreign val d => Backend.envelope val d.getEnvelope
   | .tag _ d => d.getEnvelope
   | .named _ d => d.getEnvelope
   | .transform m d => Envelope.transform m d.getEnvelope
@@ -272,7 +227,8 @@ def getEnvelope (d : Diagram β) : Envelope :=
 def getTrace (d : Diagram β) : Trace :=
   match d with
   | .empty => Trace.empty
-  | .prim p => p.toTrace
+  | .prim cp => cp.toTrace
+  | .foreign val d => Backend.trace val d.getTrace
   | .tag _ d => d.getTrace
   | .named _ d => d.getTrace
   | .transform m d => Trace.transform m d.getTrace
@@ -290,7 +246,8 @@ def getTrace (d : Diagram β) : Trace :=
 def getStrokeTrace (d : Diagram β) : StrokeTrace :=
   match d with
   | .empty => StrokeTrace.empty
-  | .prim p => p.toStrokeTrace
+  | .prim cp => cp.toStrokeTrace
+  | .foreign val d => Backend.strokeTrace val d.getStrokeTrace
   | .tag _ d => d.getStrokeTrace
   | .named _ d => d.getStrokeTrace
   | .transform m d => StrokeTrace.transform m d.getStrokeTrace
@@ -310,6 +267,7 @@ def collectNames (d : Diagram β) (xform : Matrix) (pfx : Lean.Name)
   match d with
   | .empty => acc
   | .prim _ => acc
+  | .foreign _ d => collectNames d xform pfx acc
   | .tag _ d => collectNames d xform pfx acc
   | .named name d =>
     let pos := Matrix.apply xform ⟨0, 0⟩
@@ -341,6 +299,7 @@ where
   go (target : Lean.Name) (pfx : Lean.Name) (xform : Matrix) : Diagram β → Option (Diagram β)
     | .empty => none
     | .prim _ => none
+    | .foreign _ d => go target pfx xform d
     | .tag _ d => go target pfx xform d
     | .named name d =>
       let qualName := match pfx with
@@ -819,7 +778,7 @@ def showOrigin (d : Diagram β) (size : Float := 5)
 Renders the ray, arrowhead, and intersection dots for a single trace query.
 Returns just the overlay diagram (without the original diagram).
 -/
-private def traceOverlay {β : Type} (trace : Trace) (p : Point) (v : Vec2)
+private def traceOverlay {β : Type} [Backend β] (trace : Trace) (p : Point) (v : Vec2)
     (dotRadius : Float) (rayColor : Color) : Diagram β :=
   let vn := v.normalize
   let hits : Array Float := trace.query p vn

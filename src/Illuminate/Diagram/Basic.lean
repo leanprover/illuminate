@@ -6,6 +6,7 @@ Author: David Thrane Christiansen
 
 import Illuminate.Geometry
 import Illuminate.Style
+import Illuminate.Render.DrawCmd
 
 
 namespace Illuminate
@@ -32,27 +33,17 @@ inductive CorePrimitive where
 deriving Repr, BEq, Inhabited
 
 /--
-A rendering primitive parameterized by foreign type `β`.
-Core primitives are backend-independent. Foreign primitives carry a
-backend-specific value of type `β` with an optional core fallback.
--/
-inductive Primitive (β : Type) where
-  /-- Wraps a backend-independent core primitive. -/
-  | core : CorePrimitive → Primitive β
-  /-- Wraps a backend-specific foreign value with an optional core fallback. -/
-  | foreign : β → Option CorePrimitive → Primitive β
-deriving Inhabited
-
-/--
-The core diagram type, parameterized by a foreign primitive type `β`.
+The core diagram type, parameterized by a backend-specific foreign type `β`.
 Backends can embed their own rendering objects alongside built-in primitives
 by instantiating `β`. Pure geometric diagrams use `Empty` for this parameter.
 -/
 inductive Diagram (β : Type) where
   /-- Represents the empty diagram: renders nothing and has a zero envelope. -/
   | empty : Diagram β
-  /-- Wraps a single primitive shape (path, text, image, or foreign) as a leaf node. -/
-  | prim : Primitive β → Diagram β
+  /-- Wraps a single core primitive (path, text, or image) as a leaf node. -/
+  | prim : CorePrimitive → Diagram β
+  /-- Wraps a sub-diagram with a backend-specific foreign value. -/
+  | foreign : β → Diagram β → Diagram β
   /-- Attaches a numeric tag to a sub-diagram for hit-testing or interactivity. -/
   | tag : Nat → Diagram β → Diagram β
   /-- Gives a sub-diagram a hierarchical name with cardinal anchor points derived from its envelope. -/
@@ -69,6 +60,27 @@ inductive Diagram (β : Type) where
   | cellophane : Float → Diagram β → Diagram β
   /-- Clips a sub-diagram to a path boundary. -/
   | clip : PathData → Diagram β → Diagram β
+
+/--
+Controls how a backend-specific foreign value interacts with the diagram pipeline.
+The `envelope` and `trace` methods adjust the inner diagram's geometry.
+The `compile` method wraps or replaces the compiled inner drawing commands.
+-/
+class Backend (β : Type) where
+  /-- Adjusts the inner diagram's envelope. Receives the inner envelope, returns the final one. -/
+  envelope : β → Envelope → Envelope
+  /-- Adjusts the inner diagram's trace. Receives the inner trace, returns the final one. -/
+  trace : β → Trace → Trace
+  /-- Adjusts the inner diagram's stroke trace. Receives the inner stroke trace, returns the final one. -/
+  strokeTrace : β → StrokeTrace → StrokeTrace
+  /-- Wraps or replaces the compiled inner drawing commands. -/
+  compile : β → List (DrawCmd β) → List (DrawCmd β)
+
+instance : Backend Empty where
+  envelope e _ := nomatch e
+  trace e _ := nomatch e
+  strokeTrace e _ := nomatch e
+  compile e _ := nomatch e
 
 namespace Diagram
 
@@ -96,16 +108,16 @@ def emptyDiagram : Diagram β := .empty
 /-- A filled and/or stroked path. -/
 def fromPath (pd : PathData) (fill : Fill := default) (stroke : Stroke := {})
     : Diagram β :=
-  .prim (.core (.path pd fill stroke))
+  .prim (.path pd fill stroke)
 
 /-- A stroked path with no fill. -/
 def fromStroke (pd : PathData) (stroke : Stroke := {}) : Diagram β :=
-  .prim (.core (.path pd .none stroke))
+  .prim (.path pd .none stroke)
 
 /-- A text node with the given style. -/
 def text (s : String) (style : TextStyle := {})
     (name : Option Lean.Name := none) : Diagram β :=
-  let d : Diagram β := .prim (.core (.text s style))
+  let d : Diagram β := .prim (.text s style)
   match name with
   | none => d
   | some n =>
@@ -320,9 +332,6 @@ def curlyBrace (width : Float) (depth : Float := 0)
 
 /-- An image primitive. -/
 def fromImage (ref : ImageRef) : Diagram β :=
-  .prim (.core (.image ref))
+  .prim (.image ref)
 
-/-- A foreign primitive with optional core fallback. -/
-def fromForeign (val : β) (fallback : Option CorePrimitive := none) : Diagram β :=
-  .prim (.foreign val fallback)
 

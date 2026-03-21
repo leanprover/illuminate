@@ -13,17 +13,17 @@ open Illuminate
 -- ══════════════════════════════════════════════════════════════════
 
 def testDrawCmd_empty : IO Unit := do
-  let cmds := (Diagram.empty : Diagram Empty).compile
+  let cmds := (Diagram.empty : Diagram SVG).compile
   assertTrue (cmds.length == 0) "empty diagram has no cmds"
 
 def testDrawCmd_rect : IO Unit := do
-  let d : Diagram Empty := Diagram.rect 4 4
+  let d : Diagram SVG := Diagram.rect 4 4
   let cmds := d.compile
   -- default fill (lightGray, a=1) => fillPath + strokePath
   assertTrue (cmds.length == 2) s!"rect cmds: {cmds.length}"
 
 def testDrawCmd_transform : IO Unit := do
-  let d : Diagram Empty := .transform (Matrix.translate 10 20) (Diagram.rect 4 4)
+  let d : Diagram SVG := .transform (Matrix.translate 10 20) (Diagram.rect 4 4)
   let cmds := d.compile
   -- pushTransform, fillPath, strokePath, popTransform
   assertTrue (cmds.length == 4) s!"transform cmds: {cmds.length}"
@@ -32,13 +32,13 @@ def testDrawCmd_transform : IO Unit := do
   | _ => throw <| IO.userError "expected pushTransform"
 
 def testDrawCmd_compose : IO Unit := do
-  let d : Diagram Empty := .compose (Diagram.rect 4 4) (Diagram.rect 2 2)
+  let d : Diagram SVG := .compose (Diagram.rect 4 4) (Diagram.rect 2 2)
   let cmds := d.compile
   -- 2 rects × 2 cmds each (fill + stroke) = 4
   assertTrue (cmds.length == 4) s!"compose cmds: {cmds.length}"
 
 def testDrawCmd_annotate : IO Unit := do
-  let d : Diagram Empty := .tag 42 (Diagram.rect 4 4)
+  let d : Diagram SVG := .tag 42 (Diagram.rect 4 4)
   let cmds := d.compile
   -- pushAnnotation, fillPath, strokePath, popAnnotation
   assertTrue (cmds.length == 4) s!"annotate cmds: {cmds.length}"
@@ -57,23 +57,23 @@ def testSvg_pathData : IO Unit := do
   assertTrue (d.any (· == 'L')) "path has L"
 
 def testSvg_fillPath : IO Unit := do
-  let cmd := DrawCmd.fillPath (PathData.rect 4 4) (.solid { color := Color.red })
+  let cmd : DrawCmd SVG := .fillPath (PathData.rect 4 4) (.solid { color := Color.red })
   let svg := Svg.renderCmd cmd
   assertContains svg "fill=\"rgb(255,0,0)\"" "fill has red"
 
 def testSvg_strokePath : IO Unit := do
-  let cmd := DrawCmd.strokePath (PathData.rect 4 4) { Stroke.ofWidth 2 with color := Color.blue }
+  let cmd : DrawCmd SVG := .strokePath (PathData.rect 4 4) { Stroke.ofWidth 2 with color := Color.blue }
   let svg := Svg.renderCmd cmd
   assertContains svg "stroke=\"rgb(0,0,255)\"" "stroke has blue"
   assertContains svg "stroke-width=\"2\"" "stroke has width"
 
 def testSvg_text : IO Unit := do
-  let cmd := DrawCmd.drawTextRun "hello" default ⟨0, 0⟩
+  let cmd : DrawCmd SVG := .drawTextRun "hello" default ⟨0, 0⟩
   let svg := Svg.renderCmd cmd
   assertContains svg ">hello</text>" "text content"
 
 def testSvg_viewBox : IO Unit := do
-  let svg := Svg.render [] { minX := 0, minY := 0, width := 100, height := 100 }
+  let svg := Svg.render (β := SVG) [] { minX := 0, minY := 0, width := 100, height := 100 }
   assertContains svg "viewBox=\"0 0 100 100\"" "viewBox"
 
 -- ══════════════════════════════════════════════════════════════════
@@ -81,34 +81,34 @@ def testSvg_viewBox : IO Unit := do
 -- ══════════════════════════════════════════════════════════════════
 
 def testSvg_rectRender : IO Unit := do
-  let d : Diagram Empty := Diagram.rect 4 4
+  let d : Diagram SVG := Diagram.rect 4 4
   let cmds := d.compile
   let svg := Svg.render cmds { minX := -5, minY := -5, width := 10, height := 10 }
   assertContains svg "<path" "svg has path element"
   assertContains svg "</svg>" "svg is closed"
 
 def testSvg_circleRender : IO Unit := do
-  let d : Diagram Empty := Diagram.circle 5
+  let d : Diagram SVG := Diagram.circle 5
   let cmds := d.compile
   let svg := Svg.render cmds { minX := -10, minY := -10, width := 20, height := 20 }
   assertContains svg "<path" "svg has path for circle"
   assertContains svg "C" "svg circle has curves"
 
 def testSvg_transformNested : IO Unit := do
-  let d : Diagram Empty := .transform (Matrix.translate 10 0) (Diagram.rect 4 4)
+  let d : Diagram SVG := .transform (Matrix.translate 10 0) (Diagram.rect 4 4)
   let cmds := d.compile
   let svg := Svg.render cmds { minX := -20, minY := -20, width := 40, height := 40 }
   assertContains svg "<g transform=\"matrix(" "svg has transform group"
   assertContains svg "</g>" "svg has closing group"
 
 def testSvg_annotationId : IO Unit := do
-  let d : Diagram Empty := .tag 7 (Diagram.rect 2 2)
+  let d : Diagram SVG := .tag 7 (Diagram.rect 2 2)
   let cmds := d.compile
   let svg := Svg.render cmds { minX := -5, minY := -5, width := 10, height := 10 }
   assertContains svg "data-anno-id=\"7\"" "svg has annotation"
 
 def testSvg_renderDiagram : IO Unit := do
-  let d : Diagram Empty := Diagram.rect 10 10
+  let d : Diagram SVG := Diagram.rect 10 10
   let svg := d.renderDiagram
   assertContains svg "<svg" "has svg tag"
   assertContains svg "viewBox" "has viewBox"
@@ -120,7 +120,7 @@ def testSvg_renderDiagram : IO Unit := do
 
 def smileyYellow : Color := { r := 255, g := 220, b := 50 }
 
-def smileyFace : Diagram Empty :=
+def smileyFace : Diagram SVG :=
   -- Face: yellow circle with black outline
   let face := Diagram.circle 50 (fill := .solid { color := smileyYellow })
     (stroke := { color := Color.black, width := (3 : Float) })

@@ -50,7 +50,7 @@ instance : Coe Lean.Name LineEnd where
 
 namespace ArrowDraw
 
-variable {β : Type}
+variable {β : Type} [Backend β]
 
 /-- Default base length of arrowheads (before scaling). -/
 private def baseHeadLen : Float := 8.0
@@ -252,7 +252,7 @@ end ArrowDraw
 /--
 Builds the arrow diagram between two concrete points with the given endpoint specs and label.
 -/
-private def buildArrow {β : Type} (srcPos tgtPos : Vec2)
+private def buildArrow {β : Type} [Backend β] (srcPos tgtPos : Vec2)
     (start stop : LineEnd) (stroke : Stroke)
     (label : Option (Label β) := none)
     (labelUpright : Bool := false) : Diagram β :=
@@ -308,7 +308,7 @@ private def buildArrow {β : Type} (srcPos tgtPos : Vec2)
 /--
 Draws a line or arrow between two points.
 -/
-def Diagram.connect' {β : Type} (srcPoint tgtPoint : Point) (start stop : LineEnd)
+def Diagram.connect' {β : Type} [Backend β] (srcPoint tgtPoint : Point) (start stop : LineEnd)
     (stroke : Stroke := .defaultArrow)
     (arrowhead : Option Arrowhead := none)
     (label : Option (Label β) := none)
@@ -322,7 +322,7 @@ def Diagram.connect' {β : Type} (srcPoint tgtPoint : Point) (start stop : LineE
 Draws a line or arrow between two named anchor points in a diagram.
 Resolves names eagerly using `find` and `origin`.
 -/
-def Diagram.connect {β : Type} (start stop : LineEnd)
+def Diagram.connect {β : Type} [Backend β] (start stop : LineEnd)
     (stroke : Stroke := .defaultArrow)
     (arrowhead : Option Arrowhead := none)
     (label : Option (Label β) := none)
@@ -346,7 +346,7 @@ deriving Repr, BEq, Inhabited
 Draws an L-shaped (right-angle) line or arrow between two points.
 `bend` controls whether the line goes horizontally or vertically first.
 -/
-def Diagram.connectL' {β : Type} (srcPoint tgtPoint : Point) (start stop : LineEnd)
+def Diagram.connectL' {β : Type} [Backend β] (srcPoint tgtPoint : Point) (start stop : LineEnd)
     (bend : BendDirection := .vertical)
     (stroke : Stroke := .defaultArrow)
     (d : Diagram β) : Diagram β :=
@@ -375,7 +375,7 @@ def Diagram.connectL' {β : Type} (srcPoint tgtPoint : Point) (start stop : Line
 Draws an L-shaped (right-angle) line or arrow between two named anchor points.
 `bend` controls whether the line goes horizontally or vertically first.
 -/
-def Diagram.connectL {β : Type} (start stop : LineEnd)
+def Diagram.connectL {β : Type} [Backend β] (start stop : LineEnd)
     (bend : BendDirection := .vertical)
     (stroke : Stroke := .defaultArrow)
     (d : Diagram β) : Diagram β :=
@@ -394,7 +394,7 @@ from the shape's center to the connection point on its boundary: `0` connects on
 right, `pi` on the left, `pi/2` on the top, etc. Without an explicit angle, the
 center-to-center direction is used.
 -/
-def Diagram.connectEdge {β : Type} (start stop : LineEnd)
+def Diagram.connectEdge {β : Type} [Backend β] (start stop : LineEnd)
     (stroke : Stroke := .defaultArrow)
     (arrowhead : Option Arrowhead := none)
     (label : Option (Label β) := none)

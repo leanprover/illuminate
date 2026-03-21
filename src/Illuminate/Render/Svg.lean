@@ -23,6 +23,20 @@ structure ViewBox where
   height : Float
 deriving Repr, BEq, Inhabited
 
+/--
+Controls how a backend-specific foreign value renders to SVG.
+Each backend type provides open and close tag strings.
+-/
+class BackendRender (β : Type) where
+  /-- Renders the opening SVG element for a foreign value. -/
+  renderOpen : β → String
+  /-- Renders the closing SVG element for a foreign value. -/
+  renderClose : β → String
+
+instance : BackendRender Empty where
+  renderOpen e := nomatch e
+  renderClose e := nomatch e
+
 namespace Svg
 
 /-- Formats a Float with reasonable precision, trimming trailing zeros. -/
@@ -84,7 +98,7 @@ private def matrixToSvg (m : Matrix) : String :=
   s!"matrix({fmtNum m.a},{fmtNum m.c},{fmtNum m.b},{fmtNum m.d},{fmtNum m.tx},{fmtNum m.ty})"
 
 /-- Renders a single DrawCmd to an SVG fragment. -/
-def renderCmd (cmd : DrawCmd) : String :=
+def renderCmd {β : Type} [BackendRender β] (cmd : DrawCmd β) : String :=
   match cmd with
   | .fillPath pd fill =>
     let d := pathDataToD pd
@@ -136,9 +150,11 @@ def renderCmd (cmd : DrawCmd) : String :=
     let d := pathDataToD pd
     s!"<defs><clipPath id=\"clip{clipId}\"><path d=\"{d}\"/></clipPath></defs><g clip-path=\"url(#clip{clipId})\">"
   | .popClip => "</g>"
+  | .pushForeign tag => BackendRender.renderOpen tag
+  | .popForeign tag => BackendRender.renderClose tag
 
 /-- Renders a list of draw commands to a complete SVG document string. -/
-def render (cmds : List DrawCmd) (viewBox : ViewBox) : String :=
+def render {β : Type} [BackendRender β] (cmds : List (DrawCmd β)) (viewBox : ViewBox) : String :=
   let header := s!"<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"{fmtNum viewBox.minX} {fmtNum viewBox.minY} {fmtNum viewBox.width} {fmtNum viewBox.height}\">"
   let body := cmds.map renderCmd |>.foldl (· ++ "\n" ++ ·) ""
   -- Flip y-axis: SVG y points down, diagram y points up

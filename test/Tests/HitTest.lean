@@ -14,46 +14,46 @@ open Illuminate
 -- ═══════════════════════════════════════════════════════════════
 
 def testHitTest_filledRect_interior : IO Unit := do
-  let d : Diagram Empty := Diagram.rect 10 10
+  let d : Diagram SVG := Diagram.rect 10 10
   let result := d.hitTest (Point.mk 0 0)
   assertTrue result.isHit "filled rect interior should hit"
 
 def testHitTest_filledRect_outside : IO Unit := do
-  let d : Diagram Empty := Diagram.rect 10 10
+  let d : Diagram SVG := Diagram.rect 10 10
   let result := d.hitTest (Point.mk 20 20)
   assertTrue (!result.isHit) "filled rect outside should miss"
 
 def testHitTest_filledRect_strokeBoundary : IO Unit := do
-  let d : Diagram Empty := Diagram.rect 10 10 (stroke := { width := 2 })
+  let d : Diagram SVG := Diagram.rect 10 10 (stroke := { width := 2 })
   -- Point at x=5.5 is outside the fill (half-width = 5) but within stroke (width 2, extends to 6)
   let result := d.hitTest (Point.mk 5.5 0)
   assertTrue result.isHit "stroke boundary should hit"
 
 def testHitTest_noFill_interior : IO Unit := do
-  let d : Diagram Empty := Diagram.fromStroke (PathData.rect 10 10) { width := 1 }
+  let d : Diagram SVG := Diagram.fromStroke (PathData.rect 10 10) { width := 1 }
   let result := d.hitTest (Point.mk 0 0)
   assertTrue (!result.isHit) "no-fill interior should miss"
 
 def testHitTest_noFill_strokeBoundary : IO Unit := do
-  let d : Diagram Empty := Diagram.fromStroke (PathData.rect 10 10) { width := 2 }
+  let d : Diagram SVG := Diagram.fromStroke (PathData.rect 10 10) { width := 2 }
   -- Point near the boundary (x=4.5, half-width=5, stroke width=2, so edge is at 4..6)
   let result := d.hitTest (Point.mk 4.5 0)
   assertTrue result.isHit "no-fill stroke boundary should hit"
 
 def testHitTest_transparentFill_interior : IO Unit := do
-  let d : Diagram Empty := Diagram.rect 10 10 (fill := .solid { color := Color.transparent })
+  let d : Diagram SVG := Diagram.rect 10 10 (fill := .solid { color := Color.transparent })
   let result := d.hitTest (Point.mk 0 0)
   assertTrue result.isHit "transparent solid fill interior should hit"
 
 def testHitTest_tag : IO Unit := do
-  let d : Diagram Empty := .tag 42 (Diagram.rect 10 10)
+  let d : Diagram SVG := .tag 42 (Diagram.rect 10 10)
   let result := d.hitTest (Point.mk 0 0)
   match result with
   | .tag n => assertTrue (n == 42) "tag should be 42"
   | _ => throw <| IO.userError "expected Click.tag"
 
 def testHitTest_tag_miss : IO Unit := do
-  let d : Diagram Empty := .tag 42 (Diagram.rect 10 10)
+  let d : Diagram SVG := .tag 42 (Diagram.rect 10 10)
   let result := d.hitTest (Point.mk 20 20)
   match result with
   | .nothing => pure ()
@@ -61,8 +61,8 @@ def testHitTest_tag_miss : IO Unit := do
 
 def testHitTest_compose_frontToBack : IO Unit := do
   -- b (front, tag 2) is a small rect at origin; a (back, tag 1) is a large rect
-  let a : Diagram Empty := .tag 1 (Diagram.rect 20 20)
-  let b : Diagram Empty := .tag 2 (Diagram.rect 6 6)
+  let a : Diagram SVG := .tag 1 (Diagram.rect 20 20)
+  let b : Diagram SVG := .tag 2 (Diagram.rect 6 6)
   let d := Diagram.compose a b
   -- Hit the center: should get tag 2 (front)
   let result := d.hitTest (Point.mk 0 0)
@@ -71,8 +71,8 @@ def testHitTest_compose_frontToBack : IO Unit := do
   | _ => throw <| IO.userError "expected Click.tag"
 
 def testHitTest_compose_fallthrough : IO Unit := do
-  let a : Diagram Empty := .tag 1 (Diagram.rect 20 20)
-  let b : Diagram Empty := .tag 2 (Diagram.rect 6 6)
+  let a : Diagram SVG := .tag 1 (Diagram.rect 20 20)
+  let b : Diagram SVG := .tag 2 (Diagram.rect 6 6)
   let d := Diagram.compose a b
   -- Hit outside b but inside a: should get tag 1 (back)
   let result := d.hitTest (Point.mk 8 0)
@@ -81,7 +81,7 @@ def testHitTest_compose_fallthrough : IO Unit := do
   | _ => throw <| IO.userError "expected Click.tag"
 
 def testHitTest_transform : IO Unit := do
-  let d : Diagram Empty := Diagram.transform (Matrix.translate 10 0) (Diagram.rect 4 4)
+  let d : Diagram SVG := Diagram.transform (Matrix.translate 10 0) (Diagram.rect 4 4)
   -- Rect is now centered at (10, 0), spans 8..12 in x
   let hitInside := d.hitTest (Point.mk 10 0)
   let hitOutside := d.hitTest (Point.mk 0 0)
@@ -89,7 +89,7 @@ def testHitTest_transform : IO Unit := do
   assertTrue (!hitOutside.isHit) "origin should miss translated rect"
 
 def testHitTest_circle : IO Unit := do
-  let d : Diagram Empty := Diagram.circle 5
+  let d : Diagram SVG := Diagram.circle 5
   let hitInside := d.hitTest (Point.mk 0 0)
   let hitOutside := d.hitTest (Point.mk 6 0)
   assertTrue hitInside.isHit "circle interior should hit"

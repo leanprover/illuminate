@@ -24,7 +24,7 @@ open Illuminate
   CommDiagM.arrowWith c d { label := some "k" }
 
 def testCD_nodeCreation : IO Unit := do
-  let d : Diagram Empty := commDiag do
+  let d : Diagram SVG := commDiag do
     let _ ← CommDiagM.node "A"
     pure ()
   -- Should produce a non-empty diagram
@@ -32,7 +32,7 @@ def testCD_nodeCreation : IO Unit := do
   assertTrue (env[Vec2.east] > 0) "node has positive extent"
 
 def testCD_twoNodes : IO Unit := do
-  let d : Diagram Empty := commDiag do
+  let d : Diagram SVG := commDiag do
     let a ← CommDiagM.node "A"
     let b ← CommDiagM.node "B"
     CommDiagM.grid #[#[some a, some b]]
@@ -40,7 +40,7 @@ def testCD_twoNodes : IO Unit := do
   assertTrue (env[Vec2.east] > 0) "two nodes have extent"
 
 def testCD_arrow : IO Unit := do
-  let d : Diagram Empty := commDiag do
+  let d : Diagram SVG := commDiag do
     let a ← CommDiagM.node "A"
     let b ← CommDiagM.node "B"
     CommDiagM.grid #[#[some a, some b]]
@@ -49,7 +49,7 @@ def testCD_arrow : IO Unit := do
   assertTrue (cmds.length > 0) s!"arrow diagram has cmds: {cmds.length}"
 
 def testCD_square : IO Unit := do
-  let d : Diagram Empty := commDiag do
+  let d : Diagram SVG := commDiag do
     let a ← CommDiagM.node "A"
     let b ← CommDiagM.node "B"
     let c ← CommDiagM.node "C"
@@ -64,7 +64,7 @@ def testCD_square : IO Unit := do
   assertTrue (cmds.length > 4) s!"square has many cmds: {cmds.length}"
 
 def testCD_labeledArrow : IO Unit := do
-  let d : Diagram Empty := commDiag do
+  let d : Diagram SVG := commDiag do
     let a ← CommDiagM.node "A"
     let b ← CommDiagM.node "B"
     CommDiagM.grid #[#[some a, some b]]
@@ -73,7 +73,7 @@ def testCD_labeledArrow : IO Unit := do
   assertContains svg ">f</text>" "labeled arrow has label text"
 
 def testCD_curvedArrow : IO Unit := do
-  let d : Diagram Empty := commDiag do
+  let d : Diagram SVG := commDiag do
     let a ← CommDiagM.node "X"
     let b ← CommDiagM.node "Y"
     CommDiagM.grid #[#[some a, some b]]
@@ -83,7 +83,7 @@ def testCD_curvedArrow : IO Unit := do
   assertContains svg "C" "curved arrow has bezier"
 
 def testCD_svgOutput : IO Unit := do
-  let d : Diagram Empty := commDiag do
+  let d : Diagram SVG := commDiag do
     let a ← CommDiagM.node "A"
     let b ← CommDiagM.node "B"
     CommDiagM.grid #[#[some a, some b]]
@@ -95,7 +95,7 @@ def testCD_svgOutput : IO Unit := do
   assertContains svg ">B</text>" "has node B text"
 
 def testCD_annotation : IO Unit := do
-  let d : Diagram Empty := commDiag do
+  let d : Diagram SVG := commDiag do
     let a ← CommDiagM.node "A" (tag := some 1)
     let b ← CommDiagM.node "B" (tag := some 2)
     CommDiagM.grid #[#[some a, some b]]
@@ -104,7 +104,7 @@ def testCD_annotation : IO Unit := do
   assertContains svg "data-anno-id=\"2\"" "has annotation 2"
 
 def testCD_noGrid : IO Unit := do
-  let d : Diagram Empty := commDiag do
+  let d : Diagram SVG := commDiag do
     let a ← CommDiagM.node "X"
     let b ← CommDiagM.node "Y"
     CommDiagM.arrow a b
@@ -112,7 +112,7 @@ def testCD_noGrid : IO Unit := do
   assertTrue (cmds.length > 0) "no-grid still produces cmds"
 
 def testCD_writeSquare : IO Unit := do
-  let d : Diagram Empty := commDiag do
+  let d : Diagram SVG := commDiag do
     let a ← CommDiagM.node "A"
     let b ← CommDiagM.node "B"
     let c ← CommDiagM.node "C"

@@ -12,30 +12,30 @@ namespace Illuminate
 
 namespace Diagram
 
-variable {β : Type}
+variable {β : Type} [Backend β]
 
 /-- Compiles a diagram tree into a flat display list of drawing commands. -/
-def compile (d : Diagram β) : List DrawCmd :=
+def compile (d : Diagram β) : List (DrawCmd β) :=
   go d []
 where
-  go (d : Diagram β) (acc : List DrawCmd) : List DrawCmd :=
+  go (d : Diagram β) (acc : List (DrawCmd β)) : List (DrawCmd β) :=
     match d with
     | .empty => acc
-    | .prim p =>
-      match p with
-      | .core (.path pd fill stroke) =>
+    | .prim cp =>
+      match cp with
+      | .path pd fill stroke =>
         let acc :=
           match fill with
           | .solid fs => if fs.color.a > 0 then acc ++ [.fillPath pd fill] else acc
           | .none => acc
         if stroke.width > 0 && stroke.color.a > 0 then acc ++ [.strokePath pd stroke]
         else acc
-      | .core (.text s style) =>
+      | .text s style =>
         acc ++ [.drawTextRun s style ⟨0, 0⟩]
-      | .core (.image _) => acc
-      | .foreign _ (some cp) =>
-        go (.prim (.core cp)) acc
-      | .foreign _ none => acc
+      | .image _ => acc
+    | .foreign val d =>
+      let inner := go d []
+      acc ++ Backend.compile val inner
     | .tag n d =>
       let inner := go d []
       acc ++ [.pushAnnotation n] ++ inner ++ [.popAnnotation]
@@ -57,7 +57,7 @@ where
       acc ++ [.pushClip pd clipId] ++ inner ++ [.popClip]
 
 /-- Renders a diagram to an SVG string. -/
-def renderDiagram (d : Diagram β) (padding : Float := 2) : String :=
+def renderDiagram [BackendRender β] (d : Diagram β) (padding : Float := 2) : String :=
   if let .nonempty env := d.getEnvelope then
     let east := env Vec2.east
     let west := env Vec2.west

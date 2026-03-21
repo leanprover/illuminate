@@ -96,7 +96,7 @@ private def textContains (s : String) (style : TextStyle) (p : Point) : Bool :=
 
 namespace Diagram
 
-variable {β : Type}
+variable {β : Type} [Backend β]
 
 /--
 Hit-tests a diagram at the given point, returning the topmost hit.
@@ -109,24 +109,23 @@ Clicking within the border stroke of a shape counts as clicking the shape.
 def hitTest (d : Diagram β) (p : Point) : Click :=
   match d with
   | .empty => .nothing
-  | .prim pr =>
-    match pr with
-    | .core (.path pd fill stroke) =>
+  | .prim cp =>
+    match cp with
+    | .path pd fill stroke =>
       let fillHit := match fill with
         | .solid _ => pd.contains p
         | .none => false
       let strokeHit := stroke.width > 0 && stroke.color.a > 0 &&
         pointOnStroke pd stroke.width p
       if fillHit || strokeHit then .something else .nothing
-    | .core (.text s style) =>
+    | .text s style =>
       if textContains s style p then .something else .nothing
-    | .core (.image ref) =>
+    | .image ref =>
       let hw := ref.width / 2
       let hh := ref.height / 2
       if p.x >= -hw && p.x <= hw && p.y >= -hh && p.y <= hh then .something
       else .nothing
-    | .foreign _ (some cp) => hitTest (.prim (.core cp)) p
-    | .foreign _ none => .nothing
+  | .foreign _ d => hitTest d p
   | .tag n d =>
     if (hitTest d p).isHit then .tag n else .nothing
   | .named _ d => hitTest d p

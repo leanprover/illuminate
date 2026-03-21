@@ -9,4 +9,5 @@ import Illuminate.Style
 import Illuminate.Diagram
 import Illuminate.Render
 import Illuminate.DSL
+import Illuminate.Backend.SVG
 import Illuminate.Widget
