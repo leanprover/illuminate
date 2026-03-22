@@ -57,7 +57,8 @@ where
       acc ++ [.pushClip pd clipId] ++ inner ++ [.popClip]
 
 /-- Renders a diagram to an SVG string. -/
-def renderDiagram [BackendRender β] (d : Diagram β) (padding : Float := 2) : String :=
+def renderDiagram [BackendRender β] [Hashable β] (d : Diagram β) (padding : Float := 2) : String :=
+  let pfx := s!"{(hash d).toNat % 65536}_"
   if let .nonempty env := d.getEnvelope then
     let east := env Vec2.east
     let west := env Vec2.west
@@ -68,7 +69,7 @@ def renderDiagram [BackendRender β] (d : Diagram β) (padding : Float := 2) : S
     let width := west + east + 2 * padding
     let height := north + south + 2 * padding
     let cmds := d.compile
-    Svg.render cmds { minX, minY, width, height }
+    Svg.render cmds { minX, minY, width, height } pfx
   else
     let cmds := d.warning "Diagram has no envelope, defaulting to 640x480" |>.compile
-    Svg.render cmds { minX := -320, minY := -240, width := 640, height := 480 }
+    Svg.render cmds { minX := -320, minY := -240, width := 640, height := 480 } pfx

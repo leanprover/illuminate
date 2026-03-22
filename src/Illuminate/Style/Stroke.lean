@@ -17,7 +17,7 @@ inductive LineCap where
   | round
   /-- Square cap extending past the endpoint. -/
   | square
-deriving Repr, BEq, Inhabited
+deriving Repr, BEq, Inhabited, Hashable
 
 /-- Line join style for stroke corners. -/
 inductive LineJoin where
@@ -27,7 +27,7 @@ inductive LineJoin where
   | round
   /-- Beveled (flat) corner join. -/
   | bevel
-deriving Repr, BEq, Inhabited
+deriving Repr, BEq, Inhabited, Hashable
 
 /-- Semantic dash pattern for stroked paths. -/
 inductive StrokeDash where
@@ -39,7 +39,7 @@ inductive StrokeDash where
   | dotted
   /-- Alternating dash-dot pattern. -/
   | dashDot
-deriving Repr, BEq, Inhabited
+deriving Repr, BEq, Inhabited, Hashable
 
 /-- Stroke style for paths: color, width, line cap, line join, and dash pattern. -/
 structure Stroke where
@@ -53,7 +53,7 @@ structure Stroke where
   lineJoin : LineJoin := .miter
   /-- Dash pattern. -/
   dash : StrokeDash := .solid
-deriving Repr, BEq, Inhabited
+deriving Repr, BEq, Inhabited, Hashable
 
 namespace Stroke
 

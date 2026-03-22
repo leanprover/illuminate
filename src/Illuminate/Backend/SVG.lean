@@ -14,18 +14,7 @@ namespace Illuminate
 inductive SVG where
   /-- Wraps content in a hyperlink. -/
   | link (href : String) : SVG
-deriving Repr, BEq, Inhabited
-
-/-- Escapes special XML characters in a string. -/
-private def escapeXml (s : String) : String :=
-  s.foldl (init := "") fun acc c =>
-    acc ++ match c with
-    | '&' => "&amp;"
-    | '<' => "&lt;"
-    | '>' => "&gt;"
-    | '"' => "&quot;"
-    | '\'' => "&#39;"
-    | c => c.toString
+deriving Repr, BEq, Inhabited, Hashable
 
 instance : Backend SVG where
   envelope _ e := e

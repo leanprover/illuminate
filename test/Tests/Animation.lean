@@ -66,9 +66,10 @@ def interpolationTests : List (String × IO Unit) :=
       let a := Color.black
       let b := Color.white
       let mid := Interpolate.interpolate a b 0.5
-      assertTrue (mid.r > 120 && mid.r < 135) "color mid r"
-      assertTrue (mid.g > 120 && mid.g < 135) "color mid g"
-      assertTrue (mid.b > 120 && mid.b < 135) "color mid b"
+      -- black→white midpoint: each channel should be ~127 or 128
+      assertTrue (mid.r >= 127 && mid.r <= 128) s!"color mid r: expected 127-128, got {mid.r}"
+      assertTrue (mid.g >= 127 && mid.g <= 128) s!"color mid g: expected 127-128, got {mid.g}"
+      assertTrue (mid.b >= 127 && mid.b <= 128) s!"color mid b: expected 127-128, got {mid.b}"
       let start := Interpolate.interpolate a b 0
       assertTrue (start.r == 0) "color t=0 r"
       let finish := Interpolate.interpolate a b 1
@@ -121,6 +122,17 @@ def timelineTests : List (String × IO Unit) :=
   , ("progressAt: looping step wraps", do
       let p := progressAt [{ duration := 1.0, loop := true }] 1.5
       assertApproxEq (p[0]?.getD 0) 0.5 "loop wraps at 1.5s")
+  , ("progressAt: looping step wraps multiple times", do
+      let p := progressAt [{ duration := 1.0, loop := true }] 3.25
+      assertApproxEq (p[0]?.getD 0) 0.25 "loop wraps at 3.25s")
+  , ("progressAt: looping step at exact boundary", do
+      let p := progressAt [{ duration := 1.0, loop := true }] 2.0
+      -- At exactly 2.0, raw = 2.0, 2.0 - floor(2.0) = 0.0
+      assertApproxEq (p[0]?.getD 0) 0.0 "loop at exact boundary")
+  , ("progressAt: loop then non-loop step", do
+      let p := progressAt [{ duration := 1.0, loop := true }, step 1.0] 1.5
+      assertApproxEq (p[0]?.getD 0) 0.5 "loop step wraps"
+      assertApproxEq (p[1]?.getD 0) 0.5 "next step progresses")
   , ("progressVector: correct size", do
       let v := progressVector [0.5, 1.0] 4
       assertTrue (v.size == 4) "vector size is 4"
@@ -200,6 +212,58 @@ def effectsTests : List (String × IO Unit) :=
         assertApproxEq m.a 1.0 "animRotate t=0 cos"
         assertApproxEq m.c 0.0 "animRotate t=0 sin" (tol := 1e-6)
       | _ => throw <| IO.userError "animRotate should produce transform")
+  , ("animRotate: t=0.5 half rotation", do
+      let d : Diagram Empty := Diagram.circle 10 (fill := .solid { color := Color.red })
+      let rotated := animRotate d 0 pi 0.5
+      match rotated with
+      | .transform m _ =>
+        -- cos(π/2) ≈ 0, sin(π/2) ≈ 1
+        assertApproxEq m.a 0.0 "animRotate t=0.5 cos" (tol := 1e-6)
+        assertApproxEq m.c 1.0 "animRotate t=0.5 sin" (tol := 1e-6)
+      | _ => throw <| IO.userError "animRotate should produce transform")
+  , ("animRotate: t=1 full rotation", do
+      let d : Diagram Empty := Diagram.circle 10 (fill := .solid { color := Color.red })
+      let rotated := animRotate d 0 pi 1
+      match rotated with
+      | .transform m _ =>
+        -- cos(π) ≈ -1, sin(π) ≈ 0
+        assertApproxEq m.a (-1.0) "animRotate t=1 cos" (tol := 1e-6)
+        assertApproxEq m.c 0.0 "animRotate t=1 sin" (tol := 1e-6)
+      | _ => throw <| IO.userError "animRotate should produce transform")
+  , ("crossFade: t=0 only a visible", do
+      let a : Diagram Empty := Diagram.circle 10 (fill := .solid { color := Color.red })
+      let b : Diagram Empty := Diagram.circle 10 (fill := .solid { color := Color.blue })
+      let cf := crossFade a b 0
+      match cf with
+      | .compose (.cellophane α1 _) (.cellophane α2 _) =>
+        assertApproxEq α1 1.0 "crossFade t=0 a opacity"
+        assertApproxEq α2 0.0 "crossFade t=0 b opacity"
+      | _ => throw <| IO.userError "crossFade should produce compose of cellophanes")
+  , ("crossFade: t=1 only b visible", do
+      let a : Diagram Empty := Diagram.circle 10 (fill := .solid { color := Color.red })
+      let b : Diagram Empty := Diagram.circle 10 (fill := .solid { color := Color.blue })
+      let cf := crossFade a b 1
+      match cf with
+      | .compose (.cellophane α1 _) (.cellophane α2 _) =>
+        assertApproxEq α1 0.0 "crossFade t=1 a opacity"
+        assertApproxEq α2 1.0 "crossFade t=1 b opacity"
+      | _ => throw <| IO.userError "crossFade should produce compose of cellophanes")
+  , ("slide: start equals finish is idempotent", do
+      let d : Diagram Empty := Diagram.circle 10 (fill := .solid { color := Color.red })
+      let slid := slide d ⟨50, 50⟩ ⟨50, 50⟩ 0.5
+      match slid with
+      | .transform m _ =>
+        assertApproxEq m.tx 50 "slide same pos tx"
+        assertApproxEq m.ty 50 "slide same pos ty"
+      | _ => throw <| IO.userError "slide should produce transform")
+  , ("animScale: s0 equals s1 is identity scale", do
+      let d : Diagram Empty := Diagram.circle 10 (fill := .solid { color := Color.red })
+      let scaled := animScale d 2.0 2.0 0.5
+      match scaled with
+      | .transform m _ =>
+        assertApproxEq m.a 2.0 "animScale same s"
+        assertApproxEq m.d 2.0 "animScale same s d"
+      | _ => throw <| IO.userError "animScale should produce transform")
   ]
 
 -- ═══════════════════════════════════════════════════════════════
@@ -238,6 +302,20 @@ def compilationTests : List (String × IO Unit) :=
         (fps := 10)
       for seg in compiled.segments do
         assertContains seg.syncFrame "<svg" "sync frame is SVG")
+  , ("compile: single frame at fps=1", do
+      let steps : List Step := [step 1.0]
+      let compiled := compileAnimation steps
+        (fun _ => Diagram.circle 20 (fill := .solid { color := Color.red }))
+        (fps := 1)
+      assertTrue (compiled.totalFrames == 1) s!"expected 1 frame, got {compiled.totalFrames}"
+      assertTrue (compiled.segments.size > 0) "has segments at fps=1")
+  , ("compile: pause-only animation", do
+      let steps : List Step := [{ duration := 0, pause := true }]
+      let compiled := compileAnimation steps
+        (fun _ => Diagram.circle 20 (fill := .solid { color := Color.red }))
+        (fps := 10)
+      let pauseSteps := compiled.steps.filter (·.pause)
+      assertTrue (pauseSteps.size == 1) s!"expected 1 pause step, got {pauseSteps.size}")
   , ("compile: pause steps tracked", do
       let steps : List Step := [step 0.5, { duration := 0, pause := true }, step 0.5]
       let compiled := compileAnimation steps

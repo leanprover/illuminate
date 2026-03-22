@@ -15,7 +15,7 @@ structure Vec2 where
   x : Float
   /-- Vertical component. -/
   y : Float
-deriving Repr, BEq, Inhabited
+deriving Repr, BEq, Inhabited, Hashable
 
 namespace Vec2
 

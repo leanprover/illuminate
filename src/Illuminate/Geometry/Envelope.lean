@@ -21,6 +21,11 @@ inductive Envelope where
   /-- A nonempty envelope. -/
   | nonempty (env : Vec2 → Float)
 
+instance : Hashable Envelope where
+  hash
+    | .empty => 0
+    | .nonempty _ => 1
+
 instance : Coe (Vec2 → Float) Envelope where
   coe := .nonempty
 

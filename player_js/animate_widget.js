@@ -303,6 +303,7 @@ export default function (props) {
                         alignItems: "center",
                         justifyContent: "center",
                     },
+                    "aria-label": playing ? (looping ? "Next" : "Pause") : "Play",
                 },
                 playing ? (looping ? "\u23ED" : "\u23F8") : "\u25B6",
             ),
@@ -311,6 +312,7 @@ export default function (props) {
                 min: 0,
                 max: data.totalFrames - 1,
                 value: frame,
+                "aria-label": "Animation progress",
                 style: { flex: 1 },
                 onInput: /** @param {React.FormEvent<HTMLInputElement>} ev */ function (ev) {
                     playingRef.current = false;

@@ -5,8 +5,16 @@
 (function () {
     /** @type {AnimData} */
     var data = __DATA__;
+    if (!data || !data.segments || data.segments.length === 0) {
+        console.error("Animation: invalid or empty animation data");
+        return;
+    }
     /** @type {HTMLElement} */
     var container = /** @type {HTMLElement} */ (document.querySelector("__SELECTOR__"));
+    if (!container) {
+        console.error("Animation: container element not found");
+        return;
+    }
     /** @type {Segment | null} */
     var currentSeg = null;
     /** @type {number} */
@@ -147,7 +155,7 @@
     if (typeof Reveal !== "undefined") {
         Reveal.addEventListener("fragmentshown", function (e) {
             stopAnim();
-            var idx = parseInt(e.fragment.dataset.fragmentIndex || "");
+            var idx = parseInt(e.fragment.dataset.fragmentIndex || "", 10);
             if (!isNaN(idx) && idx < pauseSteps.length) {
                 var ps = pauseSteps[idx];
                 animateTo(ps.frame, function () {
@@ -159,7 +167,7 @@
         });
         Reveal.addEventListener("fragmenthidden", function (e) {
             stopAnim();
-            var idx = parseInt(e.fragment.dataset.fragmentIndex || "");
+            var idx = parseInt(e.fragment.dataset.fragmentIndex || "", 10);
             if (!isNaN(idx)) {
                 var prevIdx = idx - 1;
                 if (prevIdx >= 0 && pauseSteps[prevIdx].loop) {

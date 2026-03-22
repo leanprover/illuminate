@@ -15,7 +15,7 @@ structure Point where
   x : Float
   /-- Vertical coordinate. -/
   y : Float
-deriving Repr, BEq, Inhabited
+deriving Repr, BEq, Inhabited, Hashable
 
 namespace Point
 

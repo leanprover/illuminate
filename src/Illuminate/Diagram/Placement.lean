@@ -107,7 +107,8 @@ def toEnvelope (cp : CorePrimitive) : Envelope :=
     let nLines := Max.max 1 lines.length
     if nLines == 1 then
       let totalW := estimateTextWidth fontSize s
-      let h := (fontSize * 0.75 + fontSize * 0.25) / 2
+      -- Half the font size: ascent (0.75) + descent (0.25) divided by 2
+      let h := fontSize / 2
       match anchor with
       | .start => Envelope.ofBounds ⟨0, -h⟩ ⟨totalW, h⟩
       | .«end» => Envelope.ofBounds ⟨-totalW, -h⟩ ⟨0, h⟩
@@ -445,7 +446,7 @@ private def besideV (gap : Float) (align : VerticalAlignment)
   let dx := match align with
     | .left => envB[Vec2.west] - envA[Vec2.west]
     | .center =>
-      let centerA := (envA[Vec2.east]- envA[Vec2.west]) / 2
+      let centerA := (envA[Vec2.east] - envA[Vec2.west]) / 2
       let centerB := (envB[Vec2.east] - envB[Vec2.west]) / 2
       centerA - centerB
     | .right => envA[Vec2.east] - envB[Vec2.east]

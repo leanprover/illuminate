@@ -32,6 +32,8 @@ where
     | [], _, acc => acc.reverse
     | s :: rest, remaining, acc =>
       let dur := clampNonneg s.duration
+      -- Exact equality is safe: dur is either 0.0 (from clampNonneg on non-positive
+      -- input) or the original positive Float, never a computed near-zero value.
       if dur == 0 then
         go rest remaining (1.0 :: acc)
       else if remaining <= 0 then

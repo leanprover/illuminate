@@ -152,8 +152,13 @@ private def extractParams {β : Type} [BackendRender β]
           match cmdElemIdx[cmdIdx]? with
           | some (some eidx) =>
             paramMap := paramMap.push { elemIdx := eidx, attr := svgAttr }
-          | _ =>
-            paramMap := paramMap.push { elemIdx := 0, attr := svgAttr }
+          | some none =>
+            -- Command at this index doesn't produce a DOM element (e.g. popTransform).
+            -- Skip it rather than binding to a wrong element.
+            pure ()
+          | none =>
+            -- cmdIdx out of range — structural mismatch between frames.
+            pure ()
       slotInfo := slotInfo.push cmdSlots
 
     -- Build per-frame parameter arrays
@@ -236,8 +241,11 @@ def compileAnimation (steps : List Step)
     else
       return { minX := minX, minY := minY, width := maxX - minX, height := maxY - minY }
   -- Render all frames with the unified viewBox (reuse already-compiled draw lists)
+  let clipPfx : String :=
+    let h := frameDiagrams.foldl (fun acc d => mixHash acc (hash d)) 0
+    s!"{h.toNat % 65536}_"
   let allSvgs : Array String :=
-    frameDrawLists.map fun cmds => Svg.render cmds unifiedViewBox
+    frameDrawLists.map fun cmds => Svg.render cmds unifiedViewBox clipPfx
   -- Segment by structural identity, also splitting at step boundaries
   let stepFrames : Array Nat := Id.run do
     let mut arr : Array Nat := #[]

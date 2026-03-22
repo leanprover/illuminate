@@ -37,6 +37,17 @@ instance : BackendRender Empty where
   renderOpen e := nomatch e
   renderClose e := nomatch e
 
+/-- Escapes special XML characters in a string. -/
+def escapeXml (s : String) : String :=
+  s.foldl (init := "") fun acc c =>
+    acc ++ match c with
+    | '&' => "&amp;"
+    | '<' => "&lt;"
+    | '>' => "&gt;"
+    | '"' => "&quot;"
+    | '\'' => "&#39;"
+    | c => c.toString
+
 namespace Svg
 
 /-- Formats a Float with reasonable precision, trimming trailing zeros. -/
@@ -97,8 +108,9 @@ private def dashToSvg (dash : StrokeDash) (w : Float) : String :=
 private def matrixToSvg (m : Matrix) : String :=
   s!"matrix({fmtNum m.a},{fmtNum m.c},{fmtNum m.b},{fmtNum m.d},{fmtNum m.tx},{fmtNum m.ty})"
 
-/-- Renders a single DrawCmd to an SVG fragment. -/
-def renderCmd {β : Type} [BackendRender β] (cmd : DrawCmd β) : String :=
+/-- Renders a single DrawCmd to an SVG fragment. The `clipPrefix` distinguishes
+    clip-path IDs across independently compiled diagrams on the same page. -/
+def renderCmd {β : Type} [BackendRender β] (cmd : DrawCmd β) (clipPrefix : String := "") : String :=
   match cmd with
   | .fillPath pd fill =>
     let d := pathDataToD pd
@@ -127,14 +139,14 @@ def renderCmd {β : Type} [BackendRender β] (cmd : DrawCmd β) : String :=
     let attrs := s!"x=\"{fmtNum pos.x}\" y=\"{fmtNum pos.y}\" font-family=\"{style.fontFamily}\" font-size=\"{fmtNum style.fontSize}\" font-weight=\"{fontWeight}\" font-style=\"{fontStyle}\" fill=\"{c}\" text-anchor=\"{anchor}\" dominant-baseline=\"central\" transform=\"scale(1,-1)\""
     let lines := s.splitOn "\n"
     if lines.length <= 1 then
-      s!"<text {attrs}>{s}</text>"
+      s!"<text {attrs}>{escapeXml s}</text>"
     else
       let lineHeight := style.fontSize * 1.2
       let totalH := lineHeight * (lines.length - 1).toFloat
       let startY := -totalH / 2
       let (_, tspans) := lines.foldl (fun (i, acc) line =>
         let dy := if i == 0 then startY else lineHeight
-        let span := s!"<tspan x=\"{fmtNum pos.x}\" dy=\"{fmtNum dy}\">{line}</tspan>"
+        let span := s!"<tspan x=\"{fmtNum pos.x}\" dy=\"{fmtNum dy}\">{escapeXml line}</tspan>"
         (i + 1, acc ++ span)) (0, "")
       s!"<text {attrs}>{tspans}</text>"
   | .pushTransform m =>
@@ -148,14 +160,17 @@ def renderCmd {β : Type} [BackendRender β] (cmd : DrawCmd β) : String :=
   | .popOpacity => "</g>"
   | .pushClip pd clipId =>
     let d := pathDataToD pd
-    s!"<defs><clipPath id=\"clip{clipId}\"><path d=\"{d}\"/></clipPath></defs><g clip-path=\"url(#clip{clipId})\">"
+    let cid := s!"clip{clipPrefix}{clipId}"
+    s!"<defs><clipPath id=\"{cid}\"><path d=\"{d}\"/></clipPath></defs><g clip-path=\"url(#{cid})\">"
   | .popClip => "</g>"
   | .pushForeign tag => BackendRender.renderOpen tag
   | .popForeign tag => BackendRender.renderClose tag
 
-/-- Renders a list of draw commands to a complete SVG document string. -/
-def render {β : Type} [BackendRender β] (cmds : List (DrawCmd β)) (viewBox : ViewBox) : String :=
+/-- Renders a list of draw commands to a complete SVG document string.
+    The `clipPrefix` distinguishes clip-path IDs when multiple SVGs share a page. -/
+def render {β : Type} [BackendRender β] (cmds : List (DrawCmd β)) (viewBox : ViewBox)
+    (clipPrefix : String := "") : String :=
   let header := s!"<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"{fmtNum viewBox.minX} {fmtNum viewBox.minY} {fmtNum viewBox.width} {fmtNum viewBox.height}\">"
-  let body := cmds.map renderCmd |>.foldl (· ++ "\n" ++ ·) ""
+  let body := cmds.map (renderCmd · clipPrefix) |>.foldl (· ++ "\n" ++ ·) ""
   -- Flip y-axis: SVG y points down, diagram y points up
   header ++ "\n<g transform=\"scale(1,-1)\">" ++ body ++ "\n</g>\n</svg>"

@@ -5,12 +5,20 @@
 (function () {
     /** @type {AnimData} */
     var data = __DATA__;
+    if (!data || !data.segments || data.segments.length === 0) {
+        console.error("Animation: invalid or empty animation data");
+        return;
+    }
     /** @type {HTMLElement} */
     var container = /** @type {HTMLElement} */ (document.querySelector("__SELECTOR__"));
     /** @type {HTMLButtonElement} */
     var playBtn = /** @type {HTMLButtonElement} */ (document.getElementById("anim-play"));
     /** @type {HTMLInputElement} */
     var scrubber = /** @type {HTMLInputElement} */ (document.getElementById("anim-scrub"));
+    if (!container || !playBtn || !scrubber) {
+        console.error("Animation: missing required DOM elements");
+        return;
+    }
     /** @type {Segment | null} */
     var currentSeg = null;
     /** @type {boolean} */
@@ -106,6 +114,7 @@
             pauseFrame = frame;
             playing = false;
             playBtn.textContent = "\u25B6";
+            playBtn.setAttribute("aria-label", "Play");
         }
 
         var step = findCurrentStep(frame);
@@ -118,6 +127,7 @@
                     currentStep = s;
                     showFrame(frame);
                     playBtn.textContent = "\u25B6";
+                    playBtn.setAttribute("aria-label", "Play");
                     return;
                 }
             }
@@ -138,11 +148,13 @@
             startTime = null;
             playing = true;
             playBtn.textContent = "\u23F8";
+            playBtn.setAttribute("aria-label", "Pause");
             requestAnimationFrame(tick);
         } else if (playing) {
             playing = false;
-            pauseFrame = parseInt(scrubber.value);
+            pauseFrame = parseInt(scrubber.value, 10);
             playBtn.textContent = "\u25B6";
+            playBtn.setAttribute("aria-label", "Play");
         } else {
             if (pauseFrame >= data.totalFrames - 1) {
                 pauseFrame = 0;
@@ -151,6 +163,7 @@
             playing = true;
             startTime = null;
             playBtn.textContent = "\u23F8";
+            playBtn.setAttribute("aria-label", "Pause");
             requestAnimationFrame(tick);
         }
     }
@@ -170,7 +183,8 @@
         playing = false;
         waitingForClick = false;
         playBtn.textContent = "\u25B6";
-        var frame = parseInt(scrubber.value);
+        playBtn.setAttribute("aria-label", "Play");
+        var frame = parseInt(scrubber.value, 10);
         pauseFrame = frame;
         currentStep = findCurrentStep(frame);
         showFrame(frame);

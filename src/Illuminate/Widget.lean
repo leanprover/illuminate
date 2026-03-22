@@ -169,6 +169,8 @@ fully-applied `Diagram SVG` expression.
 private def applyGadgetValues (sd : StoredDiagram) (values : Array Lean.Json)
     : Except String Lean.Expr := do
   let mut app := sd.expr
+  if values.size < sd.gadgets.size then
+    throw s!"expected {sd.gadgets.size} gadget values, got {values.size}"
   for i in [:sd.gadgets.size] do
     let gadget := sd.gadgets[i]!
     let kind := gadget.getObjValD "kind" |>.getStr? |>.toOption |>.getD ""

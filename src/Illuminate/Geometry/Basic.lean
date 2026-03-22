@@ -12,3 +12,9 @@ def pi : Float := Float.acos (-1.0)
 
 /-- Tests whether a float is near zero (absolute value below 1e-12). -/
 def nearZero (f : Float) : Bool := f.abs < 1e-12
+
+instance : Hashable Float where
+  hash f := hash f.toBits
+
+instance : Hashable Empty where
+  hash e := nomatch e

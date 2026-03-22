@@ -66,6 +66,8 @@ private def escapeJs (s : String) : String :=
     | '\\' => "\\\\"
     | '\'' => "\\'"
     | '\n' => "\\n"
+    | '\r' => "\\r"
+    | '\t' => "\\t"
     | c => c.toString
 
 /--
@@ -108,8 +110,8 @@ body \{ margin: 0; display: flex; flex-direction: column; align-items: center; j
 <body>
 <div id=\"anim-container\"></div>
 <div class=\"controls\">
-  <button id=\"anim-play\">\u25B6</button>
-  <input type=\"range\" id=\"anim-scrub\" min=\"0\" value=\"0\">
+  <button id=\"anim-play\" aria-label=\"Play\">\u25B6</button>
+  <input type=\"range\" id=\"anim-scrub\" min=\"0\" value=\"0\" aria-label=\"Animation progress\">
 </div>
 <script>
 {js}
