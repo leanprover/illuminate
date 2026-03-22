@@ -72,4 +72,4 @@ def renderDiagram [BackendRender β] [Hashable β] (d : Diagram β) (padding : F
     Svg.render cmds { minX, minY, width, height } pfx
   else
     let cmds := d.warning "Diagram has no envelope, defaulting to 640x480" |>.compile
-    Svg.render cmds { minX := -320, minY := -240, width := 640, height := 480 } pfx
+    Svg.render cmds ViewBox.fallback pfx

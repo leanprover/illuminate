@@ -5,13 +5,15 @@
 
 (function () {
     /** @type {AnimData} */
-    var data = __DATA__;
+    var data = __ILLUMINATE_DATA_98712__;
     if (!data || !data.segments || data.segments.length === 0) {
         console.error("Animation: invalid or empty animation data");
         return;
     }
     /** @type {HTMLElement} */
-    var container = /** @type {HTMLElement} */ (document.querySelector("__SELECTOR__"));
+    var container = /** @type {HTMLElement} */ (
+        document.querySelector("__ILLUMINATE_SELECTOR_98712__")
+    );
     if (!container) {
         console.error("Animation: container element not found");
         return;
@@ -119,7 +121,12 @@
     showFrame(0);
 
     if (typeof Reveal !== "undefined") {
-        Reveal.addEventListener("fragmentshown", function (e) {
+        /** @type {(type: string, fn: (e: { fragment: HTMLElement }) => void) => void} */
+        var revealOn =
+            typeof Reveal.on === "function"
+                ? Reveal.on.bind(Reveal)
+                : /** @type {Function} */ (Reveal.addEventListener).bind(Reveal);
+        revealOn("fragmentshown", function (e) {
             stopAnim();
             var idx = parseInt(e.fragment.dataset.fragmentIndex || "", 10);
             if (!isNaN(idx) && idx < pauseSteps.length) {
@@ -132,7 +139,7 @@
                 });
             }
         });
-        Reveal.addEventListener("fragmenthidden", function (e) {
+        revealOn("fragmenthidden", function (e) {
             stopAnim();
             var idx = parseInt(e.fragment.dataset.fragmentIndex || "", 10);
             if (!isNaN(idx)) {

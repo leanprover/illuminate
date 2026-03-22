@@ -23,6 +23,10 @@ structure ViewBox where
   height : Float
 deriving Repr, BEq, Inhabited
 
+/-- Fallback viewBox used when a diagram has no envelope. -/
+def ViewBox.fallback : ViewBox :=
+  { minX := -320, minY := -240, width := 640, height := 480 }
+
 /--
 Controls how a backend-specific foreign value renders to SVG.
 Each backend type provides open and close tag strings.

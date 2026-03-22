@@ -51,7 +51,9 @@ def compiledAnimationToLeanJson (ca : CompiledAnimation) : Json :=
 open Lean in
 /-- Serializes a CompiledAnimation to a JSON string safe for embedding in `<script>` tags. -/
 def compiledAnimationToJson (ca : CompiledAnimation) : String :=
-  toString (compiledAnimationToLeanJson ca) |>.replace "</" "<\\/"
+  toString (compiledAnimationToLeanJson ca)
+    |>.replace "</" "<\\/"
+    |>.replace "]]>" "]]\\>"
 
 -- ═══════════════════════════════════════════════════════════════
 -- HTML player
@@ -75,7 +77,7 @@ def animCoreJs : String :=
 /--
 The JavaScript player code for standalone SVG DOM playback.
 
-Uses `__DATA__` and `__SELECTOR__` as placeholders that callers replace
+Uses `__ILLUMINATE_DATA_98712__` and `__ILLUMINATE_SELECTOR_98712__` as placeholders that callers replace
 with the serialized animation JSON and a CSS selector string, respectively.
 -/
 private def playerJs : String :=
@@ -84,7 +86,7 @@ private def playerJs : String :=
 /--
 The JavaScript player code for reveal.js fragment-driven playback.
 
-Uses `__DATA__` and `__SELECTOR__` as placeholders.
+Uses `__ILLUMINATE_DATA_98712__` and `__ILLUMINATE_SELECTOR_98712__` as placeholders.
 -/
 private def revealJs : String :=
   animCoreJs ++ "\n" ++ include_str "../../../player_js/reveal.js"
@@ -94,8 +96,8 @@ def CompiledAnimation.renderHTML (ca : CompiledAnimation)
     (selector : String := "#anim-container") : String :=
   let dataJson := compiledAnimationToJson ca
   let js := playerJs
-    |>.replace "__DATA__" dataJson
-    |>.replace "__SELECTOR__" (escapeJs selector)
+    |>.replace "__ILLUMINATE_DATA_98712__" dataJson
+    |>.replace "__ILLUMINATE_SELECTOR_98712__" (escapeJs selector)
   s!"<!DOCTYPE html>
 <html>
 <head>
@@ -129,6 +131,6 @@ def CompiledAnimation.renderRevealHTML (ca : CompiledAnimation)
   let dataJson := compiledAnimationToJson ca
   let sel := escapeJs selector
   let js := revealJs
-    |>.replace "__DATA__" dataJson
-    |>.replace "__SELECTOR__" sel
+    |>.replace "__ILLUMINATE_DATA_98712__" dataJson
+    |>.replace "__ILLUMINATE_SELECTOR_98712__" sel
   s!"<script>\n{js}\n</script>"

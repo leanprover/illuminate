@@ -11,7 +11,7 @@ namespace Illuminate
 
 /-- Clamps a float to be at least zero. -/
 def clampNonneg (f : Float) : Float :=
-  if f > 0 then f else 0
+  if f >= 0 then f else 0
 
 /-- Computes the total duration of a list of steps in seconds. -/
 def totalDuration (steps : List Step) : Float :=

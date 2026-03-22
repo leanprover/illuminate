@@ -127,24 +127,34 @@ def compileAnimation (steps : List Step)
     (render : Vector Float steps.length → Diagram SVG)
     (fps : Nat := 60) : CompiledAnimation :=
   let dur := totalDuration steps
-  let totalFrames := if dur <= 0 then 1 else Nat.max 1 (dur * fps.toFloat).ceil.toUInt64.toNat
-  -- Evaluate all frames, accumulating draw lists, viewBox bounds, and clip hash
+  let totalFrames := if dur <= 0 then 1
+    else Nat.max 1 (Nat.min ((dur * fps.toFloat).round.toUInt64.toNat) 600000)
+  -- Hash the middle frame of each step for clip-path prefix uniqueness
+  let clipHash : UInt64 := Id.run do
+    let mut h : UInt64 := 0
+    let mut elapsed : Float := 0
+    for s in steps do
+      let mid := elapsed + clampNonneg s.duration / 2
+      let progress := progressAt steps mid
+      let vec := progressVector progress steps.length
+      h := mixHash h (hash (render vec))
+      elapsed := elapsed + clampNonneg s.duration
+    return h
+  -- Evaluate all frames, accumulating draw lists and viewBox bounds
   let padding : Float := 5
-  let (frameDrawLists, unifiedViewBox, clipHash) := Id.run do
+  let (frameDrawLists, unifiedViewBox) := Id.run do
     let mut drawLists : Array (Array (DrawCmd SVG)) := #[]
     let mut minX : Float := 0
     let mut maxX : Float := 0
     let mut minY : Float := 0
     let mut maxY : Float := 0
     let mut first := true
-    let mut h : UInt64 := 0
     for i in List.range totalFrames do
       let t := i.toFloat / fps.toFloat
       let progress := progressAt steps t
       let vec := progressVector progress steps.length
       let d := render vec
       drawLists := drawLists.push d.compile
-      h := mixHash h (hash d)
       if let .nonempty env := d.getEnvelope then
         let east := env Vec2.east
         let west := env Vec2.west
@@ -163,9 +173,9 @@ def compileAnimation (steps : List Step)
           if fMinY < minY then minY := fMinY
           if fMaxY > maxY then maxY := fMaxY
     let vb : ViewBox :=
-      if first then { minX := -320, minY := -240, width := 640, height := 480 }
+      if first then ViewBox.fallback
       else { minX := minX, minY := minY, width := maxX - minX, height := maxY - minY }
-    (drawLists, vb, h)
+    (drawLists, vb)
   let clipPfx := s!"{clipHash.toNat % 65536}_"
   -- Compute step boundary frames
   let stepFrames : Array Nat := Id.run do

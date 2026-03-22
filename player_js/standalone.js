@@ -5,13 +5,15 @@
 
 (function () {
     /** @type {AnimData} */
-    var data = __DATA__;
+    var data = __ILLUMINATE_DATA_98712__;
     if (!data || !data.segments || data.segments.length === 0) {
         console.error("Animation: invalid or empty animation data");
         return;
     }
     /** @type {HTMLElement} */
-    var container = /** @type {HTMLElement} */ (document.querySelector("__SELECTOR__"));
+    var container = /** @type {HTMLElement} */ (
+        document.querySelector("__ILLUMINATE_SELECTOR_98712__")
+    );
     /** @type {HTMLButtonElement} */
     var playBtn = /** @type {HTMLButtonElement} */ (document.getElementById("anim-play"));
     /** @type {HTMLInputElement} */

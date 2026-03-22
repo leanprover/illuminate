@@ -38,6 +38,7 @@ export default function (props) {
     var _frame = React.useState(0);
     var frame = _frame[0];
     var setFrame = _frame[1];
+    var frameRef = React.useRef(0);
 
     /**
      * Renders the given frame into the container, using parameterized updates when possible.
@@ -49,7 +50,13 @@ export default function (props) {
         var seg = animFindSegment(data.segments, f);
         var container = containerRef.current;
         if (!container) return;
-        currentSegRef.current = animRenderSegFrame(container, seg, currentSegRef.current, f - seg.sf);
+        currentSegRef.current = animRenderSegFrame(
+            container,
+            seg,
+            currentSegRef.current,
+            f - seg.sf,
+        );
+        frameRef.current = f;
         setFrame(f);
     }
 
@@ -144,7 +151,7 @@ export default function (props) {
             playingRef.current = false;
             setPlaying(false);
             if (rafRef.current) cancelAnimationFrame(rafRef.current);
-            pauseFrameRef.current = frame;
+            pauseFrameRef.current = frameRef.current;
         } else {
             // Start/restart
             if (pauseFrameRef.current >= data.totalFrames - 1) {

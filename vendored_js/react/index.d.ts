@@ -50,9 +50,7 @@ type AwaitedReactNode =
     | boolean
     | null
     | undefined
-    | React.DO_NOT_USE_OR_YOU_WILL_BE_FIRED_EXPERIMENTAL_REACT_NODES[
-        keyof React.DO_NOT_USE_OR_YOU_WILL_BE_FIRED_EXPERIMENTAL_REACT_NODES
-    ];
+    | React.DO_NOT_USE_OR_YOU_WILL_BE_FIRED_EXPERIMENTAL_REACT_NODES[keyof React.DO_NOT_USE_OR_YOU_WILL_BE_FIRED_EXPERIMENTAL_REACT_NODES];
 
 /**
  * The function returned from an effect passed to {@link React.useEffect useEffect},
@@ -106,9 +104,10 @@ declare namespace React {
      * type SrcComponents = ElementType<{ src: any }, 'audio' | 'embed'>;
      * ```
      */
-    type ElementType<P = any, Tag extends keyof JSX.IntrinsicElements = keyof JSX.IntrinsicElements> =
-        | { [K in Tag]: P extends JSX.IntrinsicElements[K] ? K : never }[Tag]
-        | ComponentType<P>;
+    type ElementType<
+        P = any,
+        Tag extends keyof JSX.IntrinsicElements = keyof JSX.IntrinsicElements,
+    > = { [K in Tag]: P extends JSX.IntrinsicElements[K] ? K : never }[Tag] | ComponentType<P>;
 
     /**
      * Represents any user-defined component, either as a function or a class.
@@ -132,11 +131,9 @@ declare namespace React {
      * @template P The props the component accepts.
      */
     type JSXElementConstructor<P> =
-        | ((
-            props: P,
-        ) => ReactNode | Promise<ReactNode>)
+        | ((props: P) => ReactNode | Promise<ReactNode>)
         // constructor signature must match React.Component
-        | (new(props: P, context: any) => Component<any, any>);
+        | (new (props: P, context: any) => Component<any, any>);
 
     /**
      * Created by {@link createRef}, or {@link useRef} when passed `null`.
@@ -158,8 +155,7 @@ declare namespace React {
         current: T;
     }
 
-    interface DO_NOT_USE_OR_YOU_WILL_BE_FIRED_CALLBACK_REF_RETURN_VALUES {
-    }
+    interface DO_NOT_USE_OR_YOU_WILL_BE_FIRED_CALLBACK_REF_RETURN_VALUES {}
     /**
      * A callback fired whenever the ref's value changes.
      *
@@ -179,9 +175,7 @@ declare namespace React {
         ):
             | void
             | (() => VoidOrUndefinedOnly)
-            | DO_NOT_USE_OR_YOU_WILL_BE_FIRED_CALLBACK_REF_RETURN_VALUES[
-                keyof DO_NOT_USE_OR_YOU_WILL_BE_FIRED_CALLBACK_REF_RETURN_VALUES
-            ];
+            | DO_NOT_USE_OR_YOU_WILL_BE_FIRED_CALLBACK_REF_RETURN_VALUES[keyof DO_NOT_USE_OR_YOU_WILL_BE_FIRED_CALLBACK_REF_RETURN_VALUES];
     }["bivarianceHack"];
 
     /**
@@ -219,7 +213,7 @@ declare namespace React {
     type ElementRef<
         C extends
             | ForwardRefExoticComponent<any>
-            | { new(props: any, context: any): Component<any> }
+            | { new (props: any, context: any): Component<any> }
             | ((props: any) => ReactNode)
             | keyof JSX.IntrinsicElements,
     > = ComponentRef<C>;
@@ -237,9 +231,7 @@ declare namespace React {
         | string
         | number
         | bigint
-        | DO_NOT_USE_OR_YOU_WILL_BE_FIRED_EXPERIMENTAL_KEY_TYPES[
-            keyof DO_NOT_USE_OR_YOU_WILL_BE_FIRED_EXPERIMENTAL_KEY_TYPES
-        ];
+        | DO_NOT_USE_OR_YOU_WILL_BE_FIRED_EXPERIMENTAL_KEY_TYPES[keyof DO_NOT_USE_OR_YOU_WILL_BE_FIRED_EXPERIMENTAL_KEY_TYPES];
 
     /**
      * @internal The props any component can receive.
@@ -304,8 +296,7 @@ declare namespace React {
     /**
      * Represents the built-in attributes available to class components.
      */
-    interface ClassAttributes<T> extends RefAttributes<T> {
-    }
+    interface ClassAttributes<T> extends RefAttributes<T> {}
 
     /**
      * Represents a JSX element.
@@ -346,7 +337,13 @@ declare namespace React {
         /**
          * @deprecated Use `element.props.ref` instead.
          */
-        ref?: ("ref" extends keyof P ? P extends { ref?: infer R | undefined } ? R : never : never) | undefined;
+        ref?:
+            | ("ref" extends keyof P
+                  ? P extends { ref?: infer R | undefined }
+                      ? R
+                      : never
+                  : never)
+            | undefined;
     }
 
     /**
@@ -356,7 +353,10 @@ declare namespace React {
     /**
      * @deprecated Use `ReactElement<P, React.ComponentClass<P>>`
      */
-    interface ComponentElement<P, T extends Component<P, ComponentState>> extends ReactElement<P, ComponentClass<P>> {
+    interface ComponentElement<P, T extends Component<P, ComponentState>> extends ReactElement<
+        P,
+        ComponentClass<P>
+    > {
         /**
          * @deprecated Use `element.props.ref` instead.
          */
@@ -372,9 +372,10 @@ declare namespace React {
     /**
      * @deprecated Use `ReactElement<P, string>`
      */
-    interface DOMElement<P extends HTMLAttributes<T> | SVGAttributes<T>, T extends Element>
-        extends ReactElement<P, string>
-    {
+    interface DOMElement<
+        P extends HTMLAttributes<T> | SVGAttributes<T>,
+        T extends Element,
+    > extends ReactElement<P, string> {
         /**
          * @deprecated Use `element.props.ref` instead.
          */
@@ -382,9 +383,15 @@ declare namespace React {
     }
 
     // ReactHTML for ReactHTMLElement
-    interface ReactHTMLElement<T extends HTMLElement> extends DetailedReactHTMLElement<AllHTMLAttributes<T>, T> {}
+    interface ReactHTMLElement<T extends HTMLElement> extends DetailedReactHTMLElement<
+        AllHTMLAttributes<T>,
+        T
+    > {}
 
-    interface DetailedReactHTMLElement<P extends HTMLAttributes<T>, T extends HTMLElement> extends DOMElement<P, T> {
+    interface DetailedReactHTMLElement<
+        P extends HTMLAttributes<T>,
+        T extends HTMLElement,
+    > extends DOMElement<P, T> {
         type: HTMLElementType;
     }
 
@@ -443,9 +450,7 @@ declare namespace React {
         | boolean
         | null
         | undefined
-        | DO_NOT_USE_OR_YOU_WILL_BE_FIRED_EXPERIMENTAL_REACT_NODES[
-            keyof DO_NOT_USE_OR_YOU_WILL_BE_FIRED_EXPERIMENTAL_REACT_NODES
-        ]
+        | DO_NOT_USE_OR_YOU_WILL_BE_FIRED_EXPERIMENTAL_REACT_NODES[keyof DO_NOT_USE_OR_YOU_WILL_BE_FIRED_EXPERIMENTAL_REACT_NODES]
         | Promise<AwaitedReactNode>;
 
     //
@@ -456,22 +461,22 @@ declare namespace React {
     // TODO: generalize this to everything in `keyof ReactHTML`, not just "input"
     function createElement(
         type: "input",
-        props?: InputHTMLAttributes<HTMLInputElement> & ClassAttributes<HTMLInputElement> | null,
+        props?: (InputHTMLAttributes<HTMLInputElement> & ClassAttributes<HTMLInputElement>) | null,
         ...children: ReactNode[]
     ): DetailedReactHTMLElement<InputHTMLAttributes<HTMLInputElement>, HTMLInputElement>;
     function createElement<P extends HTMLAttributes<T>, T extends HTMLElement>(
         type: HTMLElementType,
-        props?: ClassAttributes<T> & P | null,
+        props?: (ClassAttributes<T> & P) | null,
         ...children: ReactNode[]
     ): DetailedReactHTMLElement<P, T>;
     function createElement<P extends SVGAttributes<T>, T extends SVGElement>(
         type: SVGElementType,
-        props?: ClassAttributes<T> & P | null,
+        props?: (ClassAttributes<T> & P) | null,
         ...children: ReactNode[]
     ): ReactSVGElement;
     function createElement<P extends DOMAttributes<T>, T extends Element>(
         type: string,
-        props?: ClassAttributes<T> & P | null,
+        props?: (ClassAttributes<T> & P) | null,
         ...children: ReactNode[]
     ): DOMElement<P, T>;
 
@@ -479,17 +484,21 @@ declare namespace React {
 
     function createElement<P extends {}>(
         type: FunctionComponent<P>,
-        props?: Attributes & P | null,
+        props?: (Attributes & P) | null,
         ...children: ReactNode[]
     ): FunctionComponentElement<P>;
-    function createElement<P extends {}, T extends Component<P, ComponentState>, C extends ComponentClass<P>>(
+    function createElement<
+        P extends {},
+        T extends Component<P, ComponentState>,
+        C extends ComponentClass<P>,
+    >(
         type: ClassType<P, T, C>,
-        props?: ClassAttributes<T> & P | null,
+        props?: (ClassAttributes<T> & P) | null,
         ...children: ReactNode[]
     ): CElement<P, T>;
     function createElement<P extends {}>(
         type: FunctionComponent<P> | ComponentClass<P> | string,
-        props?: Attributes & P | null,
+        props?: (Attributes & P) | null,
         ...children: ReactNode[]
     ): ReactElement<P>;
 
@@ -593,8 +602,7 @@ declare namespace React {
      *
      * @template P The props the component accepts.
      */
-    interface ProviderExoticComponent<P> extends ExoticComponent<P> {
-    }
+    interface ProviderExoticComponent<P> extends ExoticComponent<P> {}
 
     /**
      * Used to retrieve the type of a context object from a {@link Context}.
@@ -729,7 +737,9 @@ declare namespace React {
         forEach<C>(children: C | readonly C[], fn: (child: C, index: number) => void): void;
         count(children: any): number;
         only<C>(children: C): C extends any[] ? never : C;
-        toArray(children: ReactNode | ReactNode[]): Array<Exclude<ReactNode, boolean | null | undefined>>;
+        toArray(
+            children: ReactNode | ReactNode[],
+        ): Array<Exclude<ReactNode, boolean | null | undefined>>;
     };
 
     export interface FragmentProps {
@@ -969,7 +979,9 @@ declare namespace React {
         // See: https://github.com/DefinitelyTyped/DefinitelyTyped/issues/18365#issuecomment-351013257
         // Also, the ` | S` allows intellisense to not be dumbisense
         setState<K extends keyof S>(
-            state: ((prevState: Readonly<S>, props: Readonly<P>) => Pick<S, K> | S | null) | (Pick<S, K> | S | null),
+            state:
+                | ((prevState: Readonly<S>, props: Readonly<P>) => Pick<S, K> | S | null)
+                | (Pick<S, K> | S | null),
             callback?: () => void,
         ): void;
 
@@ -1135,7 +1147,7 @@ declare namespace React {
      */
     interface ComponentClass<P = {}, S = ComponentState> extends StaticLifecycle<P, S> {
         // constructor signature must match React.Component
-        new(
+        new (
             props: P,
             /**
              * Value of the parent {@link https://react.dev/reference/react/Component#context Context} specified
@@ -1167,7 +1179,7 @@ declare namespace React {
      * @see {@link https://www.npmjs.com/package/create-react-class `create-react-class` on npm}
      */
     interface ClassicComponentClass<P = {}> extends ComponentClass<P> {
-        new(props: P): ClassicComponent<P, ComponentState>;
+        new (props: P): ClassicComponent<P, ComponentState>;
         getDefaultProps?(): P;
     }
 
@@ -1180,9 +1192,8 @@ declare namespace React {
      * See {@link https://github.com/Microsoft/TypeScript/issues/7234 this GitHub issue}
      * for more info.
      */
-    type ClassType<P, T extends Component<P, ComponentState>, C extends ComponentClass<P>> =
-        & C
-        & (new(props: P, context: any) => T);
+    type ClassType<P, T extends Component<P, ComponentState>, C extends ComponentClass<P>> = C &
+        (new (props: P, context: any) => T);
 
     //
     // Component Specs and Lifecycle
@@ -1191,7 +1202,8 @@ declare namespace React {
     // This should actually be something like `Lifecycle<P, S> | DeprecatedLifecycle<P, S>`,
     // as React will _not_ call the deprecated lifecycle methods if any of the new lifecycle
     // methods are present.
-    interface ComponentLifecycle<P, S, SS = any> extends NewLifecycle<P, S, SS>, DeprecatedLifecycle<P, S> {
+    interface ComponentLifecycle<P, S, SS = any>
+        extends NewLifecycle<P, S, SS>, DeprecatedLifecycle<P, S> {
         /**
          * Called immediately after a component is mounted. Setting state here will trigger re-rendering.
          */
@@ -1206,7 +1218,11 @@ declare namespace React {
          * If false is returned, {@link Component.render}, `componentWillUpdate`
          * and `componentDidUpdate` will not be called.
          */
-        shouldComponentUpdate?(nextProps: Readonly<P>, nextState: Readonly<S>, nextContext: any): boolean;
+        shouldComponentUpdate?(
+            nextProps: Readonly<P>,
+            nextState: Readonly<S>,
+            nextContext: any,
+        ): boolean;
         /**
          * Called immediately before a component is destroyed. Perform any necessary cleanup in this method, such as
          * cancelled network requests, or cleaning up any DOM elements created in `componentDidMount`.
@@ -1337,7 +1353,11 @@ declare namespace React {
          * @see {@link https://legacy.reactjs.org/blog/2018/03/27/update-on-async-rendering.html#reading-dom-properties-before-an-update}
          * @see {@link https://legacy.reactjs.org/blog/2018/03/27/update-on-async-rendering.html#gradual-migration-path}
          */
-        componentWillUpdate?(nextProps: Readonly<P>, nextState: Readonly<S>, nextContext: any): void;
+        componentWillUpdate?(
+            nextProps: Readonly<P>,
+            nextState: Readonly<S>,
+            nextContext: any,
+        ): void;
         /**
          * Called immediately before rendering when new props or state is received. Not called for the initial render.
          *
@@ -1353,7 +1373,11 @@ declare namespace React {
          * @see {@link https://legacy.reactjs.org/blog/2018/03/27/update-on-async-rendering.html#reading-dom-properties-before-an-update}
          * @see {@link https://legacy.reactjs.org/blog/2018/03/27/update-on-async-rendering.html#gradual-migration-path}
          */
-        UNSAFE_componentWillUpdate?(nextProps: Readonly<P>, nextState: Readonly<S>, nextContext: any): void;
+        UNSAFE_componentWillUpdate?(
+            nextProps: Readonly<P>,
+            nextState: Readonly<S>,
+            nextContext: any,
+        ): void;
     }
 
     function createRef<T>(): RefObject<T | null>;
@@ -1449,10 +1473,12 @@ declare namespace React {
      * type MyComponentProps = React.ComponentProps<typeof MyComponent>;
      * ```
      */
-    type ComponentProps<T extends keyof JSX.IntrinsicElements | JSXElementConstructor<any>> = T extends
-        JSXElementConstructor<infer Props> ? Props
-        : T extends keyof JSX.IntrinsicElements ? JSX.IntrinsicElements[T]
-        : {};
+    type ComponentProps<T extends keyof JSX.IntrinsicElements | JSXElementConstructor<any>> =
+        T extends JSXElementConstructor<infer Props>
+            ? Props
+            : T extends keyof JSX.IntrinsicElements
+              ? JSX.IntrinsicElements[T]
+              : {};
 
     /**
      * Used to retrieve the props a component accepts with its ref. Can either be
@@ -1477,11 +1503,13 @@ declare namespace React {
      * type MyComponentPropsWithRef = React.ComponentPropsWithRef<typeof MyComponent>;
      * ```
      */
-    type ComponentPropsWithRef<T extends ElementType> = T extends JSXElementConstructor<infer Props>
-        // If it's a class i.e. newable we're dealing with a class component
-        ? T extends abstract new(args: any) => any ? PropsWithoutRef<Props> & RefAttributes<InstanceType<T>>
-        : Props
-        : ComponentProps<T>;
+    type ComponentPropsWithRef<T extends ElementType> =
+        T extends JSXElementConstructor<infer Props>
+            ? // If it's a class i.e. newable we're dealing with a class component
+              T extends abstract new (args: any) => any
+                ? PropsWithoutRef<Props> & RefAttributes<InstanceType<T>>
+                : Props
+            : ComponentProps<T>;
     /**
      * Used to retrieve the props a custom component accepts with its ref.
      *
@@ -1498,11 +1526,13 @@ declare namespace React {
      * type MyComponentPropsWithRef = React.CustomComponentPropsWithRef<typeof MyComponent>;
      * ```
      */
-    type CustomComponentPropsWithRef<T extends ComponentType> = T extends JSXElementConstructor<infer Props>
-        // If it's a class i.e. newable we're dealing with a class component
-        ? T extends abstract new(args: any) => any ? PropsWithoutRef<Props> & RefAttributes<InstanceType<T>>
-        : Props
-        : never;
+    type CustomComponentPropsWithRef<T extends ComponentType> =
+        T extends JSXElementConstructor<infer Props>
+            ? // If it's a class i.e. newable we're dealing with a class component
+              T extends abstract new (args: any) => any
+                ? PropsWithoutRef<Props> & RefAttributes<InstanceType<T>>
+                : Props
+            : never;
 
     /**
      * Used to retrieve the props a component accepts without its ref. Can either be
@@ -1546,12 +1576,14 @@ declare namespace React {
      * type DivRef = React.ComponentRef<'div'>;
      * ```
      */
-    type ComponentRef<T extends ElementType> = ComponentPropsWithRef<T> extends RefAttributes<infer Method> ? Method
-        : never;
+    type ComponentRef<T extends ElementType> =
+        ComponentPropsWithRef<T> extends RefAttributes<infer Method> ? Method : never;
 
     // will show `Memo(${Component.displayName || Component.name})` in devtools by default,
     // but can be given its own specific name
-    type MemoExoticComponent<T extends ComponentType<any>> = NamedExoticComponent<CustomComponentPropsWithRef<T>> & {
+    type MemoExoticComponent<T extends ComponentType<any>> = NamedExoticComponent<
+        CustomComponentPropsWithRef<T>
+    > & {
         readonly type: T;
     };
 
@@ -1579,12 +1611,15 @@ declare namespace React {
     ): NamedExoticComponent<P>;
     function memo<T extends ComponentType<any>>(
         Component: T,
-        propsAreEqual?: (prevProps: Readonly<ComponentProps<T>>, nextProps: Readonly<ComponentProps<T>>) => boolean,
+        propsAreEqual?: (
+            prevProps: Readonly<ComponentProps<T>>,
+            nextProps: Readonly<ComponentProps<T>>,
+        ) => boolean,
     ): MemoExoticComponent<T>;
 
-    interface LazyExoticComponent<T extends ComponentType<any>>
-        extends ExoticComponent<CustomComponentPropsWithRef<T>>
-    {
+    interface LazyExoticComponent<T extends ComponentType<any>> extends ExoticComponent<
+        CustomComponentPropsWithRef<T>
+    > {
         readonly _result: T;
     }
 
@@ -1679,7 +1714,9 @@ declare namespace React {
      * @version 16.8.0
      * @see {@link https://react.dev/reference/react/useContext}
      */
-    function useContext<T>(context: Context<T> /*, (not public API) observedBits?: number|boolean */): T;
+    function useContext<T>(
+        context: Context<T> /*, (not public API) observedBits?: number|boolean */,
+    ): T;
     /**
      * Returns a stateful value, and a function to update it.
      *
@@ -1797,7 +1834,11 @@ declare namespace React {
      * @version 16.8.0
      * @see {@link https://react.dev/reference/react/useImperativeHandle}
      */
-    function useImperativeHandle<T, R extends T>(ref: Ref<T> | undefined, init: () => R, deps?: DependencyList): void;
+    function useImperativeHandle<T, R extends T>(
+        ref: Ref<T> | undefined,
+        init: () => R,
+        deps?: DependencyList,
+    ): void;
     // I made 'inputs' required here and in useMemo as there's no point to memoizing without the memoization key
     // useCallback(X) is identical to just using X, useMemo(() => Y) is identical to just using Y.
     /**
@@ -1987,10 +2028,7 @@ declare namespace React {
         /**
          * @default "visible"
          */
-        mode?:
-            | "hidden"
-            | "visible"
-            | undefined;
+        mode?: "hidden" | "visible" | undefined;
         /**
          * A name for this Activity boundary for instrumentation purposes.
          * The name will help identify this boundary in React DevTools.
@@ -2042,7 +2080,11 @@ declare namespace React {
      * This might be a child element to the element on which the event listener is registered.
      * If you thought this should be `EventTarget & T`, see https://github.com/DefinitelyTyped/DefinitelyTyped/issues/11508#issuecomment-256045682
      */
-    interface SyntheticEvent<T = Element, E = Event> extends BaseSyntheticEvent<E, EventTarget & T, EventTarget> {}
+    interface SyntheticEvent<T = Element, E = Event> extends BaseSyntheticEvent<
+        E,
+        EventTarget & T,
+        EventTarget
+    > {}
 
     interface ClipboardEvent<T = Element> extends SyntheticEvent<T, NativeClipboardEvent> {
         clipboardData: DataTransfer;
@@ -2069,7 +2111,10 @@ declare namespace React {
         isPrimary: boolean;
     }
 
-    interface FocusEvent<Target = Element, RelatedTarget = Element> extends SyntheticEvent<Target, NativeFocusEvent> {
+    interface FocusEvent<Target = Element, RelatedTarget = Element> extends SyntheticEvent<
+        Target,
+        NativeFocusEvent
+    > {
         relatedTarget: (EventTarget & RelatedTarget) | null;
         target: EventTarget & Target;
     }
@@ -2079,11 +2124,9 @@ declare namespace React {
      *             You probably meant to use {@link ChangeEvent}, {@link InputEvent}, {@link SubmitEvent}, or just {@link SyntheticEvent} instead
      *             depending on the event type.
      */
-    interface FormEvent<T = Element> extends SyntheticEvent<T> {
-    }
+    interface FormEvent<T = Element> extends SyntheticEvent<T> {}
 
-    interface InvalidEvent<T = Element> extends SyntheticEvent<T> {
-    }
+    interface InvalidEvent<T = Element> extends SyntheticEvent<T> {}
 
     /**
      * change events bubble in React so their target is generally unknown.
@@ -2092,7 +2135,10 @@ declare namespace React {
      * This type exists purely to narrow `target` for form elements. It doesn't
      * reflect a DOM event. Change events are just fired as standard {@link SyntheticEvent}.
      */
-    interface ChangeEvent<CurrentTarget = Element, Target = Element> extends SyntheticEvent<CurrentTarget> {
+    interface ChangeEvent<
+        CurrentTarget = Element,
+        Target = Element,
+    > extends SyntheticEvent<CurrentTarget> {
         // TODO: This is wrong for change event handlers on arbitrary. Should
         // be EventTarget & Target, but kept for backward compatibility until React 20.
         target: EventTarget & CurrentTarget;
@@ -2219,7 +2265,9 @@ declare namespace React {
     // Event Handler Types
     // ----------------------------------------------------------------------
 
-    type EventHandler<E extends SyntheticEvent<any>> = { bivarianceHack(event: E): void }["bivarianceHack"];
+    type EventHandler<E extends SyntheticEvent<any>> = {
+        bivarianceHack(event: E): void;
+    }["bivarianceHack"];
 
     type ReactEventHandler<T = Element> = EventHandler<SyntheticEvent<T>>;
 
@@ -2252,24 +2300,24 @@ declare namespace React {
     // Props / DOM Attributes
     // ----------------------------------------------------------------------
 
-    interface HTMLProps<T> extends AllHTMLAttributes<T>, ClassAttributes<T> {
-    }
+    interface HTMLProps<T> extends AllHTMLAttributes<T>, ClassAttributes<T> {}
 
     type DetailedHTMLProps<E extends HTMLAttributes<T>, T> = ClassAttributes<T> & E;
 
-    interface SVGProps<T> extends SVGAttributes<T>, ClassAttributes<T> {
-    }
+    interface SVGProps<T> extends SVGAttributes<T>, ClassAttributes<T> {}
 
     interface SVGLineElementAttributes<T> extends SVGProps<T> {}
     interface SVGTextElementAttributes<T> extends SVGProps<T> {}
 
     interface DOMAttributes<T> {
         children?: ReactNode | undefined;
-        dangerouslySetInnerHTML?: {
-            // Should be InnerHTML['innerHTML'].
-            // But unfortunately we're mixing renderer-specific type declarations.
-            __html: string | TrustedHTML;
-        } | undefined;
+        dangerouslySetInnerHTML?:
+            | {
+                  // Should be InnerHTML['innerHTML'].
+                  // But unfortunately we're mixing renderer-specific type declarations.
+                  __html: string | TrustedHTML;
+              }
+            | undefined;
 
         // Clipboard Events
         onCopy?: ClipboardEventHandler<T> | undefined;
@@ -2539,7 +2587,16 @@ declare namespace React {
          */
         "aria-controls"?: string | undefined;
         /** Indicates the element that represents the current item within a container or set of related elements. */
-        "aria-current"?: boolean | "false" | "true" | "page" | "step" | "location" | "date" | "time" | undefined;
+        "aria-current"?:
+            | boolean
+            | "false"
+            | "true"
+            | "page"
+            | "step"
+            | "location"
+            | "date"
+            | "time"
+            | undefined;
         /**
          * Identifies the element (or elements) that describes the object.
          * @see aria-labelledby
@@ -2583,7 +2640,16 @@ declare namespace React {
          */
         "aria-grabbed"?: Booleanish | undefined;
         /** Indicates the availability and type of interactive popup element, such as menu or dialog, that can be triggered by an element. */
-        "aria-haspopup"?: boolean | "false" | "true" | "menu" | "listbox" | "tree" | "grid" | "dialog" | undefined;
+        "aria-haspopup"?:
+            | boolean
+            | "false"
+            | "true"
+            | "menu"
+            | "listbox"
+            | "tree"
+            | "grid"
+            | "dialog"
+            | undefined;
         /**
          * Indicates whether the element is exposed to an accessibility API.
          * @see aria-disabled.
@@ -2791,14 +2857,30 @@ declare namespace React {
 
         // Standard HTML Attributes
         accessKey?: string | undefined;
-        autoCapitalize?: "off" | "none" | "on" | "sentences" | "words" | "characters" | undefined | (string & {});
+        autoCapitalize?:
+            | "off"
+            | "none"
+            | "on"
+            | "sentences"
+            | "words"
+            | "characters"
+            | undefined
+            | (string & {});
         autoFocus?: boolean | undefined;
         className?: string | undefined;
         contentEditable?: Booleanish | "inherit" | "plaintext-only" | undefined;
         contextMenu?: string | undefined;
         dir?: string | undefined;
         draggable?: Booleanish | undefined;
-        enterKeyHint?: "enter" | "done" | "go" | "next" | "previous" | "search" | "send" | undefined;
+        enterKeyHint?:
+            | "enter"
+            | "done"
+            | "go"
+            | "next"
+            | "previous"
+            | "search"
+            | "send"
+            | undefined;
         hidden?: boolean | undefined;
         id?: string | undefined;
         lang?: string | undefined;
@@ -2856,7 +2938,16 @@ declare namespace React {
          * Hints at the type of data that might be entered by the user while editing the element or its contents
          * @see {@link https://html.spec.whatwg.org/multipage/interaction.html#input-modalities:-the-inputmode-attribute}
          */
-        inputMode?: "none" | "text" | "tel" | "url" | "email" | "numeric" | "decimal" | "search" | undefined;
+        inputMode?:
+            | "none"
+            | "text"
+            | "tel"
+            | "url"
+            | "email"
+            | "numeric"
+            | "decimal"
+            | "search"
+            | undefined;
         /**
          * Specify that a standard HTML element should behave like a defined custom built-in element
          * @see {@link https://html.spec.whatwg.org/multipage/custom-elements.html#attr-is}
@@ -2887,9 +2978,7 @@ declare namespace React {
             | string
             | undefined
             | ((formData: FormData) => void | Promise<void>)
-            | DO_NOT_USE_OR_YOU_WILL_BE_FIRED_EXPERIMENTAL_FORM_ACTIONS[
-                keyof DO_NOT_USE_OR_YOU_WILL_BE_FIRED_EXPERIMENTAL_FORM_ACTIONS
-            ];
+            | DO_NOT_USE_OR_YOU_WILL_BE_FIRED_EXPERIMENTAL_FORM_ACTIONS[keyof DO_NOT_USE_OR_YOU_WILL_BE_FIRED_EXPERIMENTAL_FORM_ACTIONS];
         allowFullScreen?: boolean | undefined;
         allowTransparency?: boolean | undefined;
         alt?: string | undefined;
@@ -2922,9 +3011,7 @@ declare namespace React {
             | string
             | undefined
             | ((formData: FormData) => void | Promise<void>)
-            | DO_NOT_USE_OR_YOU_WILL_BE_FIRED_EXPERIMENTAL_FORM_ACTIONS[
-                keyof DO_NOT_USE_OR_YOU_WILL_BE_FIRED_EXPERIMENTAL_FORM_ACTIONS
-            ];
+            | DO_NOT_USE_OR_YOU_WILL_BE_FIRED_EXPERIMENTAL_FORM_ACTIONS[keyof DO_NOT_USE_OR_YOU_WILL_BE_FIRED_EXPERIMENTAL_FORM_ACTIONS];
         formEncType?: string | undefined;
         formMethod?: string | undefined;
         formNoValidate?: boolean | undefined;
@@ -3008,12 +3095,7 @@ declare namespace React {
         | "strict-origin-when-cross-origin"
         | "unsafe-url";
 
-    type HTMLAttributeAnchorTarget =
-        | "_self"
-        | "_blank"
-        | "_parent"
-        | "_top"
-        | (string & {});
+    type HTMLAttributeAnchorTarget = "_self" | "_blank" | "_parent" | "_top" | (string & {});
 
     interface AnchorHTMLAttributes<T> extends HTMLAttributes<T> {
         download?: any;
@@ -3055,9 +3137,7 @@ declare namespace React {
         formAction?:
             | string
             | ((formData: FormData) => void | Promise<void>)
-            | DO_NOT_USE_OR_YOU_WILL_BE_FIRED_EXPERIMENTAL_FORM_ACTIONS[
-                keyof DO_NOT_USE_OR_YOU_WILL_BE_FIRED_EXPERIMENTAL_FORM_ACTIONS
-            ]
+            | DO_NOT_USE_OR_YOU_WILL_BE_FIRED_EXPERIMENTAL_FORM_ACTIONS[keyof DO_NOT_USE_OR_YOU_WILL_BE_FIRED_EXPERIMENTAL_FORM_ACTIONS]
             | undefined;
         formEncType?: string | undefined;
         formMethod?: string | undefined;
@@ -3122,9 +3202,7 @@ declare namespace React {
             | string
             | undefined
             | ((formData: FormData) => void | Promise<void>)
-            | DO_NOT_USE_OR_YOU_WILL_BE_FIRED_EXPERIMENTAL_FORM_ACTIONS[
-                keyof DO_NOT_USE_OR_YOU_WILL_BE_FIRED_EXPERIMENTAL_FORM_ACTIONS
-            ];
+            | DO_NOT_USE_OR_YOU_WILL_BE_FIRED_EXPERIMENTAL_FORM_ACTIONS[keyof DO_NOT_USE_OR_YOU_WILL_BE_FIRED_EXPERIMENTAL_FORM_ACTIONS];
         autoComplete?: string | undefined;
         encType?: string | undefined;
         method?: string | undefined;
@@ -3173,9 +3251,7 @@ declare namespace React {
         sizes?: string | undefined;
         src?:
             | string
-            | DO_NOT_USE_OR_YOU_WILL_BE_FIRED_EXPERIMENTAL_IMG_SRC_TYPES[
-                keyof DO_NOT_USE_OR_YOU_WILL_BE_FIRED_EXPERIMENTAL_IMG_SRC_TYPES
-            ]
+            | DO_NOT_USE_OR_YOU_WILL_BE_FIRED_EXPERIMENTAL_IMG_SRC_TYPES[keyof DO_NOT_USE_OR_YOU_WILL_BE_FIRED_EXPERIMENTAL_IMG_SRC_TYPES]
             | undefined;
         srcSet?: string | undefined;
         useMap?: string | undefined;
@@ -3265,13 +3341,13 @@ declare namespace React {
         | "username";
     type OptionalPrefixToken<T extends string> = `${T} ` | "";
     type OptionalPostfixToken<T extends string> = ` ${T}` | "";
-    type AutoFillField = AutoFillNormalField | `${OptionalPrefixToken<AutoFillContactKind>}${AutoFillContactField}`;
+    type AutoFillField =
+        | AutoFillNormalField
+        | `${OptionalPrefixToken<AutoFillContactKind>}${AutoFillContactField}`;
     type AutoFillSection = `section-${string}`;
     type AutoFill =
         | AutoFillBase
-        | `${OptionalPrefixToken<AutoFillSection>}${OptionalPrefixToken<
-            AutoFillAddressKind
-        >}${AutoFillField}${OptionalPostfixToken<AutoFillCredentialField>}`;
+        | `${OptionalPrefixToken<AutoFillSection>}${OptionalPrefixToken<AutoFillAddressKind>}${AutoFillField}${OptionalPostfixToken<AutoFillCredentialField>}`;
     type HTMLInputAutoCompleteAttribute = AutoFill | (string & {});
 
     interface InputHTMLAttributes<T> extends HTMLAttributes<T> {
@@ -3285,9 +3361,7 @@ declare namespace React {
         formAction?:
             | string
             | ((formData: FormData) => void | Promise<void>)
-            | DO_NOT_USE_OR_YOU_WILL_BE_FIRED_EXPERIMENTAL_FORM_ACTIONS[
-                keyof DO_NOT_USE_OR_YOU_WILL_BE_FIRED_EXPERIMENTAL_FORM_ACTIONS
-            ]
+            | DO_NOT_USE_OR_YOU_WILL_BE_FIRED_EXPERIMENTAL_FORM_ACTIONS[keyof DO_NOT_USE_OR_YOU_WILL_BE_FIRED_EXPERIMENTAL_FORM_ACTIONS]
             | undefined;
         formEncType?: string | undefined;
         formMethod?: string | undefined;
@@ -3377,9 +3451,7 @@ declare namespace React {
         preload?: string | undefined;
         src?:
             | string
-            | DO_NOT_USE_OR_YOU_WILL_BE_FIRED_EXPERIMENTAL_MEDIA_SRC_TYPES[
-                keyof DO_NOT_USE_OR_YOU_WILL_BE_FIRED_EXPERIMENTAL_MEDIA_SRC_TYPES
-            ]
+            | DO_NOT_USE_OR_YOU_WILL_BE_FIRED_EXPERIMENTAL_MEDIA_SRC_TYPES[keyof DO_NOT_USE_OR_YOU_WILL_BE_FIRED_EXPERIMENTAL_MEDIA_SRC_TYPES]
             | undefined;
     }
 
@@ -4157,10 +4229,11 @@ declare namespace React {
         // We can't recurse forever because `type` can't be self-referential;
         // let's assume it's reasonable to do a single React.lazy() around a single React.memo() / vice-versa
         type LibraryManagedAttributes<C, P> = C extends
-            React.MemoExoticComponent<infer T> | React.LazyExoticComponent<infer T>
+            | React.MemoExoticComponent<infer T>
+            | React.LazyExoticComponent<infer T>
             ? T extends React.MemoExoticComponent<infer U> | React.LazyExoticComponent<infer U>
                 ? ReactManagedAttributes<U, P>
-            : ReactManagedAttributes<T, P>
+                : ReactManagedAttributes<T, P>
             : ReactManagedAttributes<C, P>;
 
         interface IntrinsicAttributes extends React.Attributes {}
@@ -4168,125 +4241,299 @@ declare namespace React {
 
         interface IntrinsicElements {
             // HTML
-            a: React.DetailedHTMLProps<React.AnchorHTMLAttributes<HTMLAnchorElement>, HTMLAnchorElement>;
+            a: React.DetailedHTMLProps<
+                React.AnchorHTMLAttributes<HTMLAnchorElement>,
+                HTMLAnchorElement
+            >;
             abbr: React.DetailedHTMLProps<React.HTMLAttributes<HTMLElement>, HTMLElement>;
             address: React.DetailedHTMLProps<React.HTMLAttributes<HTMLElement>, HTMLElement>;
-            area: React.DetailedHTMLProps<React.AreaHTMLAttributes<HTMLAreaElement>, HTMLAreaElement>;
+            area: React.DetailedHTMLProps<
+                React.AreaHTMLAttributes<HTMLAreaElement>,
+                HTMLAreaElement
+            >;
             article: React.DetailedHTMLProps<React.HTMLAttributes<HTMLElement>, HTMLElement>;
             aside: React.DetailedHTMLProps<React.HTMLAttributes<HTMLElement>, HTMLElement>;
-            audio: React.DetailedHTMLProps<React.AudioHTMLAttributes<HTMLAudioElement>, HTMLAudioElement>;
+            audio: React.DetailedHTMLProps<
+                React.AudioHTMLAttributes<HTMLAudioElement>,
+                HTMLAudioElement
+            >;
             b: React.DetailedHTMLProps<React.HTMLAttributes<HTMLElement>, HTMLElement>;
-            base: React.DetailedHTMLProps<React.BaseHTMLAttributes<HTMLBaseElement>, HTMLBaseElement>;
+            base: React.DetailedHTMLProps<
+                React.BaseHTMLAttributes<HTMLBaseElement>,
+                HTMLBaseElement
+            >;
             bdi: React.DetailedHTMLProps<React.HTMLAttributes<HTMLElement>, HTMLElement>;
             bdo: React.DetailedHTMLProps<React.HTMLAttributes<HTMLElement>, HTMLElement>;
             big: React.DetailedHTMLProps<React.HTMLAttributes<HTMLElement>, HTMLElement>;
-            blockquote: React.DetailedHTMLProps<React.BlockquoteHTMLAttributes<HTMLQuoteElement>, HTMLQuoteElement>;
+            blockquote: React.DetailedHTMLProps<
+                React.BlockquoteHTMLAttributes<HTMLQuoteElement>,
+                HTMLQuoteElement
+            >;
             body: React.DetailedHTMLProps<React.HTMLAttributes<HTMLBodyElement>, HTMLBodyElement>;
             br: React.DetailedHTMLProps<React.HTMLAttributes<HTMLBRElement>, HTMLBRElement>;
-            button: React.DetailedHTMLProps<React.ButtonHTMLAttributes<HTMLButtonElement>, HTMLButtonElement>;
-            canvas: React.DetailedHTMLProps<React.CanvasHTMLAttributes<HTMLCanvasElement>, HTMLCanvasElement>;
+            button: React.DetailedHTMLProps<
+                React.ButtonHTMLAttributes<HTMLButtonElement>,
+                HTMLButtonElement
+            >;
+            canvas: React.DetailedHTMLProps<
+                React.CanvasHTMLAttributes<HTMLCanvasElement>,
+                HTMLCanvasElement
+            >;
             caption: React.DetailedHTMLProps<React.HTMLAttributes<HTMLElement>, HTMLElement>;
             center: React.DetailedHTMLProps<React.HTMLAttributes<HTMLElement>, HTMLElement>;
             cite: React.DetailedHTMLProps<React.HTMLAttributes<HTMLElement>, HTMLElement>;
             code: React.DetailedHTMLProps<React.HTMLAttributes<HTMLElement>, HTMLElement>;
-            col: React.DetailedHTMLProps<React.ColHTMLAttributes<HTMLTableColElement>, HTMLTableColElement>;
-            colgroup: React.DetailedHTMLProps<React.ColgroupHTMLAttributes<HTMLTableColElement>, HTMLTableColElement>;
-            data: React.DetailedHTMLProps<React.DataHTMLAttributes<HTMLDataElement>, HTMLDataElement>;
-            datalist: React.DetailedHTMLProps<React.HTMLAttributes<HTMLDataListElement>, HTMLDataListElement>;
+            col: React.DetailedHTMLProps<
+                React.ColHTMLAttributes<HTMLTableColElement>,
+                HTMLTableColElement
+            >;
+            colgroup: React.DetailedHTMLProps<
+                React.ColgroupHTMLAttributes<HTMLTableColElement>,
+                HTMLTableColElement
+            >;
+            data: React.DetailedHTMLProps<
+                React.DataHTMLAttributes<HTMLDataElement>,
+                HTMLDataElement
+            >;
+            datalist: React.DetailedHTMLProps<
+                React.HTMLAttributes<HTMLDataListElement>,
+                HTMLDataListElement
+            >;
             dd: React.DetailedHTMLProps<React.HTMLAttributes<HTMLElement>, HTMLElement>;
             del: React.DetailedHTMLProps<React.DelHTMLAttributes<HTMLModElement>, HTMLModElement>;
-            details: React.DetailedHTMLProps<React.DetailsHTMLAttributes<HTMLDetailsElement>, HTMLDetailsElement>;
+            details: React.DetailedHTMLProps<
+                React.DetailsHTMLAttributes<HTMLDetailsElement>,
+                HTMLDetailsElement
+            >;
             dfn: React.DetailedHTMLProps<React.HTMLAttributes<HTMLElement>, HTMLElement>;
-            dialog: React.DetailedHTMLProps<React.DialogHTMLAttributes<HTMLDialogElement>, HTMLDialogElement>;
+            dialog: React.DetailedHTMLProps<
+                React.DialogHTMLAttributes<HTMLDialogElement>,
+                HTMLDialogElement
+            >;
             div: React.DetailedHTMLProps<React.HTMLAttributes<HTMLDivElement>, HTMLDivElement>;
             dl: React.DetailedHTMLProps<React.HTMLAttributes<HTMLDListElement>, HTMLDListElement>;
             dt: React.DetailedHTMLProps<React.HTMLAttributes<HTMLElement>, HTMLElement>;
             em: React.DetailedHTMLProps<React.HTMLAttributes<HTMLElement>, HTMLElement>;
-            embed: React.DetailedHTMLProps<React.EmbedHTMLAttributes<HTMLEmbedElement>, HTMLEmbedElement>;
-            fieldset: React.DetailedHTMLProps<React.FieldsetHTMLAttributes<HTMLFieldSetElement>, HTMLFieldSetElement>;
+            embed: React.DetailedHTMLProps<
+                React.EmbedHTMLAttributes<HTMLEmbedElement>,
+                HTMLEmbedElement
+            >;
+            fieldset: React.DetailedHTMLProps<
+                React.FieldsetHTMLAttributes<HTMLFieldSetElement>,
+                HTMLFieldSetElement
+            >;
             figcaption: React.DetailedHTMLProps<React.HTMLAttributes<HTMLElement>, HTMLElement>;
             figure: React.DetailedHTMLProps<React.HTMLAttributes<HTMLElement>, HTMLElement>;
             footer: React.DetailedHTMLProps<React.HTMLAttributes<HTMLElement>, HTMLElement>;
-            form: React.DetailedHTMLProps<React.FormHTMLAttributes<HTMLFormElement>, HTMLFormElement>;
-            h1: React.DetailedHTMLProps<React.HTMLAttributes<HTMLHeadingElement>, HTMLHeadingElement>;
-            h2: React.DetailedHTMLProps<React.HTMLAttributes<HTMLHeadingElement>, HTMLHeadingElement>;
-            h3: React.DetailedHTMLProps<React.HTMLAttributes<HTMLHeadingElement>, HTMLHeadingElement>;
-            h4: React.DetailedHTMLProps<React.HTMLAttributes<HTMLHeadingElement>, HTMLHeadingElement>;
-            h5: React.DetailedHTMLProps<React.HTMLAttributes<HTMLHeadingElement>, HTMLHeadingElement>;
-            h6: React.DetailedHTMLProps<React.HTMLAttributes<HTMLHeadingElement>, HTMLHeadingElement>;
+            form: React.DetailedHTMLProps<
+                React.FormHTMLAttributes<HTMLFormElement>,
+                HTMLFormElement
+            >;
+            h1: React.DetailedHTMLProps<
+                React.HTMLAttributes<HTMLHeadingElement>,
+                HTMLHeadingElement
+            >;
+            h2: React.DetailedHTMLProps<
+                React.HTMLAttributes<HTMLHeadingElement>,
+                HTMLHeadingElement
+            >;
+            h3: React.DetailedHTMLProps<
+                React.HTMLAttributes<HTMLHeadingElement>,
+                HTMLHeadingElement
+            >;
+            h4: React.DetailedHTMLProps<
+                React.HTMLAttributes<HTMLHeadingElement>,
+                HTMLHeadingElement
+            >;
+            h5: React.DetailedHTMLProps<
+                React.HTMLAttributes<HTMLHeadingElement>,
+                HTMLHeadingElement
+            >;
+            h6: React.DetailedHTMLProps<
+                React.HTMLAttributes<HTMLHeadingElement>,
+                HTMLHeadingElement
+            >;
             head: React.DetailedHTMLProps<React.HTMLAttributes<HTMLHeadElement>, HTMLHeadElement>;
             header: React.DetailedHTMLProps<React.HTMLAttributes<HTMLElement>, HTMLElement>;
             hgroup: React.DetailedHTMLProps<React.HTMLAttributes<HTMLElement>, HTMLElement>;
             hr: React.DetailedHTMLProps<React.HTMLAttributes<HTMLHRElement>, HTMLHRElement>;
-            html: React.DetailedHTMLProps<React.HtmlHTMLAttributes<HTMLHtmlElement>, HTMLHtmlElement>;
+            html: React.DetailedHTMLProps<
+                React.HtmlHTMLAttributes<HTMLHtmlElement>,
+                HTMLHtmlElement
+            >;
             i: React.DetailedHTMLProps<React.HTMLAttributes<HTMLElement>, HTMLElement>;
-            iframe: React.DetailedHTMLProps<React.IframeHTMLAttributes<HTMLIFrameElement>, HTMLIFrameElement>;
-            img: React.DetailedHTMLProps<React.ImgHTMLAttributes<HTMLImageElement>, HTMLImageElement>;
-            input: React.DetailedHTMLProps<React.InputHTMLAttributes<HTMLInputElement>, HTMLInputElement>;
+            iframe: React.DetailedHTMLProps<
+                React.IframeHTMLAttributes<HTMLIFrameElement>,
+                HTMLIFrameElement
+            >;
+            img: React.DetailedHTMLProps<
+                React.ImgHTMLAttributes<HTMLImageElement>,
+                HTMLImageElement
+            >;
+            input: React.DetailedHTMLProps<
+                React.InputHTMLAttributes<HTMLInputElement>,
+                HTMLInputElement
+            >;
             ins: React.DetailedHTMLProps<React.InsHTMLAttributes<HTMLModElement>, HTMLModElement>;
             kbd: React.DetailedHTMLProps<React.HTMLAttributes<HTMLElement>, HTMLElement>;
             keygen: React.DetailedHTMLProps<React.KeygenHTMLAttributes<HTMLElement>, HTMLElement>;
-            label: React.DetailedHTMLProps<React.LabelHTMLAttributes<HTMLLabelElement>, HTMLLabelElement>;
-            legend: React.DetailedHTMLProps<React.HTMLAttributes<HTMLLegendElement>, HTMLLegendElement>;
+            label: React.DetailedHTMLProps<
+                React.LabelHTMLAttributes<HTMLLabelElement>,
+                HTMLLabelElement
+            >;
+            legend: React.DetailedHTMLProps<
+                React.HTMLAttributes<HTMLLegendElement>,
+                HTMLLegendElement
+            >;
             li: React.DetailedHTMLProps<React.LiHTMLAttributes<HTMLLIElement>, HTMLLIElement>;
-            link: React.DetailedHTMLProps<React.LinkHTMLAttributes<HTMLLinkElement>, HTMLLinkElement>;
+            link: React.DetailedHTMLProps<
+                React.LinkHTMLAttributes<HTMLLinkElement>,
+                HTMLLinkElement
+            >;
             main: React.DetailedHTMLProps<React.HTMLAttributes<HTMLElement>, HTMLElement>;
             map: React.DetailedHTMLProps<React.MapHTMLAttributes<HTMLMapElement>, HTMLMapElement>;
             mark: React.DetailedHTMLProps<React.HTMLAttributes<HTMLElement>, HTMLElement>;
             menu: React.DetailedHTMLProps<React.MenuHTMLAttributes<HTMLElement>, HTMLElement>;
             menuitem: React.DetailedHTMLProps<React.HTMLAttributes<HTMLElement>, HTMLElement>;
-            meta: React.DetailedHTMLProps<React.MetaHTMLAttributes<HTMLMetaElement>, HTMLMetaElement>;
-            meter: React.DetailedHTMLProps<React.MeterHTMLAttributes<HTMLMeterElement>, HTMLMeterElement>;
+            meta: React.DetailedHTMLProps<
+                React.MetaHTMLAttributes<HTMLMetaElement>,
+                HTMLMetaElement
+            >;
+            meter: React.DetailedHTMLProps<
+                React.MeterHTMLAttributes<HTMLMeterElement>,
+                HTMLMeterElement
+            >;
             nav: React.DetailedHTMLProps<React.HTMLAttributes<HTMLElement>, HTMLElement>;
             noindex: React.DetailedHTMLProps<React.HTMLAttributes<HTMLElement>, HTMLElement>;
             noscript: React.DetailedHTMLProps<React.HTMLAttributes<HTMLElement>, HTMLElement>;
-            object: React.DetailedHTMLProps<React.ObjectHTMLAttributes<HTMLObjectElement>, HTMLObjectElement>;
+            object: React.DetailedHTMLProps<
+                React.ObjectHTMLAttributes<HTMLObjectElement>,
+                HTMLObjectElement
+            >;
             ol: React.DetailedHTMLProps<React.OlHTMLAttributes<HTMLOListElement>, HTMLOListElement>;
-            optgroup: React.DetailedHTMLProps<React.OptgroupHTMLAttributes<HTMLOptGroupElement>, HTMLOptGroupElement>;
-            option: React.DetailedHTMLProps<React.OptionHTMLAttributes<HTMLOptionElement>, HTMLOptionElement>;
-            output: React.DetailedHTMLProps<React.OutputHTMLAttributes<HTMLOutputElement>, HTMLOutputElement>;
-            p: React.DetailedHTMLProps<React.HTMLAttributes<HTMLParagraphElement>, HTMLParagraphElement>;
-            param: React.DetailedHTMLProps<React.ParamHTMLAttributes<HTMLParamElement>, HTMLParamElement>;
+            optgroup: React.DetailedHTMLProps<
+                React.OptgroupHTMLAttributes<HTMLOptGroupElement>,
+                HTMLOptGroupElement
+            >;
+            option: React.DetailedHTMLProps<
+                React.OptionHTMLAttributes<HTMLOptionElement>,
+                HTMLOptionElement
+            >;
+            output: React.DetailedHTMLProps<
+                React.OutputHTMLAttributes<HTMLOutputElement>,
+                HTMLOutputElement
+            >;
+            p: React.DetailedHTMLProps<
+                React.HTMLAttributes<HTMLParagraphElement>,
+                HTMLParagraphElement
+            >;
+            param: React.DetailedHTMLProps<
+                React.ParamHTMLAttributes<HTMLParamElement>,
+                HTMLParamElement
+            >;
             picture: React.DetailedHTMLProps<React.HTMLAttributes<HTMLElement>, HTMLElement>;
             pre: React.DetailedHTMLProps<React.HTMLAttributes<HTMLPreElement>, HTMLPreElement>;
-            progress: React.DetailedHTMLProps<React.ProgressHTMLAttributes<HTMLProgressElement>, HTMLProgressElement>;
-            q: React.DetailedHTMLProps<React.QuoteHTMLAttributes<HTMLQuoteElement>, HTMLQuoteElement>;
+            progress: React.DetailedHTMLProps<
+                React.ProgressHTMLAttributes<HTMLProgressElement>,
+                HTMLProgressElement
+            >;
+            q: React.DetailedHTMLProps<
+                React.QuoteHTMLAttributes<HTMLQuoteElement>,
+                HTMLQuoteElement
+            >;
             rp: React.DetailedHTMLProps<React.HTMLAttributes<HTMLElement>, HTMLElement>;
             rt: React.DetailedHTMLProps<React.HTMLAttributes<HTMLElement>, HTMLElement>;
             ruby: React.DetailedHTMLProps<React.HTMLAttributes<HTMLElement>, HTMLElement>;
             s: React.DetailedHTMLProps<React.HTMLAttributes<HTMLElement>, HTMLElement>;
             samp: React.DetailedHTMLProps<React.HTMLAttributes<HTMLElement>, HTMLElement>;
             search: React.DetailedHTMLProps<React.HTMLAttributes<HTMLElement>, HTMLElement>;
-            slot: React.DetailedHTMLProps<React.SlotHTMLAttributes<HTMLSlotElement>, HTMLSlotElement>;
-            script: React.DetailedHTMLProps<React.ScriptHTMLAttributes<HTMLScriptElement>, HTMLScriptElement>;
+            slot: React.DetailedHTMLProps<
+                React.SlotHTMLAttributes<HTMLSlotElement>,
+                HTMLSlotElement
+            >;
+            script: React.DetailedHTMLProps<
+                React.ScriptHTMLAttributes<HTMLScriptElement>,
+                HTMLScriptElement
+            >;
             section: React.DetailedHTMLProps<React.HTMLAttributes<HTMLElement>, HTMLElement>;
-            select: React.DetailedHTMLProps<React.SelectHTMLAttributes<HTMLSelectElement>, HTMLSelectElement>;
+            select: React.DetailedHTMLProps<
+                React.SelectHTMLAttributes<HTMLSelectElement>,
+                HTMLSelectElement
+            >;
             small: React.DetailedHTMLProps<React.HTMLAttributes<HTMLElement>, HTMLElement>;
-            source: React.DetailedHTMLProps<React.SourceHTMLAttributes<HTMLSourceElement>, HTMLSourceElement>;
+            source: React.DetailedHTMLProps<
+                React.SourceHTMLAttributes<HTMLSourceElement>,
+                HTMLSourceElement
+            >;
             span: React.DetailedHTMLProps<React.HTMLAttributes<HTMLSpanElement>, HTMLSpanElement>;
             strong: React.DetailedHTMLProps<React.HTMLAttributes<HTMLElement>, HTMLElement>;
-            style: React.DetailedHTMLProps<React.StyleHTMLAttributes<HTMLStyleElement>, HTMLStyleElement>;
+            style: React.DetailedHTMLProps<
+                React.StyleHTMLAttributes<HTMLStyleElement>,
+                HTMLStyleElement
+            >;
             sub: React.DetailedHTMLProps<React.HTMLAttributes<HTMLElement>, HTMLElement>;
             summary: React.DetailedHTMLProps<React.HTMLAttributes<HTMLElement>, HTMLElement>;
             sup: React.DetailedHTMLProps<React.HTMLAttributes<HTMLElement>, HTMLElement>;
-            table: React.DetailedHTMLProps<React.TableHTMLAttributes<HTMLTableElement>, HTMLTableElement>;
-            template: React.DetailedHTMLProps<React.HTMLAttributes<HTMLTemplateElement>, HTMLTemplateElement>;
-            tbody: React.DetailedHTMLProps<React.HTMLAttributes<HTMLTableSectionElement>, HTMLTableSectionElement>;
-            td: React.DetailedHTMLProps<React.TdHTMLAttributes<HTMLTableDataCellElement>, HTMLTableDataCellElement>;
-            textarea: React.DetailedHTMLProps<React.TextareaHTMLAttributes<HTMLTextAreaElement>, HTMLTextAreaElement>;
-            tfoot: React.DetailedHTMLProps<React.HTMLAttributes<HTMLTableSectionElement>, HTMLTableSectionElement>;
-            th: React.DetailedHTMLProps<React.ThHTMLAttributes<HTMLTableHeaderCellElement>, HTMLTableHeaderCellElement>;
-            thead: React.DetailedHTMLProps<React.HTMLAttributes<HTMLTableSectionElement>, HTMLTableSectionElement>;
-            time: React.DetailedHTMLProps<React.TimeHTMLAttributes<HTMLTimeElement>, HTMLTimeElement>;
-            title: React.DetailedHTMLProps<React.HTMLAttributes<HTMLTitleElement>, HTMLTitleElement>;
-            tr: React.DetailedHTMLProps<React.HTMLAttributes<HTMLTableRowElement>, HTMLTableRowElement>;
-            track: React.DetailedHTMLProps<React.TrackHTMLAttributes<HTMLTrackElement>, HTMLTrackElement>;
+            table: React.DetailedHTMLProps<
+                React.TableHTMLAttributes<HTMLTableElement>,
+                HTMLTableElement
+            >;
+            template: React.DetailedHTMLProps<
+                React.HTMLAttributes<HTMLTemplateElement>,
+                HTMLTemplateElement
+            >;
+            tbody: React.DetailedHTMLProps<
+                React.HTMLAttributes<HTMLTableSectionElement>,
+                HTMLTableSectionElement
+            >;
+            td: React.DetailedHTMLProps<
+                React.TdHTMLAttributes<HTMLTableDataCellElement>,
+                HTMLTableDataCellElement
+            >;
+            textarea: React.DetailedHTMLProps<
+                React.TextareaHTMLAttributes<HTMLTextAreaElement>,
+                HTMLTextAreaElement
+            >;
+            tfoot: React.DetailedHTMLProps<
+                React.HTMLAttributes<HTMLTableSectionElement>,
+                HTMLTableSectionElement
+            >;
+            th: React.DetailedHTMLProps<
+                React.ThHTMLAttributes<HTMLTableHeaderCellElement>,
+                HTMLTableHeaderCellElement
+            >;
+            thead: React.DetailedHTMLProps<
+                React.HTMLAttributes<HTMLTableSectionElement>,
+                HTMLTableSectionElement
+            >;
+            time: React.DetailedHTMLProps<
+                React.TimeHTMLAttributes<HTMLTimeElement>,
+                HTMLTimeElement
+            >;
+            title: React.DetailedHTMLProps<
+                React.HTMLAttributes<HTMLTitleElement>,
+                HTMLTitleElement
+            >;
+            tr: React.DetailedHTMLProps<
+                React.HTMLAttributes<HTMLTableRowElement>,
+                HTMLTableRowElement
+            >;
+            track: React.DetailedHTMLProps<
+                React.TrackHTMLAttributes<HTMLTrackElement>,
+                HTMLTrackElement
+            >;
             u: React.DetailedHTMLProps<React.HTMLAttributes<HTMLElement>, HTMLElement>;
             ul: React.DetailedHTMLProps<React.HTMLAttributes<HTMLUListElement>, HTMLUListElement>;
-            "var": React.DetailedHTMLProps<React.HTMLAttributes<HTMLElement>, HTMLElement>;
-            video: React.DetailedHTMLProps<React.VideoHTMLAttributes<HTMLVideoElement>, HTMLVideoElement>;
+            var: React.DetailedHTMLProps<React.HTMLAttributes<HTMLElement>, HTMLElement>;
+            video: React.DetailedHTMLProps<
+                React.VideoHTMLAttributes<HTMLVideoElement>,
+                HTMLVideoElement
+            >;
             wbr: React.DetailedHTMLProps<React.HTMLAttributes<HTMLElement>, HTMLElement>;
-            webview: React.DetailedHTMLProps<React.WebViewHTMLAttributes<HTMLWebViewElement>, HTMLWebViewElement>;
+            webview: React.DetailedHTMLProps<
+                React.WebViewHTMLAttributes<HTMLWebViewElement>,
+                HTMLWebViewElement
+            >;
 
             // SVG
             svg: React.SVGProps<SVGSVGElement>;
@@ -4359,12 +4606,12 @@ type InexactPartial<T> = { [K in keyof T]?: T[K] | undefined };
 // Undeclared default props are augmented into the resulting allowable attributes
 // If declared props have indexed properties, ignore default props entirely as keyof gets widened
 // Wrap in an outer-level conditional type to allow distribution over props that are unions
-type Defaultize<P, D> = P extends any ? string extends keyof P ? P
-    :
-        & Pick<P, Exclude<keyof P, keyof D>>
-        & InexactPartial<Pick<P, Extract<keyof P, keyof D>>>
-        & InexactPartial<Pick<D, Exclude<keyof D, keyof P>>>
+type Defaultize<P, D> = P extends any
+    ? string extends keyof P
+        ? P
+        : Pick<P, Exclude<keyof P, keyof D>> &
+              InexactPartial<Pick<P, Extract<keyof P, keyof D>>> &
+              InexactPartial<Pick<D, Exclude<keyof D, keyof P>>>
     : never;
 
-type ReactManagedAttributes<C, P> = C extends { defaultProps: infer D } ? Defaultize<P, D>
-    : P;
+type ReactManagedAttributes<C, P> = C extends { defaultProps: infer D } ? Defaultize<P, D> : P;
