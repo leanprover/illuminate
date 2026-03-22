@@ -129,13 +129,13 @@ private def extractParams {β : Type} [BackendRender β]
     let firstArr := frames[0].toArray
     let mut paramMap : Array ParamBinding := #[]
     -- Which (cmdIdx, fieldIndex) slots vary across frames
-    let mut varyingSlots : Array (Array (Nat × String)) := #[]
+    let mut varyingSlots : Array (Array Nat) := #[]
 
     -- Track SVG element index: only commands that produce elements get one
     let mut elemIdx : Nat := 0
     let mut cmdElemIdx : Array (Option Nat) := #[]
 
-    for cmdIdx in List.range cmdCount do
+    for cmdIdx in 0...cmdCount do
       let producesElem := match firstArr[cmdIdx]? with
         | some cmd => drawCmdProducesElement cmd
         | none => false
@@ -146,15 +146,17 @@ private def extractParams {β : Type} [BackendRender β]
         cmdElemIdx := cmdElemIdx.push none
 
       let firstFields := firstFrameFields[cmdIdx]?.getD []
-      let mut cmdVarying : Array (Nat × String) := #[]
+      let mut cmdVarying : Array Nat := #[]
       for h : fieldIdx in [:firstFields.length] do
-        let (fieldName, svgAttr, firstVal) := firstFields[fieldIdx]
+        let (_, svgAttr, firstVal) := firstFields[fieldIdx]
+        -- Fields appear in the same order for structurally identical commands,
+        -- so we compare by position rather than searching by name.
         let varies := allFields.any fun frameFields =>
-          match (frameFields[cmdIdx]?.getD []).find? (fun (n, _, _) => n == fieldName) with
+          match (frameFields[cmdIdx]?.getD [])[fieldIdx]? with
           | some (_, _, v) => v != firstVal
           | none => true
         if varies then
-          cmdVarying := cmdVarying.push (fieldIdx, fieldName)
+          cmdVarying := cmdVarying.push fieldIdx
           match cmdElemIdx[cmdIdx]? with
           | some (some eidx) =>
             paramMap := paramMap.push { elemIdx := eidx, attr := svgAttr }
@@ -167,8 +169,8 @@ private def extractParams {β : Type} [BackendRender β]
       let mut frameParams : Array String := #[]
       for cmdIdx in List.range cmdCount do
         let fields := frameFields[cmdIdx]?.getD []
-        for (_, fieldName) in varyingSlots[cmdIdx]?.getD #[] do
-          let val := match fields.find? (fun (n, _, _) => n == fieldName) with
+        for fieldIdx in varyingSlots[cmdIdx]?.getD #[] do
+          let val := match fields[fieldIdx]? with
             | some (_, _, v) => v
             | none => ""
           frameParams := frameParams.push val

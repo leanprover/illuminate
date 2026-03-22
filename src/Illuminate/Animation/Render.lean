@@ -49,9 +49,9 @@ def compiledAnimationToLeanJson (ca : CompiledAnimation) : Json :=
     ("steps", .arr steps)]
 
 open Lean in
-/-- Serializes a CompiledAnimation to a JSON string. -/
+/-- Serializes a CompiledAnimation to a JSON string safe for embedding in `<script>` tags. -/
 def compiledAnimationToJson (ca : CompiledAnimation) : String :=
-  toString (compiledAnimationToLeanJson ca)
+  toString (compiledAnimationToLeanJson ca) |>.replace "</" "<\\/"
 
 -- ═══════════════════════════════════════════════════════════════
 -- HTML player
