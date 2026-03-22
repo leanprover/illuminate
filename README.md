@@ -252,21 +252,49 @@ boolean inputs, respectively. Each gadget type reduces to its
 underlying value type (`Float`, `String`, or `Bool`), so the function
 body uses the parameter as an ordinary value.
 
+### The `#animate` Command
+
+The `#animate` command builds a step-based animation and plays it in
+the infoview with a play/pause button and scrub bar:
+
+```lean
+#animate
+  [{ duration := 1.5 }, { duration := 2.0 }]
+  (fun progress =>
+    let t := Easing.easeInOut progress[0]
+    let radius := Interpolate.interpolate 10.0 50.0 t
+    Diagram.circle radius (fill := .solid { color := Color.red }))
+```
+
+Each step has a duration in seconds and optional flags:
+`pause := true` stops playback until the user clicks, and
+`loop := true` repeats the step continuously. The render function
+receives a vector of per-step progress values in `[0, 1]`. Built-in
+easing functions (`easeIn`, `easeOut`, `easeInOut`, `sineInOut`,
+`backOut`) and interpolation (`Interpolate.interpolate` for `Float`,
+`Vec2`, `Color`, `Matrix`) produce smooth transitions. Helper effects
+like `fadeIn`, `fadeOut`, `crossFade`, `slide`, `animScale`, and
+`animRotate` compose common animation patterns.
+
+Compiled animations can also be rendered to standalone HTML files
+(`CompiledAnimation.renderHTML`) or embedded in reveal.js
+presentations (`CompiledAnimation.renderRevealHTML`).
+
 ## Module Overview
 
 - `Illuminate.Diagram` contains the `Diagram` type, shapes, spatial
   algebra, and arrow routing.
 - `Illuminate.Widget` provides the `#diagram` command, interactive
   parameter gadgets, and infoview integration.
+- `Illuminate.Animation` provides the `#animate` command, step-based
+  timeline with looping and pause steps, easing functions,
+  interpolation, and compilation to frame-based playback.
 - `Illuminate.DSL` includes the commutative diagram and state diagram
   builders.
 - `Illuminate.Style` defines `Color`, `Fill`, `Stroke`, `TextStyle`,
   `DrawConfig`, and arrowhead types.
-- `Illuminate.Geometry` provides `Vec2`, `Matrix` (3x3 affine
+- `Illuminate.Geometry` provides `Vec2`, `Point`, `Matrix` (3x3 affine
   transforms), `Envelope`, and `PathData`.
-- `Illuminate.Layout` handles deferred layout resolution, name
-  collection, compilation to draw commands, and monadic text/foreign
-  measurement via the `LayoutMeasure` type class.
 - `Illuminate.Render` contains the `DrawCmd` display list and SVG
   backend.
 
@@ -280,20 +308,20 @@ The tests additionally require [uv](https://docs.astral.sh/uv/) and
 [Docker](https://docs.docker.com/get-docker/) (on macOS,
 [colima](https://github.com/abiosoft/colima) works).
 
-Build the library with `lake build`. The project enables the
-`missingDocs` linter, so all public declarations require docstrings
-and the build will fail if any are missing.
+Build the library with `lake build --wfail`. The project enables the
+`missingDocs` linter, so all public declarations require docstrings.
+The `--wfail` flag ensures warnings are treated as errors.
 
-The test suite has two layers. `lake test` runs Lean unit tests and
-writes SVG output files. `uv run test_playwright.py` then runs two
-kinds of checks on those SVGs: structural DOM tests via Playwright
-(headless Chromium), and pixel-level visual regression tests that
-render each SVG via Inkscape inside a Docker container with pinned
-fonts (`visual_tests/Dockerfile`). Both should pass before submitting
-changes:
+The test suite has two layers. `lake test --wfail` runs Lean unit
+tests and writes SVG output files. `uv run test_playwright.py` then
+runs two kinds of checks on those SVGs: structural DOM tests via
+Playwright (headless Chromium), and pixel-level visual regression
+tests that render each SVG via Inkscape inside a Docker container with
+pinned fonts (`visual_tests/Dockerfile`). Both should pass before
+submitting changes:
 
 ```sh
-lake test && uv run test_playwright.py
+lake test --wfail && uv run test_playwright.py
 ```
 
 ### Type Checking Player JavaScript

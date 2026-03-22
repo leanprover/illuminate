@@ -84,10 +84,10 @@ type annotations checked by TypeScript. React types are vendored in
 `vendored_js/` (excluded from language stats via `.gitattributes`).
 
 To run the type checker, use this command:
+
 ```sh
 npx tsc --noEmit -p player_js/jsconfig.json
 ```
-
 
 ### Running both
 
