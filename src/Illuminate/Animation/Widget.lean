@@ -21,8 +21,8 @@ The returned function takes a time slider value and produces the diagram at that
 allowing interactive scrubbing through the animation.
 -/
 def previewAnimation (steps : List Step)
-    (render : Vector Float steps.length → Diagram SVG)
-    : Slider "time" 0 (totalDuration steps) 0 → Diagram SVG :=
+    (render : Vector Float steps.length → Diagram SVG) :
+    Slider "time" 0 (totalDuration steps) 0 → Diagram SVG :=
   fun time =>
     let progress := progressAt steps time
     let vec := progressVector progress steps.length

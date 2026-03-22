@@ -45,17 +45,7 @@
     function showFrame(frame) {
         frame = animClampFrame(frame, data.totalFrames);
         var seg = animFindSegment(data.segments, frame);
-        var local = frame - seg.sf;
-
-        if (seg !== currentSeg) {
-            container.innerHTML = seg.sync;
-            currentSeg = seg;
-        }
-
-        if (local > 0 && seg.svgs && seg.svgs[local]) {
-            container.innerHTML = seg.svgs[local];
-        }
-
+        currentSeg = animRenderSegFrame(container, seg, currentSeg, frame - seg.sf);
         scrubber.value = String(frame);
     }
 

@@ -40,35 +40,6 @@ export default function (props) {
     var setFrame = _frame[1];
 
     /**
-     * Indexes SVG elements depth-first, starting from the content group
-     * inside `<svg><g transform="scale(1,-1)">...</g></svg>`.
-     * This matches the DrawCmd element ordering used by paramMap.
-     * @param {HTMLElement} container
-     * @returns {Element[]}
-     */
-    function indexElements(container) {
-        /** @type {Element[]} */
-        var elems = [];
-        var svg = container.querySelector("svg");
-        if (!svg) return elems;
-        // The first <g> child is the scale(1,-1) wrapper added by Svg.render
-        var contentGroup = svg.querySelector("g");
-        if (!contentGroup) return elems;
-        /** @param {Element} node */
-        function walk(node) {
-            for (var i = 0; i < node.childNodes.length; i++) {
-                var child = node.childNodes[i];
-                if (child.nodeType === 1) {
-                    elems.push(/** @type {Element} */ (child));
-                    walk(/** @type {Element} */ (child));
-                }
-            }
-        }
-        walk(contentGroup);
-        return elems;
-    }
-
-    /**
      * Renders the given frame into the container, using parameterized updates when possible.
      * @param {number} f
      * @returns {void}
@@ -78,37 +49,7 @@ export default function (props) {
         var seg = animFindSegment(data.segments, f);
         var container = containerRef.current;
         if (!container) return;
-        var local = f - seg.sf;
-
-        // If switching segments, rebuild from sync frame and index elements
-        if (seg !== currentSegRef.current) {
-            container.innerHTML = seg.sync;
-            currentSegRef.current = seg;
-            seg._elems = indexElements(container);
-        }
-
-        // Apply params via setAttribute if we have a paramMap and indexed elements
-        if (seg._elems && seg.pmap && seg.params && seg.params[local]) {
-            var p = seg.params[local];
-            for (var i = 0; i < seg.pmap.length; i++) {
-                var binding = seg.pmap[i];
-                var elem = seg._elems[binding.e];
-                if (elem && p[i] !== undefined) {
-                    if (binding.a === "textContent") {
-                        elem.textContent = p[i];
-                    } else {
-                        elem.setAttribute(binding.a, p[i]);
-                    }
-                }
-            }
-        } else if (local === 0) {
-            // Frame 0 is the sync frame, already displayed
-        } else if (seg.svgs && seg.svgs[local]) {
-            // Fallback: full SVG replacement
-            container.innerHTML = seg.svgs[local];
-            currentSegRef.current = null; // force re-index on next segment entry
-        }
-
+        currentSegRef.current = animRenderSegFrame(container, seg, currentSegRef.current, f - seg.sf);
         setFrame(f);
     }
 

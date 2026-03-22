@@ -4,6 +4,7 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Author: David Thrane Christiansen
 -/
 
+import Std.Data.HashSet
 import Illuminate.Animation.Types
 import Illuminate.Animation.Animate
 import Illuminate.Diagram
@@ -17,22 +18,22 @@ namespace Illuminate
 -- DrawCmd field serialization
 -- ═══════════════════════════════════════════════════════════════
 
-/-- Extracts a structural tag for a draw command (ignores field values). -/
-private def drawCmdTag {β : Type} (cmd : DrawCmd β) : String :=
+/-- Returns a numeric constructor discriminant for structural comparison. -/
+private def drawCmdTag {β : Type} (cmd : DrawCmd β) : UInt8 :=
   match cmd with
-  | .fillPath .. => "fillPath"
-  | .strokePath .. => "strokePath"
-  | .drawTextRun .. => "drawTextRun"
-  | .pushTransform .. => "pushTransform"
-  | .popTransform => "popTransform"
-  | .pushAnnotation .. => "pushAnnotation"
-  | .popAnnotation => "popAnnotation"
-  | .pushOpacity .. => "pushOpacity"
-  | .popOpacity => "popOpacity"
-  | .pushClip .. => "pushClip"
-  | .popClip => "popClip"
-  | .pushForeign .. => "pushForeign"
-  | .popForeign .. => "popForeign"
+  | .fillPath .. => 0
+  | .strokePath .. => 1
+  | .drawTextRun .. => 2
+  | .pushTransform .. => 3
+  | .popTransform => 4
+  | .pushAnnotation .. => 5
+  | .popAnnotation => 6
+  | .pushOpacity .. => 7
+  | .popOpacity => 8
+  | .pushClip .. => 9
+  | .popClip => 10
+  | .pushForeign .. => 11
+  | .popForeign .. => 12
 
 /-- Returns whether a draw command produces an SVG DOM element (vs a close tag or nothing). -/
 private def drawCmdProducesElement {β : Type} (cmd : DrawCmd β) : Bool :=
@@ -49,7 +50,9 @@ private def drawCmdProducesElement {β : Type} (cmd : DrawCmd β) : Bool :=
   | .popTransform | .popAnnotation | .popOpacity | .popClip => false
   | .popForeign .. => false
 
-/-- Extracts serializable field values from a draw command, paired with their SVG attribute names. -/
+/--
+Extracts serializable field values from a draw command, paired with their SVG attribute names.
+-/
 private def drawCmdFields {β : Type} [BackendRender β]
     (cmd : DrawCmd β) : List (String × String × String) :=
   -- Returns (fieldName, svgAttrName, value)
@@ -106,21 +109,29 @@ Returns `(paramMap, params)` where:
 - `params[frame][i]` is the string value of param `i` for that frame
 -/
 private def extractParams {β : Type} [BackendRender β]
-    (frames : Array (List (DrawCmd β)))
-    : Array ParamBinding × Array (Array String) :=
+    (frames : Array (List (DrawCmd β))) :
+    Array ParamBinding × Array (Array String) :=
   if h : frames.size = 0 then
     (#[], #[])
   else Id.run do
-    let first := frames[0]
-    let firstArr := first.toArray
-    let cmdCount := first.length
+    let cmdCount := frames[0].length
+    -- Precompute fields for every (frame, cmdIdx) pair once
+    let allFields : Array (Array (List (String × String × String))) :=
+      frames.map fun frame =>
+        let arr := frame.toArray
+        Array.ofFn (n := cmdCount) fun ⟨i, _⟩ =>
+          match arr[i]? with
+          | some cmd => drawCmdFields cmd
+          | none => []
+    have : allFields.size > 0 := by grind
+    let firstFrameFields := allFields[0]
+    let firstArr := frames[0].toArray
     let mut paramMap : Array ParamBinding := #[]
-    let mut slotInfo : Array (Array (String × Bool)) := #[]
-    -- slotInfo[cmdIdx] = array of (fieldName, varies)
+    -- Which (cmdIdx, fieldIndex) slots vary across frames
+    let mut varyingSlots : Array (Array (Nat × String)) := #[]
 
     -- Track SVG element index: only commands that produce elements get one
     let mut elemIdx : Nat := 0
-    -- Map from cmdIdx to its elemIdx (or none if it doesn't produce an element)
     let mut cmdElemIdx : Array (Option Nat) := #[]
 
     for cmdIdx in List.range cmdCount do
@@ -133,52 +144,33 @@ private def extractParams {β : Type} [BackendRender β]
       else
         cmdElemIdx := cmdElemIdx.push none
 
-      let firstFields := match firstArr[cmdIdx]? with
-        | some cmd => drawCmdFields cmd
-        | none => []
-
-      let mut cmdSlots : Array (String × Bool) := #[]
-      for (fieldName, svgAttr, firstVal) in firstFields do
-        let varies := frames.any fun frame =>
-          let frameArr := frame.toArray
-          match frameArr[cmdIdx]? with
-          | some cmd =>
-            match (drawCmdFields cmd).find? (fun (n, _, _) => n == fieldName) with
-            | some (_, _, v) => v != firstVal
-            | none => true
+      let firstFields := firstFrameFields[cmdIdx]?.getD []
+      let mut cmdVarying : Array (Nat × String) := #[]
+      for h : fieldIdx in [:firstFields.length] do
+        let (fieldName, svgAttr, firstVal) := firstFields[fieldIdx]
+        let varies := allFields.any fun frameFields =>
+          match (frameFields[cmdIdx]?.getD []).find? (fun (n, _, _) => n == fieldName) with
+          | some (_, _, v) => v != firstVal
           | none => true
-        cmdSlots := cmdSlots.push (fieldName, varies)
         if varies then
+          cmdVarying := cmdVarying.push (fieldIdx, fieldName)
           match cmdElemIdx[cmdIdx]? with
           | some (some eidx) =>
             paramMap := paramMap.push { elemIdx := eidx, attr := svgAttr }
-          | some none =>
-            -- Command at this index doesn't produce a DOM element (e.g. popTransform).
-            -- Skip it rather than binding to a wrong element.
-            pure ()
-          | none =>
-            -- cmdIdx out of range — structural mismatch between frames.
-            pure ()
-      slotInfo := slotInfo.push cmdSlots
+          | _ => pure ()
+      varyingSlots := varyingSlots.push cmdVarying
 
-    -- Build per-frame parameter arrays
+    -- Build per-frame parameter arrays from precomputed fields
     let mut allParams : Array (Array String) := #[]
-    for frame in frames do
+    for frameFields in allFields do
       let mut frameParams : Array String := #[]
-      let frameArr := frame.toArray
       for cmdIdx in List.range cmdCount do
-        match slotInfo[cmdIdx]? with
-        | some cmdSlots =>
-          let fields := match frameArr[cmdIdx]? with
-            | some cmd => drawCmdFields cmd
-            | none => []
-          for (fieldName, varies) in cmdSlots do
-            if varies then
-              let val := match fields.find? (fun (n, _, _) => n == fieldName) with
-                | some (_, _, v) => v
-                | none => ""
-              frameParams := frameParams.push val
-        | none => pure ()
+        let fields := frameFields[cmdIdx]?.getD []
+        for (_, fieldName) in varyingSlots[cmdIdx]?.getD #[] do
+          let val := match fields.find? (fun (n, _, _) => n == fieldName) with
+            | some (_, _, v) => v
+            | none => ""
+          frameParams := frameParams.push val
       allParams := allParams.push frameParams
 
     (paramMap, allParams)
@@ -198,27 +190,23 @@ def compileAnimation (steps : List Step)
     (fps : Nat := 60) : CompiledAnimation :=
   let dur := totalDuration steps
   let totalFrames := if dur <= 0 then 1 else Nat.max 1 (dur * fps.toFloat).ceil.toUInt64.toNat
-  -- Evaluate all frames
-  let frameDiagrams : Array (Diagram SVG) := Id.run do
-    let mut arr : Array (Diagram SVG) := #[]
-    for i in List.range totalFrames do
-      let t := i.toFloat / fps.toFloat
-      let progress := progressAt steps t
-      let vec := progressVector progress steps.length
-      arr := arr.push (render vec)
-    return arr
-  -- Compile diagrams to draw lists
-  let frameDrawLists : Array (List (DrawCmd SVG)) :=
-    frameDiagrams.map Diagram.compile
-  -- Compute unified viewBox across all frames
+  -- Evaluate all frames, accumulating draw lists, viewBox bounds, and clip hash
   let padding : Float := 5
-  let unifiedViewBox : ViewBox := Id.run do
+  let (frameDrawLists, unifiedViewBox, clipHash) := Id.run do
+    let mut drawLists : Array (List (DrawCmd SVG)) := #[]
     let mut minX : Float := 0
     let mut maxX : Float := 0
     let mut minY : Float := 0
     let mut maxY : Float := 0
     let mut first := true
-    for d in frameDiagrams do
+    let mut h : UInt64 := 0
+    for i in List.range totalFrames do
+      let t := i.toFloat / fps.toFloat
+      let progress := progressAt steps t
+      let vec := progressVector progress steps.length
+      let d := render vec
+      drawLists := drawLists.push d.compile
+      h := mixHash h (hash d)
       if let .nonempty env := d.getEnvelope then
         let east := env Vec2.east
         let west := env Vec2.west
@@ -236,17 +224,14 @@ def compileAnimation (steps : List Step)
           if fMaxX > maxX then maxX := fMaxX
           if fMinY < minY then minY := fMinY
           if fMaxY > maxY then maxY := fMaxY
-    if first then
-      return { minX := -320, minY := -240, width := 640, height := 480 }
-    else
-      return { minX := minX, minY := minY, width := maxX - minX, height := maxY - minY }
-  -- Render all frames with the unified viewBox (reuse already-compiled draw lists)
-  let clipPfx : String :=
-    let h := frameDiagrams.foldl (fun acc d => mixHash acc (hash d)) 0
-    s!"{h.toNat % 65536}_"
-  let allSvgs : Array String :=
-    frameDrawLists.map fun cmds => Svg.render cmds unifiedViewBox clipPfx
-  -- Segment by structural identity, also splitting at step boundaries
+    let vb : ViewBox :=
+      if first then { minX := -320, minY := -240, width := 640, height := 480 }
+      else { minX := minX, minY := minY, width := maxX - minX, height := maxY - minY }
+    (drawLists, vb, h)
+  -- Render all frames with the unified viewBox
+  let clipPfx := s!"{clipHash.toNat % 65536}_"
+  let allSvgs := frameDrawLists.map fun cmds => Svg.render cmds unifiedViewBox clipPfx
+  -- Compute step boundary frames
   let stepFrames : Array Nat := Id.run do
     let mut arr : Array Nat := #[]
     let mut elapsed : Float := 0
@@ -255,18 +240,17 @@ def compileAnimation (steps : List Step)
       arr := arr.push frame
       elapsed := elapsed + clampNonneg s.duration
     return arr
-  let stepBoundaryList : List Nat := 0 :: stepFrames.toList
-  let isStepBoundary (i : Nat) : Bool := stepBoundaryList.contains i
-  -- Build segments
+  let stepBoundaries : Std.HashSet Nat :=
+    (0 :: stepFrames.toList).foldl (·.insert ·) {}
+  -- Build segments, splitting at step boundaries and structural changes
   let segments : Array Segment := Id.run do
     let mut segs : Array Segment := #[]
     let mut segStart : Nat := 0
     for i in List.range totalFrames do
-      let isBoundary := isStepBoundary i
       let structChanged := match frameDrawLists[segStart]?, frameDrawLists[i]? with
         | some a, some b => !structurallyIdentical a b
         | _, _ => true
-      let shouldSplit := i > segStart && (isBoundary || structChanged)
+      let shouldSplit := i > segStart && (stepBoundaries.contains i || structChanged)
       if shouldSplit then
         let segFrames := frameDrawLists.extract segStart i
         let (pmap, params) := extractParams segFrames

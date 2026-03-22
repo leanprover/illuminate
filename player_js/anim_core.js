@@ -102,3 +102,66 @@ var animCheckPauseSteps = function (steps, currentStep, frame) {
     }
     return null;
 };
+
+/**
+ * Indexes SVG elements depth-first, starting from the content group
+ * inside `<svg><g transform="scale(1,-1)">...</g></svg>`.
+ * This matches the DrawCmd element ordering used by paramMap.
+ * @param {HTMLElement} container
+ * @returns {Element[]}
+ */
+var animIndexElements = function (container) {
+    /** @type {Element[]} */
+    var elems = [];
+    var svg = container.querySelector("svg");
+    if (!svg) return elems;
+    var contentGroup = svg.querySelector("g");
+    if (!contentGroup) return elems;
+    /** @param {Element} node */
+    function walk(node) {
+        for (var i = 0; i < node.childNodes.length; i++) {
+            var child = node.childNodes[i];
+            if (child.nodeType === 1) {
+                elems.push(/** @type {Element} */ (child));
+                walk(/** @type {Element} */ (child));
+            }
+        }
+    }
+    walk(contentGroup);
+    return elems;
+};
+
+/**
+ * Renders a frame into a container using parameterized attribute updates
+ * when available, falling back to full SVG replacement.
+ * Returns the segment used (for callers that track the current segment).
+ * @param {HTMLElement} container
+ * @param {Segment} seg
+ * @param {Segment | null} currentSeg - the previously rendered segment (for change detection)
+ * @param {number} local - frame index within the segment
+ * @returns {Segment} the segment (with `_elems` populated)
+ */
+var animRenderSegFrame = function (container, seg, currentSeg, local) {
+    if (seg !== currentSeg) {
+        container.innerHTML = seg.sync;
+        seg._elems = animIndexElements(container);
+    }
+    if (seg._elems && seg.pmap && seg.params && seg.params[local]) {
+        var p = seg.params[local];
+        for (var i = 0; i < seg.pmap.length; i++) {
+            var binding = seg.pmap[i];
+            var elem = seg._elems[binding.e];
+            if (elem && p[i] !== undefined) {
+                if (binding.a === "textContent") {
+                    elem.textContent = p[i];
+                } else {
+                    elem.setAttribute(binding.a, p[i]);
+                }
+            }
+        }
+    } else if (local > 0 && seg.svgs && seg.svgs[local]) {
+        container.innerHTML = seg.svgs[local];
+        seg._elems = undefined;
+    }
+    return seg;
+};

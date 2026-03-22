@@ -21,3 +21,10 @@ declare var animCheckPauseSteps: (
     currentStep: number,
     frame: number,
 ) => { pauseAtStep: number; pauseAtFrame: number } | null;
+declare var animIndexElements: (container: HTMLElement) => Element[];
+declare var animRenderSegFrame: (
+    container: HTMLElement,
+    seg: Segment,
+    currentSeg: Segment | null,
+    local: number,
+) => Segment;
