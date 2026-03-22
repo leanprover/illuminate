@@ -77,6 +77,18 @@ approval. If visual tests fail, investigate and fix the underlying
 issue first. Only update baselines when the visual change is
 intentional and the user has confirmed it.
 
+### JavaScript type checking
+
+The animation player and widget JavaScript in `player_js/` uses JSDoc
+type annotations checked by TypeScript. React types are vendored in
+`vendored_js/` (excluded from language stats via `.gitattributes`).
+
+To run the type checker, use this command:
+```sh
+npx tsc --noEmit -p player_js/jsconfig.json
+```
+
+
 ### Running both
 
 ```sh
@@ -123,6 +135,17 @@ src/Illuminate/          Library source
     StateDiagram.lean    DFA/NFA state diagram builder
   Widget.lean            #diagram command for Lean infoview
 src/Illuminate.lean      Root import (re-exports all modules)
+player_js/               Animation player and widget JavaScript (included via include_str)
+  standalone.js          Standalone HTML player (play/pause/scrub)
+  reveal.js              Reveal.js fragment-driven player
+  diagram_widget.js      #diagram infoview widget
+  animate_widget.js      #animate infoview widget
+  jsconfig.json          TypeScript config for JSDoc type checking
+  globals.d.ts           Type declarations for template placeholders
+  infoview.d.ts          Type stub for @leanprover/infoview
+vendored_js/             Vendored TypeScript type definitions (linguist-vendored)
+  react/                 @types/react v19 (MIT)
+  csstype/               csstype v3 (MIT)
 test/Main.lean           Unit tests and #diagram previews
 test_playwright.py       Structural and visual regression tests
 visual_tests/            Baselines, Docker image, and bundled fonts

@@ -296,6 +296,16 @@ changes:
 lake test && uv run test_playwright.py
 ```
 
+### Type Checking Player JavaScript
+
+The animation player and widget JavaScript in `player_js/` uses JSDoc
+type annotations checked by TypeScript. React type definitions are
+vendored in `vendored_js/`. To run the type checker:
+
+```sh
+npx tsc --noEmit -p player_js/jsconfig.json
+```
+
 ### Updating Visual Baselines
 
 Expected images live in `visual_tests/` as `*.expected.png` files.

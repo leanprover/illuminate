@@ -10,9 +10,14 @@ open Lake DSL
 package «illuminate» where
   leanOptions := #[⟨`autoImplicit, false⟩, ⟨`linter.missingDocs, true⟩]
 
+input_dir playerJs where
+  text := true
+  path := "player_js"
+
 @[default_target]
 lean_lib «Illuminate» where
   srcDir := "src"
+  needs := #[playerJs]
 
 lean_lib «Tests» where
   srcDir := "test"

@@ -43,5 +43,8 @@ jobs:
                   build-args: --wfail
                   test-args: --wfail
 
+            - name: Type check player JS
+              run: npx tsc --noEmit -p player_js/jsconfig.json
+
             - name: Visual and structural tests
               run: uv run test_playwright.py
