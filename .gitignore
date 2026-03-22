@@ -12,3 +12,4 @@ test_output/*
 !test_output/.gitkeep
 
 .DS_Store
+/test_output/

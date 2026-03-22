@@ -251,6 +251,7 @@ def compilationTests : List (String × IO Unit) :=
       let pauseSteps := compiled.steps.filter (·.pause)
       assertTrue (pauseSteps.size == 1) s!"expected 1 pause step, got {pauseSteps.size}")
   , ("compile: write standalone HTML for seek test", do
+      IO.FS.createDirAll "test_output"
       let steps : List Step := [step 3.0]
       let compiled := compileAnimation steps
         (fun progress =>
