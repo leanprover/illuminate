@@ -75,7 +75,7 @@ class Backend (β : Type) where
   /-- Adjusts the inner diagram's stroke trace. Receives the inner stroke trace, returns the final one. -/
   strokeTrace : β → StrokeTrace → StrokeTrace
   /-- Wraps or replaces the compiled inner drawing commands. -/
-  compile : β → List (DrawCmd β) → List (DrawCmd β)
+  compile : β → Array (DrawCmd β) → Array (DrawCmd β)
 
 instance : Backend Empty where
   envelope e _ := nomatch e

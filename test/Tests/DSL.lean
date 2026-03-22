@@ -46,7 +46,7 @@ def testCD_arrow : IO Unit := do
     CommDiagM.grid #[#[some a, some b]]
     CommDiagM.arrow a b
   let cmds := d.compile
-  assertTrue (cmds.length > 0) s!"arrow diagram has cmds: {cmds.length}"
+  assertTrue (cmds.size > 0) s!"arrow diagram has cmds: {cmds.size}"
 
 def testCD_square : IO Unit := do
   let d : Diagram SVG := commDiag do
@@ -61,7 +61,7 @@ def testCD_square : IO Unit := do
     CommDiagM.arrow c dd
   let cmds := d.compile
   -- Should have node paths + arrow paths
-  assertTrue (cmds.length > 4) s!"square has many cmds: {cmds.length}"
+  assertTrue (cmds.size > 4) s!"square has many cmds: {cmds.size}"
 
 def testCD_labeledArrow : IO Unit := do
   let d : Diagram SVG := commDiag do
@@ -109,7 +109,7 @@ def testCD_noGrid : IO Unit := do
     let b ← CommDiagM.node "Y"
     CommDiagM.arrow a b
   let cmds := d.compile
-  assertTrue (cmds.length > 0) "no-grid still produces cmds"
+  assertTrue (cmds.size > 0) "no-grid still produces cmds"
 
 def testCD_writeSquare : IO Unit := do
   let d : Diagram SVG := commDiag do

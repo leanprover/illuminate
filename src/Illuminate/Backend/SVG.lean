@@ -20,7 +20,7 @@ instance : Backend SVG where
   envelope _ e := e
   trace _ t := t
   strokeTrace _ st := st
-  compile val inner := [.pushForeign val] ++ inner ++ [.popForeign val]
+  compile val inner := (#[DrawCmd.pushForeign val] ++ inner).push (.popForeign val)
 
 instance : BackendRender SVG where
   renderOpen

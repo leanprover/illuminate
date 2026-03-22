@@ -14,36 +14,36 @@ open Illuminate
 
 def testDrawCmd_empty : IO Unit := do
   let cmds := (Diagram.empty : Diagram SVG).compile
-  assertTrue (cmds.length == 0) "empty diagram has no cmds"
+  assertTrue (cmds.size == 0) "empty diagram has no cmds"
 
 def testDrawCmd_rect : IO Unit := do
   let d : Diagram SVG := Diagram.rect 4 4
   let cmds := d.compile
   -- default fill (lightGray, a=1) => fillPath + strokePath
-  assertTrue (cmds.length == 2) s!"rect cmds: {cmds.length}"
+  assertTrue (cmds.size == 2) s!"rect cmds: {cmds.size}"
 
 def testDrawCmd_transform : IO Unit := do
   let d : Diagram SVG := .transform (Matrix.translate 10 20) (Diagram.rect 4 4)
   let cmds := d.compile
   -- pushTransform, fillPath, strokePath, popTransform
-  assertTrue (cmds.length == 4) s!"transform cmds: {cmds.length}"
-  match cmds.head? with
-  | some (.pushTransform _) => pure ()
+  assertTrue (cmds.size == 4) s!"transform cmds: {cmds.size}"
+  match cmds[0]? with
+  | some (DrawCmd.pushTransform _) => pure ()
   | _ => throw <| IO.userError "expected pushTransform"
 
 def testDrawCmd_compose : IO Unit := do
   let d : Diagram SVG := .compose (Diagram.rect 4 4) (Diagram.rect 2 2)
   let cmds := d.compile
   -- 2 rects × 2 cmds each (fill + stroke) = 4
-  assertTrue (cmds.length == 4) s!"compose cmds: {cmds.length}"
+  assertTrue (cmds.size == 4) s!"compose cmds: {cmds.size}"
 
 def testDrawCmd_annotate : IO Unit := do
   let d : Diagram SVG := .tag 42 (Diagram.rect 4 4)
   let cmds := d.compile
   -- pushAnnotation, fillPath, strokePath, popAnnotation
-  assertTrue (cmds.length == 4) s!"annotate cmds: {cmds.length}"
-  match cmds.head? with
-  | some (.pushAnnotation 42) => pure ()
+  assertTrue (cmds.size == 4) s!"annotate cmds: {cmds.size}"
+  match cmds[0]? with
+  | some (DrawCmd.pushAnnotation 42) => pure ()
   | _ => throw <| IO.userError "expected pushAnnotation 42"
 
 -- ══════════════════════════════════════════════════════════════════
@@ -73,7 +73,7 @@ def testSvg_text : IO Unit := do
   assertContains svg ">hello</text>" "text content"
 
 def testSvg_viewBox : IO Unit := do
-  let svg := Svg.render (β := SVG) [] { minX := 0, minY := 0, width := 100, height := 100 }
+  let svg := Svg.render (β := SVG) #[] { minX := 0, minY := 0, width := 100, height := 100 }
   assertContains svg "viewBox=\"0 0 100 100\"" "viewBox"
 
 -- ══════════════════════════════════════════════════════════════════
@@ -143,7 +143,7 @@ def smileyFace : Diagram SVG :=
 
 def testSmiley_compiles : IO Unit := do
   let cmds := smileyFace.compile
-  assertTrue (cmds.length > 0) s!"smiley has cmds: {cmds.length}"
+  assertTrue (cmds.size > 0) s!"smiley has cmds: {cmds.size}"
 
 def testSmiley_hasFace : IO Unit := do
   let svg := smileyFace.renderDiagram (padding := 5)

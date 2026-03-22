@@ -159,11 +159,11 @@ def renderCmd {β : Type} [BackendRender β] (cmd : DrawCmd β) (clipPrefix : St
   | .pushForeign tag => BackendRender.renderOpen tag
   | .popForeign tag => BackendRender.renderClose tag
 
-/-- Renders a list of draw commands to a complete SVG document string.
+/-- Renders an array of draw commands to a complete SVG document string.
     The `clipPrefix` distinguishes clip-path IDs when multiple SVGs share a page. -/
-def render {β : Type} [BackendRender β] (cmds : List (DrawCmd β)) (viewBox : ViewBox)
+def render {β : Type} [BackendRender β] (cmds : Array (DrawCmd β)) (viewBox : ViewBox)
     (clipPrefix : String := "") : String :=
   let header := s!"<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"{fmtNum viewBox.minX} {fmtNum viewBox.minY} {fmtNum viewBox.width} {fmtNum viewBox.height}\">"
-  let body := cmds.map (renderCmd · clipPrefix) |>.foldl (· ++ "\n" ++ ·) ""
+  let body := cmds.foldl (fun acc cmd => acc ++ "\n" ++ renderCmd cmd clipPrefix) ""
   -- Flip y-axis: SVG y points down, diagram y points up
   header ++ "\n<g transform=\"scale(1,-1)\">" ++ body ++ "\n</g>\n</svg>"

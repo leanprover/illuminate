@@ -92,11 +92,11 @@ private def drawCmdFields {β : Type} [BackendRender β]
 -- Structural comparison
 -- ═══════════════════════════════════════════════════════════════
 
-/-- Checks whether two draw lists have the same structural tags. -/
+/-- Checks whether two draw command arrays have the same structural tags. -/
 private def structurallyIdentical {β : Type}
-    (a b : List (DrawCmd β)) : Bool :=
-  a.length == b.length &&
-  (a.zip b).all fun (ca, cb) => drawCmdTag ca == drawCmdTag cb
+    (a b : Array (DrawCmd β)) : Bool :=
+  a.size == b.size &&
+  (Array.zip a b).all fun (ca, cb) => drawCmdTag ca == drawCmdTag cb
 
 -- ═══════════════════════════════════════════════════════════════
 -- Template extraction for a single segment
@@ -110,66 +110,59 @@ Returns `(paramMap, params)` where:
 - `params[frame][i]` is the string value of param `i` for that frame
 -/
 private def extractParams {β : Type} [BackendRender β]
-    (frames : Array (List (DrawCmd β))) :
+    (frames : Array (Array (DrawCmd β))) :
     Array ParamBinding × Array (Array String) :=
   if h : frames.size = 0 then
     (#[], #[])
   else Id.run do
-    let cmdCount := frames[0].length
-    -- Precompute fields for every (frame, cmdIdx) pair once
-    let allFields : Array (Array (List (String × String × String))) :=
+    let cmdCount := frames[0].size
+    -- Precompute fields for every (frame, cmdIdx) pair once.
+    -- Each inner Vector has exactly cmdCount entries, matching the draw list length.
+    let allFields : Array (Vector (List (String × String × String)) cmdCount) :=
       frames.map fun frame =>
-        let arr := frame.toArray
-        Array.ofFn (n := cmdCount) fun ⟨i, _⟩ =>
-          match arr[i]? with
+        Vector.ofFn fun (⟨i, _⟩ : Fin cmdCount) =>
+          match frame[i]? with
           | some cmd => drawCmdFields cmd
           | none => []
+    let firstFrame := frames[0]
     have : allFields.size > 0 := by grind
     let firstFrameFields := allFields[0]
-    let firstArr := frames[0].toArray
     let mut paramMap : Array ParamBinding := #[]
-    -- Which (cmdIdx, fieldIndex) slots vary across frames
-    let mut varyingSlots : Array (Array Nat) := #[]
-
-    -- Track SVG element index: only commands that produce elements get one
+    let mut varyingSlots : Vector (Array Nat) cmdCount :=
+      Vector.ofFn fun _ => #[]
     let mut elemIdx : Nat := 0
-    let mut cmdElemIdx : Array (Option Nat) := #[]
 
-    for cmdIdx in 0...cmdCount do
-      let producesElem := match firstArr[cmdIdx]? with
-        | some cmd => drawCmdProducesElement cmd
-        | none => false
-      if producesElem then
-        cmdElemIdx := cmdElemIdx.push (some elemIdx)
-        elemIdx := elemIdx + 1
-      else
-        cmdElemIdx := cmdElemIdx.push none
-
-      let firstFields := firstFrameFields[cmdIdx]?.getD []
+    for hCmd : cmdIdx in 0...cmdCount do
+      let cmd := firstFrame[cmdIdx]
+      let producesElem := drawCmdProducesElement cmd
+      let curElemIdx := if producesElem then some elemIdx else none
+      if producesElem then elemIdx := elemIdx + 1
+      let firstFields := firstFrameFields[cmdIdx]
       let mut cmdVarying : Array Nat := #[]
-      for h : fieldIdx in [:firstFields.length] do
+      for hF : fieldIdx in 0...firstFields.length do
         let (_, svgAttr, firstVal) := firstFields[fieldIdx]
         -- Fields appear in the same order for structurally identical commands,
         -- so we compare by position rather than searching by name.
         let varies := allFields.any fun frameFields =>
-          match (frameFields[cmdIdx]?.getD [])[fieldIdx]? with
+          match frameFields[cmdIdx][fieldIdx]? with
           | some (_, _, v) => v != firstVal
           | none => true
         if varies then
           cmdVarying := cmdVarying.push fieldIdx
-          match cmdElemIdx[cmdIdx]? with
-          | some (some eidx) =>
+          match curElemIdx with
+          | some eidx =>
             paramMap := paramMap.push { elemIdx := eidx, attr := svgAttr }
-          | _ => pure ()
-      varyingSlots := varyingSlots.push cmdVarying
+          | none => pure ()
+      varyingSlots := varyingSlots.set cmdIdx cmdVarying
 
     -- Build per-frame parameter arrays from precomputed fields
     let mut allParams : Array (Array String) := #[]
     for frameFields in allFields do
       let mut frameParams : Array String := #[]
-      for cmdIdx in List.range cmdCount do
-        let fields := frameFields[cmdIdx]?.getD []
-        for fieldIdx in varyingSlots[cmdIdx]?.getD #[] do
+      for hCmd : cmdIdx in 0...cmdCount do
+        have hLt : cmdIdx < cmdCount := by get_elem_tactic
+        let fields := frameFields[cmdIdx]
+        for fieldIdx in (varyingSlots[cmdIdx]) do
           let val := match fields[fieldIdx]? with
             | some (_, _, v) => v
             | none => ""
@@ -196,7 +189,7 @@ def compileAnimation (steps : List Step)
   -- Evaluate all frames, accumulating draw lists, viewBox bounds, and clip hash
   let padding : Float := 5
   let (frameDrawLists, unifiedViewBox, clipHash) := Id.run do
-    let mut drawLists : Array (List (DrawCmd SVG)) := #[]
+    let mut drawLists : Array (Array (DrawCmd SVG)) := #[]
     let mut minX : Float := 0
     let mut maxX : Float := 0
     let mut minY : Float := 0
