@@ -70,6 +70,10 @@ private def escapeJs (s : String) : String :=
     | '\t' => "\\t"
     | c => c.toString
 
+/-- Shared animation helper functions used by all player variants. -/
+def animCoreJs : String :=
+  include_str "../../../player_js/anim_core.js"
+
 /--
 The JavaScript player code for standalone SVG DOM playback.
 
@@ -77,7 +81,7 @@ Uses `__DATA__` and `__SELECTOR__` as placeholders that callers replace
 with the serialized animation JSON and a CSS selector string, respectively.
 -/
 private def playerJs : String :=
-  include_str "../../../player_js/standalone.js"
+  animCoreJs ++ "\n" ++ include_str "../../../player_js/standalone.js"
 
 /--
 The JavaScript player code for reveal.js fragment-driven playback.
@@ -85,7 +89,7 @@ The JavaScript player code for reveal.js fragment-driven playback.
 Uses `__DATA__` and `__SELECTOR__` as placeholders.
 -/
 private def revealJs : String :=
-  include_str "../../../player_js/reveal.js"
+  animCoreJs ++ "\n" ++ include_str "../../../player_js/reveal.js"
 
 /-- Renders a `CompiledAnimation` to a self-contained HTML file. -/
 def CompiledAnimation.renderHTML (ca : CompiledAnimation)

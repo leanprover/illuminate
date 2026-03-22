@@ -2,11 +2,10 @@
 import * as React from "react";
 const e = React.createElement;
 
+// Types: StepInfo, Segment, ParamBinding, AnimData — see globals.d.ts
+// Shared helpers: animFindSegment, animFindCurrentStep, etc. — see anim_core.js
+
 /**
- * @typedef {{ frame: number, pause: boolean, loop: boolean }} StepInfo
- * @typedef {{ sf: number, fc: number, sync: string, svgs: string[], pmap: ParamBinding[], params: string[][], _elems?: Element[] }} Segment
- * @typedef {{ e: number, a: string }} ParamBinding
- * @typedef {{ fps: number, totalFrames: number, segments: Segment[], steps: StepInfo[] }} AnimData
  * @typedef {{ animData: AnimData }} AnimateProps
  */
 
@@ -39,19 +38,6 @@ export default function (props) {
     var _frame = React.useState(0);
     var frame = _frame[0];
     var setFrame = _frame[1];
-
-    /**
-     * Finds the segment containing the given frame index.
-     * @param {number} f
-     * @returns {Segment}
-     */
-    function findSegment(f) {
-        for (var i = 0; i < data.segments.length; i++) {
-            var s = data.segments[i];
-            if (f >= s.sf && f < s.sf + s.fc) return s;
-        }
-        return data.segments[data.segments.length - 1];
-    }
 
     /**
      * Indexes SVG elements depth-first, starting from the content group
@@ -88,8 +74,8 @@ export default function (props) {
      * @returns {void}
      */
     function renderFrame(f) {
-        f = Math.max(0, Math.min(f, data.totalFrames - 1));
-        var seg = findSegment(f);
+        f = animClampFrame(f, data.totalFrames);
+        var seg = animFindSegment(data.segments, f);
         var container = containerRef.current;
         if (!container) return;
         var local = f - seg.sf;
@@ -127,18 +113,6 @@ export default function (props) {
     }
 
     /**
-     * Returns the index of the step active at the given frame.
-     * @param {number} f
-     * @returns {number}
-     */
-    function findCurrentStep(f) {
-        for (var i = data.steps.length - 1; i >= 0; i--) {
-            if (f >= data.steps[i].frame) return i;
-        }
-        return 0;
-    }
-
-    /**
      * Animation loop driven by requestAnimationFrame.
      * @param {number} timestamp
      * @returns {void}
@@ -146,37 +120,33 @@ export default function (props) {
     function tick(timestamp) {
         if (!playingRef.current || waitingRef.current) return;
         if (startTimeRef.current === null) startTimeRef.current = timestamp;
-        var elapsed = (timestamp - startTimeRef.current) / 1000;
-        // pauseFrameRef holds the frame at which playback started
-        var f = pauseFrameRef.current + Math.round(elapsed * data.fps);
+        var f = animComputeFrame(startTimeRef.current, timestamp, data.fps, pauseFrameRef.current);
 
-        // Find the current step and the frame range it occupies
+        // Handle looping steps
         var curStep = currentStepRef.current;
-        var stepStart = data.steps[curStep] ? data.steps[curStep].frame : 0;
-        var stepEnd =
-            curStep + 1 < data.steps.length ? data.steps[curStep + 1].frame : data.totalFrames;
         var stepInfo = data.steps[curStep];
-        var stepLen = stepEnd - stepStart;
-
-        // If current step loops, wrap within its frame range
-        var isLooping = stepInfo && stepInfo.loop && stepLen > 0;
-        if (isLooping && f >= stepEnd) {
-            if (advancePendingRef.current) {
-                // Finish the loop: advance to the next step
-                advancePendingRef.current = false;
-                if (curStep + 1 < data.steps.length) {
-                    currentStepRef.current = curStep + 1;
-                    var nextFrame = data.steps[curStep + 1].frame;
-                    pauseFrameRef.current = nextFrame;
-                    startTimeRef.current = null;
-                    f = nextFrame;
-                    isLooping = false;
+        var isLooping = stepInfo && stepInfo.loop;
+        if (isLooping) {
+            var stepStart = stepInfo.frame;
+            var stepEnd = animFindStepEnd(data.steps, curStep, data.totalFrames);
+            var loop = animWrapLoop(f, stepStart, stepEnd);
+            if (loop.didCycle) {
+                if (advancePendingRef.current) {
+                    // Finish the loop: advance to the next step
+                    advancePendingRef.current = false;
+                    if (curStep + 1 < data.steps.length) {
+                        currentStepRef.current = curStep + 1;
+                        var nextFrame = data.steps[curStep + 1].frame;
+                        pauseFrameRef.current = nextFrame;
+                        startTimeRef.current = null;
+                        f = nextFrame;
+                        isLooping = false;
+                    }
+                } else {
+                    f = loop.wrapped;
+                    startTimeRef.current = timestamp;
+                    pauseFrameRef.current = stepStart;
                 }
-            } else {
-                var overshoot = (f - stepStart) % stepLen;
-                f = stepStart + overshoot;
-                startTimeRef.current = timestamp;
-                pauseFrameRef.current = stepStart;
             }
         }
         setLooping(!!isLooping);
@@ -191,20 +161,18 @@ export default function (props) {
         }
 
         // Check for pause steps we've moved past
-        var step = findCurrentStep(f);
-        if (step > currentStepRef.current) {
-            for (var s = currentStepRef.current + 1; s <= step; s++) {
-                if (data.steps[s].pause) {
-                    f = data.steps[s].frame;
-                    waitingRef.current = true;
-                    currentStepRef.current = s;
-                    renderFrame(f);
-                    pauseFrameRef.current = f;
-                    setPlaying(false);
-                    return;
-                }
+        if (!isLooping) {
+            var pause = animCheckPauseSteps(data.steps, currentStepRef.current, f);
+            if (pause) {
+                f = pause.pauseAtFrame;
+                waitingRef.current = true;
+                currentStepRef.current = pause.pauseAtStep;
+                renderFrame(f);
+                pauseFrameRef.current = f;
+                setPlaying(false);
+                return;
             }
-            currentStepRef.current = step;
+            currentStepRef.current = animFindCurrentStep(data.steps, f);
         }
 
         renderFrame(f);
@@ -318,9 +286,10 @@ export default function (props) {
                     playingRef.current = false;
                     setPlaying(false);
                     waitingRef.current = false;
+                    advancePendingRef.current = false;
                     if (rafRef.current) cancelAnimationFrame(rafRef.current);
-                    var f = parseInt(/** @type {HTMLInputElement} */ (ev.target).value);
-                    currentStepRef.current = findCurrentStep(f);
+                    var f = parseInt(/** @type {HTMLInputElement} */ (ev.target).value, 10);
+                    currentStepRef.current = animFindCurrentStep(data.steps, f);
                     pauseFrameRef.current = f;
                     renderFrame(f);
                 },

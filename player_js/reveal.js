@@ -1,6 +1,7 @@
 // @ts-check
 
 // Types: StepInfo, Segment, ParamBinding, AnimData — see globals.d.ts
+// Shared helpers: animFindSegment, animClampFrame, etc. — see anim_core.js
 
 (function () {
     /** @type {AnimData} */
@@ -23,26 +24,13 @@
     var animId = null;
 
     /**
-     * Finds the segment containing the given frame index.
-     * @param {number} frame
-     * @returns {Segment}
-     */
-    function findSegment(frame) {
-        for (var i = 0; i < data.segments.length; i++) {
-            var s = data.segments[i];
-            if (frame >= s.sf && frame < s.sf + s.fc) return s;
-        }
-        return data.segments[data.segments.length - 1];
-    }
-
-    /**
      * Displays the SVG for the given frame.
      * @param {number} frame
      * @returns {void}
      */
     function showFrame(frame) {
-        frame = Math.max(0, Math.min(frame, data.totalFrames - 1));
-        var seg = findSegment(frame);
+        frame = animClampFrame(frame, data.totalFrames);
+        var seg = animFindSegment(data.segments, frame);
         var local = frame - seg.sf;
         if (seg !== currentSeg) {
             container.innerHTML = seg.sync;
@@ -66,23 +54,6 @@
     }
 
     /**
-     * Returns the frame index where the step starting at `stepFrame` ends.
-     * @param {number} stepFrame
-     * @returns {number}
-     */
-    function findStepEnd(stepFrame) {
-        for (var i = 0; i < data.steps.length; i++) {
-            if (data.steps[i].frame === stepFrame) {
-                for (var j = i + 1; j < data.steps.length; j++) {
-                    if (data.steps[j].frame > stepFrame) return data.steps[j].frame;
-                }
-                return data.totalFrames;
-            }
-        }
-        return data.totalFrames;
-    }
-
-    /**
      * Loops playback between `loopStart` and `loopEnd` indefinitely.
      * @param {number} loopStart
      * @param {number} loopEnd
@@ -96,9 +67,9 @@
         /** @param {number} timestamp */
         function tick(timestamp) {
             if (startTime === null) startTime = timestamp;
-            var elapsed = (timestamp - startTime) / 1000;
-            var offset = Math.round(elapsed * data.fps) % loopLen;
-            showFrame(loopStart + offset);
+            var frame = animComputeFrame(startTime, timestamp, data.fps, loopStart);
+            var loop = animWrapLoop(frame, loopStart, loopEnd);
+            showFrame(loop.wrapped);
             animId = requestAnimationFrame(tick);
         }
         animId = requestAnimationFrame(tick);
@@ -119,8 +90,10 @@
         /** @param {number} timestamp */
         function tick(timestamp) {
             if (startTime === null) startTime = timestamp;
-            var elapsed = (timestamp - startTime) / 1000;
-            var frame = startFrame + dir * Math.round(elapsed * data.fps);
+            var frame = animComputeFrame(startTime, timestamp, data.fps, startFrame);
+            if (dir < 0) {
+                frame = startFrame - (frame - startFrame);
+            }
             if ((dir > 0 && frame >= targetFrame) || (dir < 0 && frame <= targetFrame)) {
                 showFrame(targetFrame);
                 animId = null;
@@ -158,9 +131,10 @@
             var idx = parseInt(e.fragment.dataset.fragmentIndex || "", 10);
             if (!isNaN(idx) && idx < pauseSteps.length) {
                 var ps = pauseSteps[idx];
+                var stepIdx = animFindCurrentStep(data.steps, ps.frame);
                 animateTo(ps.frame, function () {
                     if (ps.loop) {
-                        startLoop(ps.frame, findStepEnd(ps.frame));
+                        startLoop(ps.frame, animFindStepEnd(data.steps, stepIdx, data.totalFrames));
                     }
                 });
             }
@@ -172,7 +146,8 @@
                 var prevIdx = idx - 1;
                 if (prevIdx >= 0 && pauseSteps[prevIdx].loop) {
                     var ps = pauseSteps[prevIdx];
-                    startLoop(ps.frame, findStepEnd(ps.frame));
+                    var stepIdx = animFindCurrentStep(data.steps, ps.frame);
+                    startLoop(ps.frame, animFindStepEnd(data.steps, stepIdx, data.totalFrames));
                 } else {
                     var prevFrame = prevIdx >= 0 ? pauseSteps[prevIdx].frame : 0;
                     animateTo(prevFrame);

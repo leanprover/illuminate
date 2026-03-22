@@ -10,6 +10,8 @@
         "typeRoots": ["../vendored_js"]
     },
     "include": [
+        "anim_core.js",
+        "anim_core.d.ts",
         "standalone.js",
         "reveal.js",
         "diagram_widget.js",

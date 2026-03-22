@@ -1,6 +1,7 @@
 // @ts-check
 
 // Types: StepInfo, Segment, ParamBinding, AnimData — see globals.d.ts
+// Shared helpers: animFindSegment, animFindCurrentStep, etc. — see anim_core.js
 
 (function () {
     /** @type {AnimData} */
@@ -31,21 +32,10 @@
     var currentStep = 0;
     /** @type {boolean} */
     var waitingForClick = false;
+    /** @type {boolean} */
+    var advancePending = false;
 
     scrubber.max = String(data.totalFrames - 1);
-
-    /**
-     * Finds the segment containing the given frame index.
-     * @param {number} frame
-     * @returns {Segment}
-     */
-    function findSegment(frame) {
-        for (var i = 0; i < data.segments.length; i++) {
-            var s = data.segments[i];
-            if (frame >= s.sf && frame < s.sf + s.fc) return s;
-        }
-        return data.segments[data.segments.length - 1];
-    }
 
     /**
      * Displays the SVG for the given frame without updating playback state.
@@ -53,8 +43,8 @@
      * @returns {void}
      */
     function showFrame(frame) {
-        frame = Math.max(0, Math.min(frame, data.totalFrames - 1));
-        var seg = findSegment(frame);
+        frame = animClampFrame(frame, data.totalFrames);
+        var seg = animFindSegment(data.segments, frame);
         var local = frame - seg.sf;
 
         if (seg !== currentSeg) {
@@ -70,15 +60,21 @@
     }
 
     /**
-     * Returns the index of the step active at the given frame.
-     * @param {number} frame
-     * @returns {number}
+     * Sets the play button to the paused visual state.
+     * @returns {void}
      */
-    function findCurrentStep(frame) {
-        for (var i = data.steps.length - 1; i >= 0; i--) {
-            if (frame >= data.steps[i].frame) return i;
-        }
-        return 0;
+    function showPaused() {
+        playBtn.textContent = "\u25B6";
+        playBtn.setAttribute("aria-label", "Play");
+    }
+
+    /**
+     * Sets the play button to the playing visual state.
+     * @returns {void}
+     */
+    function showPlaying() {
+        playBtn.textContent = "\u23F8";
+        playBtn.setAttribute("aria-label", "Pause");
     }
 
     /**
@@ -89,23 +85,32 @@
     function tick(timestamp) {
         if (!playing || waitingForClick) return;
         if (startTime === null) startTime = timestamp;
-        var elapsed = (timestamp - startTime) / 1000;
-        var frame = pauseFrame + Math.round(elapsed * data.fps);
+        var frame = animComputeFrame(startTime, timestamp, data.fps, pauseFrame);
 
-        // Handle looping steps: wrap frame within step boundaries
+        // Handle looping steps
         var stepInfo = data.steps[currentStep];
-        if (stepInfo && stepInfo.loop) {
+        var isLooping = stepInfo && stepInfo.loop;
+        if (isLooping) {
             var stepStart = stepInfo.frame;
-            var stepEnd =
-                currentStep + 1 < data.steps.length
-                    ? data.steps[currentStep + 1].frame
-                    : data.totalFrames;
-            var stepLen = stepEnd - stepStart;
-            if (stepLen > 0 && frame >= stepEnd) {
-                var overshoot = (frame - stepStart) % stepLen;
-                frame = stepStart + overshoot;
-                startTime = timestamp;
-                pauseFrame = stepStart;
+            var stepEnd = animFindStepEnd(data.steps, currentStep, data.totalFrames);
+            var loop = animWrapLoop(frame, stepStart, stepEnd);
+            if (loop.didCycle) {
+                if (advancePending) {
+                    // Finish the loop: advance to the next step
+                    advancePending = false;
+                    if (currentStep + 1 < data.steps.length) {
+                        currentStep = currentStep + 1;
+                        var nextFrame = data.steps[currentStep].frame;
+                        pauseFrame = nextFrame;
+                        startTime = null;
+                        frame = nextFrame;
+                        isLooping = false;
+                    }
+                } else {
+                    frame = loop.wrapped;
+                    startTime = timestamp;
+                    pauseFrame = stepStart;
+                }
             }
         }
 
@@ -113,25 +118,22 @@
             frame = data.totalFrames - 1;
             pauseFrame = frame;
             playing = false;
-            playBtn.textContent = "\u25B6";
-            playBtn.setAttribute("aria-label", "Play");
+            showPaused();
         }
 
-        var step = findCurrentStep(frame);
-        if (step > currentStep) {
-            for (var s = currentStep + 1; s <= step; s++) {
-                if (data.steps[s].pause) {
-                    frame = data.steps[s].frame;
-                    pauseFrame = frame;
-                    waitingForClick = true;
-                    currentStep = s;
-                    showFrame(frame);
-                    playBtn.textContent = "\u25B6";
-                    playBtn.setAttribute("aria-label", "Play");
-                    return;
-                }
+        // Check for pause steps we've moved past
+        if (!isLooping) {
+            var pause = animCheckPauseSteps(data.steps, currentStep, frame);
+            if (pause) {
+                frame = pause.pauseAtFrame;
+                pauseFrame = frame;
+                waitingForClick = true;
+                currentStep = pause.pauseAtStep;
+                showFrame(frame);
+                showPaused();
+                return;
             }
-            currentStep = step;
+            currentStep = animFindCurrentStep(data.steps, frame);
         }
 
         showFrame(frame);
@@ -139,7 +141,7 @@
     }
 
     /**
-     * Advances playback: resumes from pause, pauses if playing, or starts from beginning.
+     * Advances playback: resumes from pause, signals loop exit, pauses, or starts.
      * @returns {void}
      */
     function advance() {
@@ -147,14 +149,19 @@
             waitingForClick = false;
             startTime = null;
             playing = true;
-            playBtn.textContent = "\u23F8";
-            playBtn.setAttribute("aria-label", "Pause");
+            showPlaying();
             requestAnimationFrame(tick);
         } else if (playing) {
+            // Check if we're in a looping step — click signals to finish the cycle
+            var stepInfo = data.steps[currentStep];
+            if (stepInfo && stepInfo.loop && currentStep + 1 < data.steps.length) {
+                advancePending = true;
+                return;
+            }
+            // Normal pause
             playing = false;
             pauseFrame = parseInt(scrubber.value, 10);
-            playBtn.textContent = "\u25B6";
-            playBtn.setAttribute("aria-label", "Play");
+            showPaused();
         } else {
             if (pauseFrame >= data.totalFrames - 1) {
                 pauseFrame = 0;
@@ -162,8 +169,7 @@
             }
             playing = true;
             startTime = null;
-            playBtn.textContent = "\u23F8";
-            playBtn.setAttribute("aria-label", "Pause");
+            showPlaying();
             requestAnimationFrame(tick);
         }
     }
@@ -182,11 +188,11 @@
     scrubber.addEventListener("input", function () {
         playing = false;
         waitingForClick = false;
-        playBtn.textContent = "\u25B6";
-        playBtn.setAttribute("aria-label", "Play");
+        advancePending = false;
+        showPaused();
         var frame = parseInt(scrubber.value, 10);
         pauseFrame = frame;
-        currentStep = findCurrentStep(frame);
+        currentStep = animFindCurrentStep(data.steps, frame);
         showFrame(frame);
     });
 

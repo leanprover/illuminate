@@ -16,6 +16,8 @@ interface Segment {
     svgs: string[];
     pmap: ParamBinding[];
     params: string[][];
+    /** Runtime cache of indexed SVG elements, populated by the widget player. */
+    _elems?: Element[];
 }
 interface AnimData {
     fps: number;

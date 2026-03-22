@@ -36,7 +36,7 @@ open Lean Widget in
 /-- Widget module that plays compiled animations with requestAnimationFrame-driven SVG playback. -/
 @[widget_module]
 def animateWidget : Lean.Widget.Module where
-  javascript := include_str "../../../player_js/animate_widget.js"
+  javascript := animCoreJs ++ "\n" ++ include_str "../../../player_js/animate_widget.js"
 
 -- ═══════════════════════════════════════════════════════════════
 -- #animate command
