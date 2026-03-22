@@ -14,10 +14,6 @@ import Illuminate.Backend.SVG
 
 namespace Illuminate
 
--- ═══════════════════════════════════════════════════════════════
--- DrawCmd field serialization
--- ═══════════════════════════════════════════════════════════════
-
 /-- Returns a numeric constructor discriminant for structural comparison. -/
 private def drawCmdTag {β : Type} (cmd : DrawCmd β) : UInt8 :=
   match cmd with
@@ -34,59 +30,6 @@ private def drawCmdTag {β : Type} (cmd : DrawCmd β) : UInt8 :=
   | .popClip => 10
   | .pushForeign .. => 11
   | .popForeign .. => 12
-
-/-- Returns whether a draw command produces an SVG DOM element (vs a close tag or nothing). -/
-private def drawCmdProducesElement {β : Type} (cmd : DrawCmd β) : Bool :=
-  match cmd with
-  | .fillPath _ (.solid _) => true
-  | .fillPath _ .none => false
-  | .strokePath .. => true
-  | .drawTextRun .. => true
-  | .pushTransform .. => true
-  | .pushAnnotation .. => true
-  | .pushOpacity .. => true
-  | .pushClip .. => true
-  | .pushForeign .. => true
-  | .popTransform | .popAnnotation | .popOpacity | .popClip => false
-  | .popForeign .. => false
-
-/--
-Extracts serializable field values from a draw command, paired with their SVG attribute names.
--/
-private def drawCmdFields {β : Type} [BackendRender β]
-    (cmd : DrawCmd β) : List (String × String × String) :=
-  -- Returns (fieldName, svgAttrName, value)
-  let fmt := Svg.fmtNum
-  match cmd with
-  | .fillPath pd fill =>
-    let d := Svg.pathDataToD pd
-    match fill with
-    | .none => [("d", "d", d)]
-    | .solid fs =>
-      [("d", "d", d),
-       ("fill", "fill", s!"rgb({fs.color.r},{fs.color.g},{fs.color.b})"),
-       ("fill-opacity", "fill-opacity", fmt fs.color.a)]
-  | .strokePath pd stroke =>
-    let d := Svg.pathDataToD pd
-    [("d", "d", d),
-     ("stroke", "stroke", s!"rgb({stroke.color.r},{stroke.color.g},{stroke.color.b})"),
-     ("stroke-width", "stroke-width", fmt stroke.width),
-     ("stroke-opacity", "stroke-opacity", fmt stroke.color.a)]
-  | .drawTextRun s style pos =>
-    [("text", "textContent", s),
-     ("x", "x", fmt pos.x), ("y", "y", fmt pos.y),
-     ("font-size", "font-size", fmt style.fontSize),
-     ("fill", "fill", s!"rgb({style.color.r},{style.color.g},{style.color.b})")]
-  | .pushTransform m =>
-    [("matrix", "transform",
-      s!"matrix({fmt m.a},{fmt m.c},{fmt m.b},{fmt m.d},{fmt m.tx},{fmt m.ty})")]
-  | .pushOpacity α => [("opacity", "opacity", fmt α)]
-  | .pushAnnotation tag => [("tag", "data-anno-id", toString tag)]
-  | .pushClip pd clipId =>
-    [("d", "d", Svg.pathDataToD pd), ("clipId", "id", toString clipId)]
-  | .pushForeign f => [("foreign", "data-foreign", BackendRender.renderOpen f)]
-  | .popForeign f => [("foreign", "data-foreign", BackendRender.renderClose f)]
-  | .popTransform | .popAnnotation | .popOpacity | .popClip => []
 
 -- ═══════════════════════════════════════════════════════════════
 -- Structural comparison
@@ -116,36 +59,35 @@ private def extractParams {β : Type} [BackendRender β]
     (#[], #[])
   else Id.run do
     let cmdCount := frames[0].size
-    -- Precompute fields for every (frame, cmdIdx) pair once.
-    -- Each inner Vector has exactly cmdCount entries, matching the draw list length.
-    let allFields : Array (Vector (List (String × String × String)) cmdCount) :=
+    -- Precompute attrs for every (frame, cmdIdx) pair once via the shared
+    -- Svg.drawCmdAttrs, so attribute values are computed in one place.
+    let allAttrs : Array (Vector (Array (String × String)) cmdCount) :=
       frames.map fun frame =>
         Vector.ofFn fun (⟨i, _⟩ : Fin cmdCount) =>
           match frame[i]? with
-          | some cmd => drawCmdFields cmd
-          | none => []
+          | some cmd => (Svg.drawCmdAttrs cmd).attrs
+          | none => #[]
     let firstFrame := frames[0]
-    have : allFields.size > 0 := by grind
-    let firstFrameFields := allFields[0]
+    have : allAttrs.size > 0 := by grind
+    let firstFrameAttrs := allAttrs[0]
     let mut paramMap : Array ParamBinding := #[]
     let mut varyingSlots : Vector (Array Nat) cmdCount :=
       Vector.ofFn fun _ => #[]
     let mut elemIdx : Nat := 0
 
     for hCmd : cmdIdx in 0...cmdCount do
-      let cmd := firstFrame[cmdIdx]
-      let producesElem := drawCmdProducesElement cmd
+      let producesElem := (Svg.drawCmdAttrs firstFrame[cmdIdx]).producesElement
       let curElemIdx := if producesElem then some elemIdx else none
       if producesElem then elemIdx := elemIdx + 1
-      let firstFields := firstFrameFields[cmdIdx]
+      let firstAttrs := firstFrameAttrs[cmdIdx]
       let mut cmdVarying : Array Nat := #[]
-      for hF : fieldIdx in 0...firstFields.length do
-        let (_, svgAttr, firstVal) := firstFields[fieldIdx]
+      for hF : fieldIdx in 0...firstAttrs.size do
+        let (svgAttr, firstVal) := firstAttrs[fieldIdx]
         -- Fields appear in the same order for structurally identical commands,
         -- so we compare by position rather than searching by name.
-        let varies := allFields.any fun frameFields =>
-          match frameFields[cmdIdx][fieldIdx]? with
-          | some (_, _, v) => v != firstVal
+        let varies := allAttrs.any fun frameAttrs =>
+          match frameAttrs[cmdIdx][fieldIdx]? with
+          | some (_, v) => v != firstVal
           | none => true
         if varies then
           cmdVarying := cmdVarying.push fieldIdx
@@ -155,16 +97,16 @@ private def extractParams {β : Type} [BackendRender β]
           | none => pure ()
       varyingSlots := varyingSlots.set cmdIdx cmdVarying
 
-    -- Build per-frame parameter arrays from precomputed fields
+    -- Build per-frame parameter arrays from precomputed attrs
     let mut allParams : Array (Array String) := #[]
-    for frameFields in allFields do
+    for frameAttrs in allAttrs do
       let mut frameParams : Array String := #[]
       for hCmd : cmdIdx in 0...cmdCount do
         have hLt : cmdIdx < cmdCount := by get_elem_tactic
-        let fields := frameFields[cmdIdx]
+        let attrs := frameAttrs[cmdIdx]
         for fieldIdx in (varyingSlots[cmdIdx]) do
-          let val := match fields[fieldIdx]? with
-            | some (_, _, v) => v
+          let val := match attrs[fieldIdx]? with
+            | some (_, v) => v
             | none => ""
           frameParams := frameParams.push val
       allParams := allParams.push frameParams

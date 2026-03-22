@@ -63,11 +63,6 @@ def fmtNum (f : Float) : String :=
 private def colorToSvg (c : Color) : String :=
   s!"rgb({c.r},{c.g},{c.b})"
 
-/-- Converts a Color's alpha to an SVG opacity attribute string. -/
-private def opacityAttr (attrName : String) (c : Color) : String :=
-  if c.a < 1.0 then s!" {attrName}=\"{fmtNum c.a}\""
-  else ""
-
 /-- Converts PathData to an SVG `d` attribute string. -/
 def pathDataToD (pd : PathData) : String :=
   pd.commands.foldl (init := "") fun acc cmd =>
@@ -91,50 +86,112 @@ private def lineJoinToSvg : LineJoin → String
   | .round => "round"
   | .bevel => "bevel"
 
-/-- Converts a StrokeDash to an SVG `stroke-dasharray` attribute string. -/
-private def dashToSvg (dash : StrokeDash) (w : Float) : String :=
+/-- Converts a StrokeDash to the value of an SVG `stroke-dasharray` attribute. -/
+private def dashArrayValue (dash : StrokeDash) (w : Float) : String :=
   match dash with
-  | .solid => ""
-  | .dashed => s!" stroke-dasharray=\"{fmtNum (w * 4)} {fmtNum (w * 2)}\""
-  | .dotted => s!" stroke-dasharray=\"{fmtNum w} {fmtNum w}\""
-  | .dashDot => s!" stroke-dasharray=\"{fmtNum (w * 4)} {fmtNum w} {fmtNum w} {fmtNum w}\""
+  | .solid => "none"
+  | .dashed => s!"{fmtNum (w * 4)} {fmtNum (w * 2)}"
+  | .dotted => s!"{fmtNum w} {fmtNum w}"
+  | .dashDot => s!"{fmtNum (w * 4)} {fmtNum w} {fmtNum w} {fmtNum w}"
 
 /-- Converts a Matrix to an SVG `transform` attribute value. -/
 private def matrixToSvg (m : Matrix) : String :=
   s!"matrix({fmtNum m.a},{fmtNum m.c},{fmtNum m.b},{fmtNum m.d},{fmtNum m.tx},{fmtNum m.ty})"
 
+/-- Converts a TextAnchor to its SVG string. -/
+private def anchorToSvg : TextAnchor → String
+  | .start => "start"
+  | .«end» => "end"
+  | .middle => "middle"
+
+-- ═══════════════════════════════════════════════════════════════
+-- Shared attribute extraction
+-- ═══════════════════════════════════════════════════════════════
+
+/-- Extracted SVG attributes for a draw command, used by both SVG rendering
+    and animation parameter extraction. -/
+structure CmdAttrInfo where
+  /-- Whether this command produces an SVG DOM element (vs. a close tag or nothing). -/
+  producesElement : Bool
+  /-- Attribute name-value pairs. Text content uses the pseudo-attribute `"textContent"`. -/
+  attrs : Array (String × String)
+deriving Repr, Inhabited
+
+/--
+Extracts SVG attribute name-value pairs from a draw command.
+
+This is the single source of truth for attribute values shared by
+`renderCmd` (SVG rendering) and animation parameter extraction.
+Each draw command variant always produces the same number of attribute
+pairs regardless of values, so frame-to-frame comparison by position is safe.
+-/
+def drawCmdAttrs {β : Type} [BackendRender β]
+    (cmd : DrawCmd β) (clipPrefix : String := "") : CmdAttrInfo :=
+  match cmd with
+  | .fillPath pd fill =>
+    match fill with
+    | .none => ⟨false, #[]⟩
+    | .solid fs => ⟨true, #[
+        ("d", pathDataToD pd),
+        ("fill", colorToSvg fs.color),
+        ("fill-opacity", fmtNum fs.color.a)]⟩
+  | .strokePath pd stroke => ⟨true, #[
+      ("d", pathDataToD pd),
+      ("fill", "none"),
+      ("stroke", colorToSvg stroke.color),
+      ("stroke-width", fmtNum stroke.width),
+      ("stroke-linecap", lineCapToSvg stroke.lineCap),
+      ("stroke-linejoin", lineJoinToSvg stroke.lineJoin),
+      ("stroke-opacity", fmtNum stroke.color.a),
+      ("stroke-dasharray", dashArrayValue stroke.dash stroke.width)]⟩
+  | .drawTextRun s style pos => ⟨true, #[
+      ("textContent", s),
+      ("x", fmtNum pos.x),
+      ("y", fmtNum pos.y),
+      ("font-family", style.fontFamily),
+      ("font-size", fmtNum style.fontSize),
+      ("font-weight", if style.bold then "bold" else "normal"),
+      ("font-style", if style.italic then "italic" else "normal"),
+      ("fill", colorToSvg style.color),
+      ("text-anchor", anchorToSvg style.anchor),
+      ("dominant-baseline", "central"),
+      ("transform", "scale(1,-1)")]⟩
+  | .pushTransform m => ⟨true, #[("transform", matrixToSvg m)]⟩
+  | .pushAnnotation tag => ⟨true, #[("data-anno-id", toString tag)]⟩
+  | .pushOpacity α => ⟨true, #[("opacity", fmtNum α)]⟩
+  | .pushClip pd clipId =>
+    let cid := s!"clip{clipPrefix}{clipId}"
+    ⟨true, #[("d", pathDataToD pd), ("id", cid)]⟩
+  | .pushForeign f => ⟨true, #[("data-foreign", BackendRender.renderOpen f)]⟩
+  | .popForeign f => ⟨false, #[("data-foreign", BackendRender.renderClose f)]⟩
+  | .popTransform | .popAnnotation | .popOpacity | .popClip => ⟨false, #[]⟩
+
+/-- Joins attribute pairs into an SVG attribute string with a leading space. -/
+private def renderAttrs (attrs : Array (String × String)) : String :=
+  attrs.foldl (fun acc (k, v) => acc ++ s!" {k}=\"{v}\"") ""
+
+/-- Looks up an attribute value by name, returning `""` if absent. -/
+private def findAttr (attrs : Array (String × String)) (name : String) : String :=
+  match attrs.find? (·.1 == name) with
+  | some (_, v) => v
+  | none => ""
+
 /-- Renders a single DrawCmd to an SVG fragment. The `clipPrefix` distinguishes
     clip-path IDs across independently compiled diagrams on the same page. -/
 def renderCmd {β : Type} [BackendRender β] (cmd : DrawCmd β) (clipPrefix : String := "") : String :=
+  let info := drawCmdAttrs cmd clipPrefix
   match cmd with
-  | .fillPath pd fill =>
-    let d := pathDataToD pd
-    match fill with
-    | .none => ""
-    | .solid fs =>
-      let cs := colorToSvg fs.color
-      let op := opacityAttr "fill-opacity" fs.color
-      s!"<path d=\"{d}\" fill=\"{cs}\"{op}/>"
-  | .strokePath pd stroke =>
-    let d := pathDataToD pd
-    let c := colorToSvg stroke.color
-    let op := opacityAttr "stroke-opacity" stroke.color
-    let cap := lineCapToSvg stroke.lineCap
-    let join := lineJoinToSvg stroke.lineJoin
-    let da := dashToSvg stroke.dash stroke.width
-    s!"<path d=\"{d}\" fill=\"none\" stroke=\"{c}\" stroke-width=\"{fmtNum stroke.width}\" stroke-linecap=\"{cap}\" stroke-linejoin=\"{join}\"{op}{da}/>"
+  | .fillPath _ .none => ""
+  | .fillPath _ (.solid _) =>
+    s!"<path{renderAttrs info.attrs}/>"
+  | .strokePath .. =>
+    s!"<path{renderAttrs info.attrs}/>"
   | .drawTextRun s style pos =>
-    let fontWeight := if style.bold then "bold" else "normal"
-    let fontStyle := if style.italic then "italic" else "normal"
-    let c := colorToSvg style.color
-    let anchor := match style.anchor with
-      | .start => "start"
-      | .«end» => "end"
-      | .middle => "middle"
-    let attrs := s!"x=\"{fmtNum pos.x}\" y=\"{fmtNum pos.y}\" font-family=\"{style.fontFamily}\" font-size=\"{fmtNum style.fontSize}\" font-weight=\"{fontWeight}\" font-style=\"{fontStyle}\" fill=\"{c}\" text-anchor=\"{anchor}\" dominant-baseline=\"central\" transform=\"scale(1,-1)\""
+    let textAttrs := info.attrs.filter (·.1 != "textContent")
+    let attrStr := renderAttrs textAttrs
     let lines := s.splitOn "\n"
     if lines.length <= 1 then
-      s!"<text {attrs}>{escapeXml s}</text>"
+      s!"<text{attrStr}>{escapeXml s}</text>"
     else
       let lineHeight := style.fontSize * 1.2
       let totalH := lineHeight * (lines.length - 1).toFloat
@@ -143,23 +200,16 @@ def renderCmd {β : Type} [BackendRender β] (cmd : DrawCmd β) (clipPrefix : St
         let dy := if i == 0 then startY else lineHeight
         let span := s!"<tspan x=\"{fmtNum pos.x}\" dy=\"{fmtNum dy}\">{escapeXml line}</tspan>"
         (i + 1, acc ++ span)) (0, "")
-      s!"<text {attrs}>{tspans}</text>"
-  | .pushTransform m =>
-    s!"<g transform=\"{matrixToSvg m}\">"
-  | .popTransform => "</g>"
-  | .pushAnnotation tag =>
-    s!"<g data-anno-id=\"{tag}\">"
-  | .popAnnotation => "</g>"
-  | .pushOpacity α =>
-    s!"<g opacity=\"{fmtNum α}\">"
-  | .popOpacity => "</g>"
-  | .pushClip pd clipId =>
-    let d := pathDataToD pd
-    let cid := s!"clip{clipPrefix}{clipId}"
+      s!"<text{attrStr}>{tspans}</text>"
+  | .pushTransform .. | .pushAnnotation .. | .pushOpacity .. =>
+    s!"<g{renderAttrs info.attrs}>"
+  | .pushClip .. =>
+    let d := findAttr info.attrs "d"
+    let cid := findAttr info.attrs "id"
     s!"<defs><clipPath id=\"{cid}\"><path d=\"{d}\"/></clipPath></defs><g clip-path=\"url(#{cid})\">"
-  | .popClip => "</g>"
   | .pushForeign tag => BackendRender.renderOpen tag
   | .popForeign tag => BackendRender.renderClose tag
+  | .popTransform | .popAnnotation | .popOpacity | .popClip => "</g>"
 
 /-- Renders an array of draw commands to a complete SVG document string.
     The `clipPrefix` distinguishes clip-path IDs when multiple SVGs share a page. -/
