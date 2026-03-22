@@ -50,7 +50,7 @@ where
       else
         (errs, name :: seen)
     seen.1
-  checkCommands (cmds : List (DrawCmd β)) (acc : Array DiagramError)
+  checkCommands (cmds : Array (DrawCmd β)) (acc : Array DiagramError)
       : Array DiagramError :=
     cmds.foldl (init := acc) fun errs cmd =>
       match cmd with

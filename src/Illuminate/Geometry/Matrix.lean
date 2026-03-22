@@ -32,7 +32,7 @@ structure Matrix where
   d : Float
   /-- Vertical translation. -/
   ty : Float
-deriving Repr, BEq, Inhabited
+deriving Repr, BEq, Inhabited, Hashable
 
 namespace Matrix
 

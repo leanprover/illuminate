@@ -36,7 +36,7 @@ def testLayout_deterministic : IO Unit := do
     (.named `Y (.transform (Matrix.translate 5 0) (Diagram.circle 3)))
   let cmds1 := d.compile
   let cmds2 := d.compile
-  assertTrue (cmds1.length == cmds2.length) "deterministic cmd count"
+  assertTrue (cmds1.size == cmds2.size) "deterministic cmd count"
   let n1 := d.collectNames Matrix.identity .anonymous []
   let n2 := d.collectNames Matrix.identity .anonymous []
   assertTrue (n1.length == n2.length) "deterministic name count"
@@ -45,7 +45,7 @@ def testLayout_compileText : IO Unit := do
   let d : Diagram SVG := .text "Hello"
   let cmds1 := d.compile
   let cmds2 := d.compile
-  assertTrue (cmds1.length == cmds2.length) "same cmd structure"
+  assertTrue (cmds1.size == cmds2.size) "same cmd structure"
 
 -- ══════════════════════════════════════════════════════════════════
 -- Validate (5)
@@ -124,8 +124,8 @@ def testConnect_explicitArrowhead : IO Unit := do
   let fillCmds := d.compile.filter fun cmd => match cmd with
     | .fillPath _ _ => true
     | _ => false
-  assertTrue (fillCmds.length == 3)
-    s!"explicit arrowhead should produce a fill (expected 3 fills, got {fillCmds.length})"
+  assertTrue (fillCmds.size == 3)
+    s!"explicit arrowhead should produce a fill (expected 3 fills, got {fillCmds.size})"
 
 def layoutTests : List (String × IO Unit) := [
   -- Name resolution (5)

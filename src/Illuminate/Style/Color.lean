@@ -4,8 +4,9 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Author: David Thrane Christiansen
 -/
 
-namespace Illuminate
+import Illuminate.Geometry.Basic
 
+namespace Illuminate
 
 /-- An RGBA color with 8-bit channels and a floating-point alpha. -/
 structure Color where
@@ -17,7 +18,7 @@ structure Color where
   b : UInt8
   /-- Alpha (opacity), from 0.0 (transparent) to 1.0 (opaque). -/
   a : Float := 1.0
-deriving Repr, BEq, Inhabited
+deriving Repr, BEq, Inhabited, Hashable
 
 namespace Color
 
@@ -42,7 +43,7 @@ end Color
 structure FillSpec where
   /-- Fill color. -/
   color : Color := Color.lightGray
-deriving Repr, BEq
+deriving Repr, BEq, Hashable
 
 instance : Inhabited FillSpec := ⟨{ color := Color.lightGray }⟩
 
@@ -58,7 +59,7 @@ inductive Fill where
   | none
   /-- Solid color fill — the interior is rendered and hittable, even if the color is fully transparent. -/
   | solid : FillSpec → Fill
-deriving Repr, BEq
+deriving Repr, BEq, Hashable
 
 instance : Inhabited Fill := ⟨.solid default⟩
 

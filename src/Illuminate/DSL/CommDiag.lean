@@ -174,7 +174,7 @@ private def buildNodeLayer (st : CommDiagState) : Diagram β :=
         match cell with
         | none => none
         | some ref =>
-          match st.nodes.toList.find? (fun n => n.name == ref.name) with
+          match st.nodes.find? (fun n => n.name == ref.name) with
           | none => none
           | some cdNode =>
             let label := Diagram.text cdNode.label

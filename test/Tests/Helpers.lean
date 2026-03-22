@@ -34,6 +34,25 @@ def assertContains (haystack needle label : String) : IO Unit := do
   unless strContains haystack needle do
     throw <| IO.userError s!"{label}: expected to find \"{needle}\" in output"
 
+def assertCellophane (d : Diagram Empty) (expected : Float) (label : String)
+    (tol : Float := 1e-9) : IO Unit :=
+  match d with
+  | .cellophane α _ => assertApproxEq α expected label tol
+  | _ => throw <| IO.userError s!"{label}: expected `cellophane`"
+
+def assertCrossFade (d : Diagram Empty) (expectedA expectedB : Float) (label : String)
+    (tol : Float := 1e-9) : IO Unit :=
+  match d with
+  | .compose (.cellophane α1 _) (.cellophane α2 _) => do
+    assertApproxEq α1 expectedA s!"{label} a" tol
+    assertApproxEq α2 expectedB s!"{label} b" tol
+  | _ => throw <| IO.userError s!"{label}: expected `compose` of `cellophane`s"
+
+def assertTransform (d : Diagram Empty) (check : Matrix → IO Unit) (label : String) : IO Unit :=
+  match d with
+  | .transform m _ => check m
+  | _ => throw <| IO.userError s!"{label}: expected `transform`"
+
 /-- Renders a diagram to SVG, writes it to a file, and runs basic assertions. -/
 def testVisualWrite (filename : String) (diagram : Illuminate.Diagram SVG)
     (padding : Float := 15) (checks : List (String × String) := []) : IO Unit := do

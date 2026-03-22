@@ -20,7 +20,7 @@ structure ImageRef where
   width : Float
   /-- Display height in diagram units. -/
   height : Float
-deriving Repr, BEq, Inhabited
+deriving Repr, BEq, Inhabited, Hashable
 
 /-- A backend-independent primitive that can be rendered by any backend. -/
 inductive CorePrimitive where
@@ -30,7 +30,7 @@ inductive CorePrimitive where
   | text : String → TextStyle → CorePrimitive
   /-- References an external image resource for raster or vector embedding. -/
   | image : ImageRef → CorePrimitive
-deriving Repr, BEq, Inhabited
+deriving Repr, BEq, Inhabited, Hashable
 
 /--
 The core diagram type, parameterized by a backend-specific foreign type `β`.
@@ -60,6 +60,7 @@ inductive Diagram (β : Type) where
   | cellophane : Float → Diagram β → Diagram β
   /-- Clips a sub-diagram to a path boundary. -/
   | clip : PathData → Diagram β → Diagram β
+deriving Hashable
 
 /--
 Controls how a backend-specific foreign value interacts with the diagram pipeline.
@@ -74,7 +75,7 @@ class Backend (β : Type) where
   /-- Adjusts the inner diagram's stroke trace. Receives the inner stroke trace, returns the final one. -/
   strokeTrace : β → StrokeTrace → StrokeTrace
   /-- Wraps or replaces the compiled inner drawing commands. -/
-  compile : β → List (DrawCmd β) → List (DrawCmd β)
+  compile : β → Array (DrawCmd β) → Array (DrawCmd β)
 
 instance : Backend Empty where
   envelope e _ := nomatch e

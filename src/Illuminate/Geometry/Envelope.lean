@@ -21,6 +21,17 @@ inductive Envelope where
   /-- A nonempty envelope. -/
   | nonempty (env : Vec2 → Float)
 
+instance : Hashable Envelope where
+  hash
+    | .empty => 0
+    | .nonempty env =>
+      -- The envelope is sampled in a few directions so the hash can
+      -- distinguish more of them
+      let sample (v : Vec2) : UInt64 := hash (env v)
+      mixHash (mixHash (mixHash (sample .east) (sample .north))
+                       (mixHash (sample .west) (sample .south)))
+              (mixHash (sample ⟨1, 1⟩) (sample ⟨1, -1⟩))
+
 instance : Coe (Vec2 → Float) Envelope where
   coe := .nonempty
 

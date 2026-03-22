@@ -19,13 +19,13 @@ inductive PathCmd where
   | curveTo : Vec2 → Vec2 → Vec2 → PathCmd
   /-- Closes the current sub-path by drawing a line back to its start. -/
   | closePath : PathCmd
-deriving Repr, BEq, Inhabited
+deriving Repr, BEq, Inhabited, Hashable
 
 /-- An ordered sequence of path commands describing a shape outline. -/
 structure PathData where
   /-- The sequence of drawing commands. -/
   commands : Array PathCmd
-deriving Repr, BEq, Inhabited
+deriving Repr, BEq, Inhabited, Hashable
 
 namespace PathData
 

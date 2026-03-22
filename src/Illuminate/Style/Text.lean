@@ -17,7 +17,7 @@ inductive TextAnchor where
   | start
   /-- Text ends at its position (SVG `text-anchor="end"`). -/
   | «end»
-deriving Repr, BEq, Inhabited
+deriving Repr, BEq, Inhabited, Hashable
 
 /-- Text rendering style: font family, size, weight, slant, and color. -/
 structure TextStyle where
@@ -33,7 +33,7 @@ structure TextStyle where
   color : Color := Color.black
   /-- Horizontal anchor point for text layout. -/
   anchor : TextAnchor := .middle
-deriving Repr, BEq, Inhabited
+deriving Repr, BEq, Inhabited, Hashable
 
 /-- Estimates the advance width of a single character for a proportional sans-serif approximation. -/
 def estimateCharWidth (fontSize : Float) (c : Char) : Float :=
@@ -57,4 +57,4 @@ structure FontSpec where
   bold : Bool := false
   /-- Whether the font is italic. -/
   italic : Bool := false
-deriving Repr, BEq, Inhabited
+deriving Repr, BEq, Inhabited, Hashable
