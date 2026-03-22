@@ -386,7 +386,7 @@ def test_standalone_player_seek_updates_content(page):
     The standalone playerJs renders the sync frame SVG then patches varying attributes
     via paramMap/params. Seeking to a later frame should update the displayed content.
     """
-    html_path = ROOT / "anim-seek-test.html"
+    html_path = ROOT / "test_output" / "anim-seek-test.html"
     assert html_path.exists(), "anim-seek-test.html not found — run lake test first"
     page.goto(f"file://{html_path}")
 
@@ -422,7 +422,7 @@ def test_standalone_player_loop_does_not_stop(page):
     steps. When frame >= totalFrames, it unconditionally sets playing = false
     and shows the play button, even though a looping step should wrap around.
     """
-    html_path = ROOT / "anim-loop-test.html"
+    html_path = ROOT / "test_output" / "anim-loop-test.html"
     assert html_path.exists(), "anim-loop-test.html not found — run lake test first"
     page.goto(f"file://{html_path}")
 
@@ -449,7 +449,7 @@ def test_standalone_player_dual_animation_independence(page):
     Each renderRevealHTML call targets a different CSS selector, so both
     animations should render independently without clobbering each other.
     """
-    html_path = ROOT / "anim-dual-test.html"
+    html_path = ROOT / "test_output" / "anim-dual-test.html"
     assert html_path.exists(), "anim-dual-test.html not found — run lake test first"
     page.goto(f"file://{html_path}")
 

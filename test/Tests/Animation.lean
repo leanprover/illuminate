@@ -259,8 +259,8 @@ def compilationTests : List (String × IO Unit) :=
           Diagram.circle r (fill := .solid { color := Color.red }))
         (fps := 60)
       let html := compiled.renderHTML
-      IO.FS.writeFile "anim-seek-test.html" html
-      IO.println s!"  → wrote anim-seek-test.html ({html.length} bytes)")
+      IO.FS.writeFile "test_output/anim-seek-test.html" html
+      IO.println s!"  → wrote test_output/anim-seek-test.html ({html.length} bytes)")
   , ("compile: write standalone HTML for loop test", do
       let steps : List Step := [{ duration := 2.0, loop := true }]
       let compiled := compileAnimation steps
@@ -273,8 +273,8 @@ def compilationTests : List (String × IO Unit) :=
             (Diagram.circle 10 (fill := .solid { color := Color.blue })))
         (fps := 60)
       let html := compiled.renderHTML
-      IO.FS.writeFile "anim-loop-test.html" html
-      IO.println s!"  → wrote anim-loop-test.html ({html.length} bytes)")
+      IO.FS.writeFile "test_output/anim-loop-test.html" html
+      IO.println s!"  → wrote test_output/anim-loop-test.html ({html.length} bytes)")
   , ("compile: write dual-animation HTML for global clobbering test", do
       -- Animation A: red circle grows, pulses color in a loop, then grows again
       let compiledA := compileAnimation
@@ -372,8 +372,8 @@ p \{ color: #888; font-size: 14px; }
 {snippetB}
 {harness}
 </body></html>"
-      IO.FS.writeFile "anim-dual-test.html" html
-      IO.println s!"  → wrote anim-dual-test.html ({html.length} bytes)")
+      IO.FS.writeFile "test_output/anim-dual-test.html" html
+      IO.println s!"  → wrote test_output/anim-dual-test.html ({html.length} bytes)")
   ]
 
 -- ═══════════════════════════════════════════════════════════════

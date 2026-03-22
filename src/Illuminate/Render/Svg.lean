@@ -55,7 +55,9 @@ def fmtNum (f : Float) : String :=
   let scaled := (f * 10000).round / 10000
   let s := toString scaled
   if !s.contains '.' then s
-  else s.dropEndWhile '0' |>.dropEndWhile '.' |>.copy
+  else
+    let trimmed := s.dropEndWhile '0' |>.dropEndWhile '.'
+    if trimmed.isEmpty then "0" else trimmed.copy
 
 /-- Converts a Color to an SVG color string. -/
 private def colorToSvg (c : Color) : String :=

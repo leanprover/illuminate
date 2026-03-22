@@ -6,4 +6,9 @@
 
 # Visual test actuals (expected PNGs are committed)
 visual_tests/*.actual.png
+
+# Test output HTML files
+test_output/*
+!test_output/.gitkeep
+
 .DS_Store
