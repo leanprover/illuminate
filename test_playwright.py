@@ -383,9 +383,8 @@ def test_trace_connect_angled_visual():
 def test_standalone_player_seek_updates_content(page):
     """Scrubbing the standalone player to a different frame should change the displayed SVG.
 
-    The standalone playerJs always resets container.innerHTML to seg.sync (frame 0)
-    instead of using paramMap/params for DOM patching or seg.svgs[local] for full
-    frame replacement. This means seeking to a later frame shows stale content.
+    The standalone playerJs renders the sync frame SVG then patches varying attributes
+    via paramMap/params. Seeking to a later frame should update the displayed content.
     """
     html_path = ROOT / "anim-seek-test.html"
     assert html_path.exists(), "anim-seek-test.html not found — run lake test first"

@@ -51,18 +51,11 @@ def escapeXml (s : String) : String :=
 namespace Svg
 
 /-- Formats a Float with reasonable precision, trimming trailing zeros. -/
-private def fmtNum (f : Float) : String :=
-  -- Round to 4 decimal places
+def fmtNum (f : Float) : String :=
   let scaled := (f * 10000).round / 10000
   let s := toString scaled
-  -- Trim trailing zeros after decimal point
-  if s.any (· == '.') then
-    let s := s.toList.reverse.dropWhile (· == '0') |>.reverse
-    let s := s.dropWhile (fun c => c == '.' && s.length == 1) -- keep at least something
-    let s := if s.getLast? == some '.' then s.dropLast else s
-    let result := String.ofList s
-    if result.isEmpty then "0" else result
-  else s
+  if !s.contains '.' then s
+  else s.dropEndWhile '0' |>.dropEndWhile '.' |>.copy
 
 /-- Converts a Color to an SVG color string. -/
 private def colorToSvg (c : Color) : String :=

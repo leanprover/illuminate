@@ -56,6 +56,7 @@ Extracts serializable field values from a draw command, paired with their SVG at
 private def drawCmdFields {β : Type} [BackendRender β]
     (cmd : DrawCmd β) : List (String × String × String) :=
   -- Returns (fieldName, svgAttrName, value)
+  let fmt := Svg.fmtNum
   match cmd with
   | .fillPath pd fill =>
     let d := Svg.pathDataToD pd
@@ -64,22 +65,22 @@ private def drawCmdFields {β : Type} [BackendRender β]
     | .solid fs =>
       [("d", "d", d),
        ("fill", "fill", s!"rgb({fs.color.r},{fs.color.g},{fs.color.b})"),
-       ("fill-opacity", "fill-opacity", toString fs.color.a)]
+       ("fill-opacity", "fill-opacity", fmt fs.color.a)]
   | .strokePath pd stroke =>
     let d := Svg.pathDataToD pd
     [("d", "d", d),
      ("stroke", "stroke", s!"rgb({stroke.color.r},{stroke.color.g},{stroke.color.b})"),
-     ("stroke-width", "stroke-width", toString stroke.width),
-     ("stroke-opacity", "stroke-opacity", toString stroke.color.a)]
+     ("stroke-width", "stroke-width", fmt stroke.width),
+     ("stroke-opacity", "stroke-opacity", fmt stroke.color.a)]
   | .drawTextRun s style pos =>
     [("text", "textContent", s),
-     ("x", "x", toString pos.x), ("y", "y", toString pos.y),
-     ("font-size", "font-size", toString style.fontSize),
+     ("x", "x", fmt pos.x), ("y", "y", fmt pos.y),
+     ("font-size", "font-size", fmt style.fontSize),
      ("fill", "fill", s!"rgb({style.color.r},{style.color.g},{style.color.b})")]
   | .pushTransform m =>
     [("matrix", "transform",
-      s!"matrix({m.a},{m.c},{m.b},{m.d},{m.tx},{m.ty})")]
-  | .pushOpacity α => [("opacity", "opacity", toString α)]
+      s!"matrix({fmt m.a},{fmt m.c},{fmt m.b},{fmt m.d},{fmt m.tx},{fmt m.ty})")]
+  | .pushOpacity α => [("opacity", "opacity", fmt α)]
   | .pushAnnotation tag => [("tag", "data-anno-id", toString tag)]
   | .pushClip pd clipId =>
     [("d", "d", Svg.pathDataToD pd), ("clipId", "id", toString clipId)]
@@ -228,9 +229,7 @@ def compileAnimation (steps : List Step)
       if first then { minX := -320, minY := -240, width := 640, height := 480 }
       else { minX := minX, minY := minY, width := maxX - minX, height := maxY - minY }
     (drawLists, vb, h)
-  -- Render all frames with the unified viewBox
   let clipPfx := s!"{clipHash.toNat % 65536}_"
-  let allSvgs := frameDrawLists.map fun cmds => Svg.render cmds unifiedViewBox clipPfx
   -- Compute step boundary frames
   let stepFrames : Array Nat := Id.run do
     let mut arr : Array Nat := #[]
@@ -254,13 +253,13 @@ def compileAnimation (steps : List Step)
       if shouldSplit then
         let segFrames := frameDrawLists.extract segStart i
         let (pmap, params) := extractParams segFrames
-        let syncSvg := allSvgs[segStart]?.getD ""
-        let segSvgs := allSvgs.extract segStart i
+        let syncSvg := match frameDrawLists[segStart]? with
+          | some cmds => Svg.render cmds unifiedViewBox clipPfx
+          | none => ""
         segs := segs.push {
           startFrame := segStart
           frameCount := i - segStart
           syncFrame := syncSvg
-          frameSvgs := segSvgs
           paramMap := pmap
           params
         }
@@ -269,13 +268,13 @@ def compileAnimation (steps : List Step)
     if segStart < totalFrames then
       let segFrames := frameDrawLists.extract segStart totalFrames
       let (pmap, params) := extractParams segFrames
-      let syncSvg := allSvgs[segStart]?.getD ""
-      let segSvgs := allSvgs.extract segStart totalFrames
+      let syncSvg := match frameDrawLists[segStart]? with
+        | some cmds => Svg.render cmds unifiedViewBox clipPfx
+        | none => ""
       segs := segs.push {
         startFrame := segStart
         frameCount := totalFrames - segStart
         syncFrame := syncSvg
-        frameSvgs := segSvgs
         paramMap := pmap
         params
       }

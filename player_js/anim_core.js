@@ -159,9 +159,6 @@ var animRenderSegFrame = function (container, seg, currentSeg, local) {
                 }
             }
         }
-    } else if (local > 0 && seg.svgs && seg.svgs[local]) {
-        container.innerHTML = seg.svgs[local];
-        seg._elems = undefined;
     }
     return seg;
 };

@@ -33,8 +33,6 @@ structure Segment where
   frameCount : Nat
   /-- Full SVG string for the first frame (sync frame for random access). -/
   syncFrame : String
-  /-- Pre-rendered SVG strings for every frame in this segment, for direct playback. -/
-  frameSvgs : Array String
   /-- Maps each parameter index to an SVG element index and attribute name. -/
   paramMap : Array ParamBinding
   /-- Per-frame parameter values; `params[i][j]` is the `j`-th parameter for frame `i`. -/

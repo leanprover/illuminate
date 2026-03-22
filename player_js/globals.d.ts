@@ -13,7 +13,6 @@ interface Segment {
     sf: number;
     fc: number;
     sync: string;
-    svgs: string[];
     pmap: ParamBinding[];
     params: string[][];
     /** Runtime cache of indexed SVG elements, populated by the widget player. */

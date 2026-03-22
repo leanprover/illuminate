@@ -22,17 +22,15 @@ private def paramBindingToJson (pb : ParamBinding) : Json :=
 open Lean in
 /-- Serializes a Segment to a Lean JSON value. -/
 private def segmentToJson (seg : Segment) : Json :=
-  let pmap := seg.paramMap.toList.map paramBindingToJson
-  let params := seg.params.toList.map fun frameParams =>
+  let pmap := seg.paramMap.map paramBindingToJson
+  let params := seg.params.map fun frameParams =>
     Json.arr (frameParams.map Json.str)
-  let svgs := seg.frameSvgs.toList.map Json.str
   .mkObj [
     ("sf", .num seg.startFrame),
     ("fc", .num seg.frameCount),
     ("sync", .str seg.syncFrame),
-    ("svgs", .arr svgs.toArray),
-    ("pmap", .arr pmap.toArray),
-    ("params", .arr params.toArray)]
+    ("pmap", .arr pmap),
+    ("params", .arr params)]
 
 open Lean in
 /-- Serializes a StepInfo to a Lean JSON value. -/
@@ -42,13 +40,13 @@ private def stepInfoToJson (si : StepInfo) : Json :=
 open Lean in
 /-- Serializes a CompiledAnimation to a Lean JSON value. -/
 def compiledAnimationToLeanJson (ca : CompiledAnimation) : Json :=
-  let segs := ca.segments.toList.map segmentToJson
-  let steps := ca.steps.toList.map stepInfoToJson
+  let segs := ca.segments.map segmentToJson
+  let steps := ca.steps.map stepInfoToJson
   .mkObj [
     ("fps", .num ca.fps),
     ("totalFrames", .num ca.totalFrames),
-    ("segments", .arr segs.toArray),
-    ("steps", .arr steps.toArray)]
+    ("segments", .arr segs),
+    ("steps", .arr steps)]
 
 open Lean in
 /-- Serializes a CompiledAnimation to a JSON string. -/
