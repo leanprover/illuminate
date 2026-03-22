@@ -146,124 +146,51 @@ def timelineTests : List (String × IO Unit) :=
 -- Effects tests
 -- ═══════════════════════════════════════════════════════════════
 
+private def disc : Diagram Empty := Diagram.circle 10 (fill := .solid { color := Color.red })
+private def blueDisc : Diagram Empty := Diagram.circle 10 (fill := .solid { color := Color.blue })
+
 def effectsTests : List (String × IO Unit) :=
-  [ ("fadeIn: t=0 is transparent", do
-      let d : Diagram Empty := Diagram.circle 10 (fill := .solid { color := Color.red })
-      let faded := fadeIn d 0
-      match faded with
-      | .cellophane α _ => assertApproxEq α 0 "fadeIn t=0 opacity"
-      | _ => throw <| IO.userError "fadeIn should produce cellophane")
-  , ("fadeIn: t=1 is opaque", do
-      let d : Diagram Empty := Diagram.circle 10 (fill := .solid { color := Color.red })
-      let faded := fadeIn d 1
-      match faded with
-      | .cellophane α _ => assertApproxEq α 1 "fadeIn t=1 opacity"
-      | _ => throw <| IO.userError "fadeIn should produce cellophane")
-  , ("fadeOut: t=0 is opaque", do
-      let d : Diagram Empty := Diagram.circle 10 (fill := .solid { color := Color.red })
-      let faded := fadeOut d 0
-      match faded with
-      | .cellophane α _ => assertApproxEq α 1 "fadeOut t=0 opacity"
-      | _ => throw <| IO.userError "fadeOut should produce cellophane")
-  , ("fadeOut: t=1 is transparent", do
-      let d : Diagram Empty := Diagram.circle 10 (fill := .solid { color := Color.red })
-      let faded := fadeOut d 1
-      match faded with
-      | .cellophane α _ => assertApproxEq α 0 "fadeOut t=1 opacity"
-      | _ => throw <| IO.userError "fadeOut should produce cellophane")
-  , ("crossFade: produces compose of two cellophanes", do
-      let a : Diagram Empty := Diagram.circle 10 (fill := .solid { color := Color.red })
-      let b : Diagram Empty := Diagram.circle 10 (fill := .solid { color := Color.blue })
-      let cf := crossFade a b 0.5
-      match cf with
-      | .compose (.cellophane α1 _) (.cellophane α2 _) =>
-        assertApproxEq α1 0.5 "crossFade a opacity"
-        assertApproxEq α2 0.5 "crossFade b opacity"
-      | _ => throw <| IO.userError "crossFade should produce compose of cellophanes")
-  , ("slide: t=0 at start position", do
-      let d : Diagram Empty := Diagram.circle 10 (fill := .solid { color := Color.red })
-      let slid := slide d ⟨100, 0⟩ ⟨200, 0⟩ 0
-      match slid with
-      | .transform m _ =>
-        assertApproxEq m.tx 100 "slide t=0 tx"
-        assertApproxEq m.ty 0 "slide t=0 ty"
-      | _ => throw <| IO.userError "slide should produce transform")
-  , ("slide: t=1 at end position", do
-      let d : Diagram Empty := Diagram.circle 10 (fill := .solid { color := Color.red })
-      let slid := slide d ⟨100, 0⟩ ⟨200, 0⟩ 1
-      match slid with
-      | .transform m _ =>
-        assertApproxEq m.tx 200 "slide t=1 tx"
-        assertApproxEq m.ty 0 "slide t=1 ty"
-      | _ => throw <| IO.userError "slide should produce transform")
-  , ("animScale: t=0.5 midpoint", do
-      let d : Diagram Empty := Diagram.circle 10 (fill := .solid { color := Color.red })
-      let scaled := animScale d 1.0 3.0 0.5
-      match scaled with
-      | .transform m _ =>
-        assertApproxEq m.a 2.0 "animScale t=0.5 sx"
-        assertApproxEq m.d 2.0 "animScale t=0.5 sy"
-      | _ => throw <| IO.userError "animScale should produce transform")
-  , ("animRotate: t=0 no rotation", do
-      let d : Diagram Empty := Diagram.circle 10 (fill := .solid { color := Color.red })
-      let rotated := animRotate d 0 pi 0
-      match rotated with
-      | .transform m _ =>
-        assertApproxEq m.a 1.0 "animRotate t=0 cos"
-        assertApproxEq m.c 0.0 "animRotate t=0 sin" (tol := 1e-6)
-      | _ => throw <| IO.userError "animRotate should produce transform")
-  , ("animRotate: t=0.5 half rotation", do
-      let d : Diagram Empty := Diagram.circle 10 (fill := .solid { color := Color.red })
-      let rotated := animRotate d 0 pi 0.5
-      match rotated with
-      | .transform m _ =>
-        -- cos(π/2) ≈ 0, sin(π/2) ≈ 1
-        assertApproxEq m.a 0.0 "animRotate t=0.5 cos" (tol := 1e-6)
-        assertApproxEq m.c 1.0 "animRotate t=0.5 sin" (tol := 1e-6)
-      | _ => throw <| IO.userError "animRotate should produce transform")
-  , ("animRotate: t=1 full rotation", do
-      let d : Diagram Empty := Diagram.circle 10 (fill := .solid { color := Color.red })
-      let rotated := animRotate d 0 pi 1
-      match rotated with
-      | .transform m _ =>
-        -- cos(π) ≈ -1, sin(π) ≈ 0
-        assertApproxEq m.a (-1.0) "animRotate t=1 cos" (tol := 1e-6)
-        assertApproxEq m.c 0.0 "animRotate t=1 sin" (tol := 1e-6)
-      | _ => throw <| IO.userError "animRotate should produce transform")
-  , ("crossFade: t=0 only a visible", do
-      let a : Diagram Empty := Diagram.circle 10 (fill := .solid { color := Color.red })
-      let b : Diagram Empty := Diagram.circle 10 (fill := .solid { color := Color.blue })
-      let cf := crossFade a b 0
-      match cf with
-      | .compose (.cellophane α1 _) (.cellophane α2 _) =>
-        assertApproxEq α1 1.0 "crossFade t=0 a opacity"
-        assertApproxEq α2 0.0 "crossFade t=0 b opacity"
-      | _ => throw <| IO.userError "crossFade should produce compose of cellophanes")
-  , ("crossFade: t=1 only b visible", do
-      let a : Diagram Empty := Diagram.circle 10 (fill := .solid { color := Color.red })
-      let b : Diagram Empty := Diagram.circle 10 (fill := .solid { color := Color.blue })
-      let cf := crossFade a b 1
-      match cf with
-      | .compose (.cellophane α1 _) (.cellophane α2 _) =>
-        assertApproxEq α1 0.0 "crossFade t=1 a opacity"
-        assertApproxEq α2 1.0 "crossFade t=1 b opacity"
-      | _ => throw <| IO.userError "crossFade should produce compose of cellophanes")
-  , ("slide: start equals finish is idempotent", do
-      let d : Diagram Empty := Diagram.circle 10 (fill := .solid { color := Color.red })
-      let slid := slide d ⟨50, 50⟩ ⟨50, 50⟩ 0.5
-      match slid with
-      | .transform m _ =>
-        assertApproxEq m.tx 50 "slide same pos tx"
-        assertApproxEq m.ty 50 "slide same pos ty"
-      | _ => throw <| IO.userError "slide should produce transform")
-  , ("animScale: s0 equals s1 is identity scale", do
-      let d : Diagram Empty := Diagram.circle 10 (fill := .solid { color := Color.red })
-      let scaled := animScale d 2.0 2.0 0.5
-      match scaled with
-      | .transform m _ =>
-        assertApproxEq m.a 2.0 "animScale same s"
-        assertApproxEq m.d 2.0 "animScale same s d"
-      | _ => throw <| IO.userError "animScale should produce transform")
+  [ ("fadeIn: t=0 is transparent",
+      assertCellophane (fadeIn disc 0) 0 "fadeIn t=0")
+  , ("fadeIn: t=1 is opaque",
+      assertCellophane (fadeIn disc 1) 1 "fadeIn t=1")
+  , ("fadeOut: t=0 is opaque",
+      assertCellophane (fadeOut disc 0) 1 "fadeOut t=0")
+  , ("fadeOut: t=1 is transparent",
+      assertCellophane (fadeOut disc 1) 0 "fadeOut t=1")
+  , ("crossFade: midpoint",
+      assertCrossFade (crossFade disc blueDisc 0.5) 0.5 0.5 "crossFade t=0.5")
+  , ("crossFade: t=0 only a visible",
+      assertCrossFade (crossFade disc blueDisc 0) 1.0 0.0 "crossFade t=0")
+  , ("crossFade: t=1 only b visible",
+      assertCrossFade (crossFade disc blueDisc 1) 0.0 1.0 "crossFade t=1")
+  , ("slide: t=0 at start position",
+      assertTransform (slide disc ⟨100, 0⟩ ⟨200, 0⟩ 0) (fun m => do
+        assertApproxEq m.tx 100 "tx"; assertApproxEq m.ty 0 "ty") "slide t=0")
+  , ("slide: t=1 at end position",
+      assertTransform (slide disc ⟨100, 0⟩ ⟨200, 0⟩ 1) (fun m => do
+        assertApproxEq m.tx 200 "tx"; assertApproxEq m.ty 0 "ty") "slide t=1")
+  , ("slide: start equals finish",
+      assertTransform (slide disc ⟨50, 50⟩ ⟨50, 50⟩ 0.5) (fun m => do
+        assertApproxEq m.tx 50 "tx"; assertApproxEq m.ty 50 "ty") "slide same")
+  , ("animScale: t=0.5 midpoint",
+      assertTransform (animScale disc 1.0 3.0 0.5) (fun m => do
+        assertApproxEq m.a 2.0 "sx"; assertApproxEq m.d 2.0 "sy") "scale t=0.5")
+  , ("animScale: s0 equals s1",
+      assertTransform (animScale disc 2.0 2.0 0.5) (fun m => do
+        assertApproxEq m.a 2.0 "sx"; assertApproxEq m.d 2.0 "sy") "scale same")
+  , ("animRotate: t=0 no rotation",
+      assertTransform (animRotate disc 0 pi 0) (fun m => do
+        assertApproxEq m.a 1.0 "cos" (tol := 1e-6)
+        assertApproxEq m.c 0.0 "sin" (tol := 1e-6)) "rotate t=0")
+  , ("animRotate: t=0.5 half rotation",
+      assertTransform (animRotate disc 0 pi 0.5) (fun m => do
+        assertApproxEq m.a 0.0 "cos" (tol := 1e-6)
+        assertApproxEq m.c 1.0 "sin" (tol := 1e-6)) "rotate t=0.5")
+  , ("animRotate: t=1 full rotation",
+      assertTransform (animRotate disc 0 pi 1) (fun m => do
+        assertApproxEq m.a (-1.0) "cos" (tol := 1e-6)
+        assertApproxEq m.c 0.0 "sin" (tol := 1e-6)) "rotate t=1")
   ]
 
 -- ═══════════════════════════════════════════════════════════════
