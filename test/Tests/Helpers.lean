@@ -66,7 +66,7 @@ def testVisualWrite (filename : String) (diagram : Illuminate.Diagram SVG)
 
 /--
 Checks that an envelope is convex by computing the boundary polygon via
-tangent-line intersections (the same method used by {name}`showEnvelope`) and
+tangent-line intersections (the same method used by {name (full := Diagram.showEnvelope)}`showEnvelope`) and
 verifying that all consecutive turns have the same winding direction.
 -/
 def assertEnvelopeConvex (env : Envelope) (label : String) (n : Nat := 64) : IO Unit := do
