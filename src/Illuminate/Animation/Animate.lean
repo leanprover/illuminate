@@ -20,8 +20,8 @@ def totalDuration (steps : List Step) : Float :=
 /--
 Computes the progress vector for a given absolute time.
 
-Each entry in the result is the corresponding step's progress in {lit}`[0, 1]`.
-Steps play sequentially: step {lit}`i+1` begins when step {lit}`i` reaches 1.0.
+Each entry in the result is the corresponding step's progress in $`[0, 1]`.
+Steps play sequentially: step $`i+1` begins when step $`i` reaches 1.0.
 A step with zero or negative duration is skipped (progress immediately 1.0).
 A looping step wraps its progress around rather than clamping at 1.0.
 -/

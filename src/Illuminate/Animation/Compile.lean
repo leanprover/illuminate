@@ -48,9 +48,13 @@ private def structurallyIdentical {β : Type}
 /--
 Extracts a param map and per-frame parameter arrays from structurally identical draw lists.
 
-Returns {lit}`(paramMap, params)` where:
-- {lit}`paramMap[i]` maps param {lit}`i` to an SVG element index and attribute name
-- {lit}`params[frame][i]` is the string value of param {lit}`i` for that frame
+{given -show}`paramMap : Array ParamBinding, params : Array (Array String), i : Nat, frame : Nat`
+{given -show}`h : i < paramMap.size`
+{given -show}`h : frame < params.size`
+{given -show}`h : i < params[frame].size`
+Returns {lean}`(paramMap, params)` where:
+- {lean}`paramMap[i]` maps param {name}`i` to an SVG element index and attribute name
+- {lean}`params[frame][i]` is the string value of param {lean}`i` for that frame
 -/
 private def extractParams {β : Type} [BackendRender β]
     (frames : Array (Array (DrawCmd β))) :

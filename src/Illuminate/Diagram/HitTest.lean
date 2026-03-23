@@ -43,7 +43,7 @@ namespace PathData
 
 /--
 Tests whether a point lies inside a closed path using the ray-casting algorithm.
-Casts a horizontal ray to the right from {lit}`p` and counts boundary crossings;
+Casts a horizontal ray to the right from {name}`p` and counts boundary crossings;
 an odd count means the point is inside.
 -/
 def contains (pd : PathData) (p : Point) : Bool :=
@@ -59,7 +59,7 @@ end PathData
 /--
 Tests whether a point lies within the stroke band of a path.
 Casts rays in several directions from the point; if any ray's closest
-stroke hit has {lit}`edge ≤ 0`, the point is inside the stroke band.
+stroke hit has $`edge ≤ 0`, the point is inside the stroke band.
 -/
 private def pointOnStroke (pd : PathData) (strokeWidth : Float) (p : Point) : Bool :=
   if strokeWidth <= 0 then false
@@ -101,7 +101,7 @@ variable {β : Type} [Backend β]
 /--
 Hit-tests a diagram at the given point, returning the topmost hit.
 
-Respects front-to-back ordering: in {lit}`compose a b`, {lit}`b` (drawn on top) is
+Respects front-to-back ordering: given diagrams {given}`a, b`, in {lean}`Diagram.compose a b`, {name}`b` (drawn on top) is
 tested first. A {name}`Fill.solid` interior is hittable even if transparent. A
 {name}`Fill.none` interior is not hittable — only its stroke boundary is.
 Clicking within the border stroke of a shape counts as clicking the shape.

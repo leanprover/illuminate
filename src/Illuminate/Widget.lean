@@ -156,7 +156,7 @@ deriving Lean.FromJson, Lean.ToJson
 structure HitTestResponse where
   /-- The kind of hit: "nothing", "something", or "tag". -/
   kind : String
-  /-- The tag value (only meaningful when {lit}`kind` is "tag"). -/
+  /-- The tag value (only meaningful when {name (full := HitTestResponse.kind)}`kind` is "tag"). -/
   value : Nat := 0
   /-- Human-readable label for the hit region, if available. -/
   label : String := ""
@@ -166,8 +166,8 @@ deriving Lean.FromJson, Lean.ToJson
 Applies stored gadget parameter values to a diagram expression, producing the
 fully-applied {lean}`Diagram SVG` expression.
 -/
-private def applyGadgetValues (sd : StoredDiagram) (values : Array Lean.Json)
-    : Except String Lean.Expr := do
+private def applyGadgetValues (sd : StoredDiagram) (values : Array Lean.Json) :
+    Except String Lean.Expr := do
   let mut app := sd.expr
   if values.size < sd.gadgets.size then
     throw s!"expected {sd.gadgets.size} gadget values, got {values.size}"
@@ -216,7 +216,7 @@ private unsafe def evalParamDiagramUnsafe (req : EvalParamRequest) :
       throw (.mk .internalError "diagram evaluation failed" : RequestError)
 
 open Lean Server in
-/-- Safe wrapper for the unsafe evaluator, linked via {lit}`@[implementedBy]`. -/
+/-- Safe wrapper for the unsafe evaluator, linked via {attr}`@[implemented_by]`. -/
 @[implemented_by evalParamDiagramUnsafe]
 private opaque evalParamDiagramImpl (req : EvalParamRequest) :
     RequestM (RequestTask EvalParamResponse)
@@ -284,7 +284,7 @@ private unsafe def hitTestDiagramUnsafe (req : HitTestRequest) :
       throw (.mk .internalError "hit test evaluation failed" : RequestError)
 
 open Lean Server in
-/-- Safe wrapper for the unsafe hit-test evaluator, linked via {lit}`@[implementedBy]`. -/
+/-- Safe wrapper for the unsafe hit-test evaluator, linked via {attr}`@[implemented_by]`. -/
 @[implemented_by hitTestDiagramUnsafe]
 private opaque hitTestDiagramImpl (req : HitTestRequest) :
     RequestM (RequestTask HitTestResponse)
@@ -359,7 +359,7 @@ where
 -/
 
 open Lean Widget Elab Command Term Meta in
-/-- Syntax for the {lit}`#diagram` command that renders a diagram in the infoview. -/
+/-- A command that renders a diagram in the InfoView. -/
 syntax (name := diagramCmd) "#diagram " term : command
 
 open Lean Widget Elab Command Term Meta in
@@ -385,7 +385,7 @@ private unsafe def applyInitialGadgetValues (e : Expr) (gadgets : Array Json) : 
   return app
 
 open Lean Widget Elab Command Term Meta in
-/-- Elaborates the {lit}`#diagram` command, evaluating the term and rendering it as SVG. -/
+/-- Elaborates the {kw}`#diagram` command, evaluating the term and rendering it as SVG. -/
 @[command_elab diagramCmd]
 unsafe def elabDiagramCmd : CommandElab := fun stx => do
   let t := stx[1]

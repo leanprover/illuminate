@@ -13,8 +13,8 @@ namespace Illuminate
 
 /-- Types that support linear interpolation between two values. -/
 class Interpolate (α : Type) where
-  /-- Interpolates between {lit}`a` and {lit}`b` at parameter {lit}`t` in {lit}`[0, 1]`. -/
-  interpolate : α → α → Float → α
+  /-- Interpolates between {name}`a` and {name}`b` at parameter {name}`t` in $`[0, 1]`. -/
+  interpolate (a b : α) (t : Float) : α
 
 namespace Interpolate
 

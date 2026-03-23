@@ -14,11 +14,11 @@ open Illuminate
 # Testable predicates
 -/
 
-/-- Checks that a trace query returns exactly `{lit}n` intersections. -/
+/-- Checks that a trace query returns exactly {name}`n` intersections. -/
 def traceHitsExactly (trace : Trace) (p : Point) (v : Vec2) (n : Nat) : Bool :=
   (trace.query p v).size == n
 
-/-- Checks that the closest intersection is approximately `{lit}expected`. -/
+/-- Checks that the closest intersection is approximately {name}`expected`. -/
 def traceClosestApprox (trace : Trace) (p : Point) (v : Vec2) (expected : Float)
     (tol : Float := 1e-6) : Bool :=
   match trace.closest p v with
@@ -39,7 +39,7 @@ def traceHitsAllPositive (trace : Trace) (p : Point) (v : Vec2) : Bool :=
   let hits := trace.query p v
   hits.all (· >= 0)
 
-/-- Checks that a specific hit (by index) is approximately `{lit}expected`. -/
+/-- Checks that a specific hit (by index) is approximately {name}`expected`. -/
 def traceHitApprox (trace : Trace) (p : Point) (v : Vec2) (idx : Nat) (expected : Float)
     (tol : Float := 1e-6) : Bool :=
   let hits := trace.query p v
@@ -360,11 +360,11 @@ def testTrace_path_sorted : IO Unit := do
 # StrokeTrace testable predicates
 -/
 
-/-- Checks that a stroke trace query returns exactly `{lit}n` hits. -/
+/-- Checks that a stroke trace query returns exactly {name}`n` hits. -/
 def strokeHitsExactly (st : StrokeTrace) (p : Point) (v : Vec2) (n : Nat) : Bool :=
   (st.query p v).size == n
 
-/-- Checks that the closest stroke hit's edge is approximately `{lit}expected`. -/
+/-- Checks that the closest stroke hit's edge is approximately {name}`expected`. -/
 def strokeClosestEdgeApprox (st : StrokeTrace) (p : Point) (v : Vec2) (expected : Float)
     (tol : Float := 1e-4) : Bool :=
   match st.closest p v with

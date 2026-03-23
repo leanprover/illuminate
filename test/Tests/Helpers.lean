@@ -8,12 +8,12 @@ import Illuminate
 
 open Illuminate
 
-/-- Check that a Float is approximately equal to an expected value. -/
+/-- Checks that a {name}`Float` is approximately equal to an expected value. -/
 def assertApproxEq (actual expected : Float) (label : String) (tol : Float := 1e-9) : IO Unit := do
   unless (actual - expected).abs < tol do
     throw <| IO.userError s!"{label}: expected {expected}, got {actual}"
 
-/-- Check that two Vec2 values are approximately equal. -/
+/-- Checks that two {name}`Vec2` values are approximately equal. -/
 def assertVec2Eq (actual expected : Vec2) (label : String) (tol : Float := 1e-9) : IO Unit := do
   assertApproxEq actual.x expected.x s!"{label}.x" tol
   assertApproxEq actual.y expected.y s!"{label}.y" tol
@@ -66,7 +66,7 @@ def testVisualWrite (filename : String) (diagram : Illuminate.Diagram SVG)
 
 /--
 Checks that an envelope is convex by computing the boundary polygon via
-tangent-line intersections (the same method used by `{name}showEnvelope`) and
+tangent-line intersections (the same method used by {name}`showEnvelope`) and
 verifying that all consecutive turns have the same winding direction.
 -/
 def assertEnvelopeConvex (env : Envelope) (label : String) (n : Nat := 64) : IO Unit := do

@@ -17,9 +17,7 @@ namespace Illuminate
 
 namespace PathData
 
-/--
-Evaluates a cubic Bézier at parameter {lit}`t`.
--/
+/-- Evaluates a cubic Bézier at parameter {name}`t`. -/
 private def evalBezier (p0 c1 c2 p3 : Vec2) (t : Float) : Vec2 :=
   let u := 1 - t
   Vec2.mk
@@ -29,7 +27,7 @@ private def evalBezier (p0 c1 c2 p3 : Vec2) (t : Float) : Vec2 :=
 /--
 Computes the exact extremal points of a cubic Bézier curve by solving the derivative
 (a quadratic) for each axis independently. Returns the two endpoints plus any interior
-extrema where {lit}`t ∈ (0, 1)`.
+extrema where $`t ∈ (0, 1)`.
 -/
 private def bezierExtrema (p0 c1 c2 p3 : Vec2) : List Vec2 :=
   let solve (v0 v1 v2 v3 : Float) : List Float :=
@@ -401,12 +399,12 @@ private def centerOrigin (d : Diagram β) : Diagram β :=
     if cx.abs < 0.001 && cy.abs < 0.001 then d
     else .transform (Matrix.translate (-cx) (-cy)) d
 
-/-- Layers {lit}`b` atop {lit}`a`, sharing the origin. {lit}`a` is drawn first (behind), {lit}`b` on top. -/
+/-- Layers {name}`b` atop {name}`a`, sharing the origin. {name}`a` is drawn first (behind), {name}`b` on top. -/
 def atop (a b : Diagram β) : Diagram β := .compose a b
 
 /--
-Places {lit}`b` beside {lit}`a` in direction {lit}`v` with the given gap.
-The displacement is {lit}`envA(v) + envB(-v) + gap` in the direction {lit}`v`.
+Places {name}`b` beside {name}`a` in direction {name}`v` with the given gap.
+The displacement is $`envA(v) + envB(-v) + gap` in the direction {name}`v`.
 The result is re-centered at the origin.
 -/
 def beside (v : Vec2) (gap : Float := 0) (a b : Diagram β) : Diagram β :=
@@ -417,7 +415,7 @@ def beside (v : Vec2) (gap : Float := 0) (a b : Diagram β) : Diagram β :=
   centerOrigin (.compose a (.transform (Matrix.translate offset.x offset.y) b))
 
 /--
-Places {lit}`b` to the right of {lit}`a` with a gap, aligning vertically according
+Places {name}`b` to the right of {name}`a` with a gap, aligning vertically according
 to the envelope centers (or top/bottom edges).
 -/
 private def besideH (gap : Float) (align : HorizontalAlignment)
@@ -435,7 +433,7 @@ private def besideH (gap : Float) (align : HorizontalAlignment)
   .compose a (.transform (Matrix.translate dx dy) b)
 
 /--
-Places {lit}`b` below {lit}`a` with a gap, aligning horizontally according
+Places {name}`b` below {name}`a` with a gap, aligning horizontally according
 to the envelope centers (or left/right edges).
 -/
 private def besideV (gap : Float) (align : VerticalAlignment)
@@ -452,11 +450,11 @@ private def besideV (gap : Float) (align : VerticalAlignment)
     | .right => envA[Vec2.east] - envB[Vec2.east]
   .compose a (.transform (Matrix.translate dx dy) b)
 
-/-- Places {lit}`b` to the right of {lit}`a` with zero gap. -/
+/-- Places {name}`b` to the right of {name}`a` with zero gap. -/
 def hjoin (a b : Diagram β) : Diagram β :=
   beside Vec2.east 0 a b
 
-/-- Places {lit}`b` below {lit}`a` with zero gap. -/
+/-- Places {name}`b` below {name}`a` with zero gap. -/
 def vjoin (a b : Diagram β) : Diagram β :=
   beside Vec2.south 0 a b
 
@@ -592,7 +590,7 @@ def withEnvelope (env : Envelope) (d : Diagram β) : Diagram β :=
 
 /--
 Renders content but contributes zero envelope to layout (invisible to composition). The dual of
-{lit}`ghost`, which contributes envelope but renders nothing.
+{name (scope := "Illuminate.Diagram.Placement")}`ghost`, which contributes envelope but renders nothing.
 -/
 def floating (d : Diagram β) : Diagram β :=
   .withEnv Envelope.empty d
@@ -601,28 +599,28 @@ def floating (d : Diagram β) : Diagram β :=
 def strut (env : Envelope) : Diagram β :=
   .withEnv env .empty
 
-/-- Set the rightward (east) extent of the envelope. -/
+/-- Sets the rightward (east) extent of the envelope. -/
 def setEnvelopeRight (extent : Float) (d : Diagram β) : Diagram β :=
   let env := d.getEnvelope
   let adjusted : Envelope := env.modify fun f v =>
     if v == Vec2.east then extent else f v
   .withEnv adjusted d
 
-/-- Set the leftward (west) extent of the envelope. -/
+/-- Sets the leftward (west) extent of the envelope. -/
 def setEnvelopeLeft (extent : Float) (d : Diagram β) : Diagram β :=
   let env := d.getEnvelope
   let adjusted : Envelope := env.modify fun f v =>
     if v == Vec2.west then extent else f v
   .withEnv adjusted d
 
-/-- Set the upward (north) extent of the envelope. -/
+/-- Sets the upward (north) extent of the envelope. -/
 def setEnvelopeTop (extent : Float) (d : Diagram β) : Diagram β :=
   let env := d.getEnvelope
   let adjusted : Envelope := env.modify fun f v =>
     if v == Vec2.north then extent else f v
   .withEnv adjusted d
 
-/-- Set the downward (south) extent of the envelope. -/
+/-- Sets the downward (south) extent of the envelope. -/
 def setEnvelopeBottom (extent : Float) (d : Diagram β) : Diagram β :=
   let env := d.getEnvelope
   let adjusted : Envelope := env.modify fun f v =>
@@ -721,7 +719,7 @@ def filledFrame (d : Diagram β) (fill : Fill := default) (stroke : Stroke := {}
 
 /--
 Overlays a translucent polygon showing the diagram's envelope boundary.
-Samples the envelope at {lit}`samples` evenly-spaced directions to build the polygon.
+Samples the envelope at {name}`samples` evenly-spaced directions to build the polygon.
 Useful for debugging layout and envelope behavior.
 -/
 def showEnvelope (d : Diagram β) (samples : Nat := 64)
@@ -815,7 +813,7 @@ private def traceOverlay {β : Type} [Backend β] (trace : Trace) (p : Point) (v
 
 /--
 Overlays a ray and intersection dots to visualize a trace query.
-The ray extends from {lit}`p` along {lit}`v`; if the trace returns hits, the ray
+The ray extends from {name}`p` along {name}`v`; if the trace returns hits, the ray
 goes 30% past the last hit, otherwise it is 10 units long. Each
 intersection point is marked with a small filled circle.
 -/
@@ -899,7 +897,7 @@ def scale (s : Float) (d : Diagram β) : Diagram β :=
 def scaleXY (sx sy : Float) (d : Diagram β) : Diagram β :=
   .transform (Matrix.scale sx sy) d
 
-/-- Rotates a diagram counter-clockwise by {lit}`θ` radians. -/
+/-- Rotates a diagram counter-clockwise by {name}`θ` radians. -/
 def rotate (θ : Float) (d : Diagram β) : Diagram β :=
   .transform (Matrix.rotate θ) d
 
@@ -922,7 +920,7 @@ Contributes the diagram's envelope to layout but renders nothing (invisible spac
 def ghost (d : Diagram β) : Diagram β :=
   strut d.getEnvelope
 
-/-- Uses the envelope of {lit}`sub` for the combined diagram {lit}`d`. -/
+/-- Uses the envelope of {name}`sub` for the combined diagram {name}`d`. -/
 def refocus (sub : Diagram β) (d : Diagram β) : Diagram β :=
   .withEnv sub.getEnvelope d
 
@@ -934,20 +932,20 @@ def clipCircle (radius : Float) (d : Diagram β) : Diagram β :=
 def clipRect (width height : Float) (d : Diagram β) : Diagram β :=
   .clip (PathData.rect width height) d
 
-/-- Places {lit}`overlay` at a point, on top of {lit}`d`. -/
+/-- Places {name}`overlay` at a point, on top of {name}`d`. -/
 def pinOver' (pos : Point) (overlay : Diagram β) (d : Diagram β) : Diagram β :=
   .compose d (.transform (Matrix.translate pos.x pos.y) overlay)
 
-/-- Places {lit}`overlay` at the position of a named anchor in {lit}`d`, on top of {lit}`d`. -/
+/-- Places {name}`overlay` at the position of a named anchor in {name}`d`, on top of {name}`d`. -/
 def pinOver (anchorName : Lean.Name) (overlay : Diagram β) (d : Diagram β) : Diagram β :=
   let pos := (d.find anchorName).origin
   pinOver' pos overlay d
 
-/-- Places {lit}`underlay` at a point, beneath {lit}`d`. -/
+/-- Places {name}`underlay` at a point, beneath {name}`d`. -/
 def pinUnder' (pos : Point) (underlay : Diagram β) (d : Diagram β) : Diagram β :=
   .compose (.transform (Matrix.translate pos.x pos.y) underlay) d
 
-/-- Places {lit}`underlay` at the position of a named anchor in {lit}`d`, beneath {lit}`d`. -/
+/-- Places {name}`underlay` at the position of a named anchor in {name}`d`, beneath {name}`d`. -/
 def pinUnder (anchorName : Lean.Name) (underlay : Diagram β) (d : Diagram β) : Diagram β :=
   let pos := (d.find anchorName).origin
   pinUnder' pos underlay d

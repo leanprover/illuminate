@@ -12,8 +12,8 @@ namespace Illuminate
 
 /--
 An envelope maps a unit direction vector to a scalar extent of a shape
-in that direction. Given direction `{lit}v`, `{lit}envelope v` returns the scalar `{lit}t`
-such that the shape fits within the half-plane `{lit}{ p | p · v ≤ t }`.
+in that direction. Given direction $`v`, $`envelope(v)` returns the scalar $`t`
+such that the shape fits within the half-plane $`{ p | p · v ≤ t }`.
 -/
 inductive Envelope where
   /-- The empty envelope takes up no space. -/
@@ -47,16 +47,14 @@ instance : GetElem? Envelope Vec2 Float (fun _ _ => True) where
 namespace Envelope
 
 /--
-If `{lit}env` is empty, the result is empty. Otherwise, the result is `{lit}f` applied to the envelope
+If {name}`env` is empty, the result is empty. Otherwise, the result is {name}`f` applied to the envelope
 function.
 -/
 def modify (f : (Vec2 → Float) → (Vec2 → Float)) : (env : Envelope) → Envelope
   | .empty => .empty
   | .nonempty g => .nonempty (f g)
 
-/--
-Combines two envelopes with the provided function.
--/
+/-- Combines two envelopes with the provided function. -/
 def combineWith (env1 env2 : Envelope) (f : (Vec2 → Float) → (Vec2 → Float) → (Vec2 → Float)) : Envelope :=
   match env1, env2 with
   | .empty, e2 => e2
@@ -85,11 +83,11 @@ def ofCircle (radius : Float) : Envelope := .nonempty fun _ => radius
 
 /--
 Transform an envelope by a matrix. The envelope of a transformed shape
-in direction `{lit}v` equals the original envelope queried at the inverse-
+in direction $`v` equals the original envelope queried at the inverse-
 transformed direction, scaled appropriately.
 
-For pure rotations: `{lit}envelope'(v) = envelope(rotate(-θ) v)`.
-For uniform scale `{lit}s`: `{lit}envelope'(v) = s · envelope(v)`.
+For pure rotations: $`envelope'(v) = envelope(rotate(-θ) v)`.
+For uniform scale $`s`: $`envelope'(v) = s · envelope(v)`.
 For general affine transforms, we use the adjugate (transpose of cofactor matrix)
 to transform the direction, then correct for the scaling.
 -/
@@ -116,18 +114,18 @@ instance : Union Envelope where
 
 /--
 Translate an envelope by a displacement vector.
-`{lit}envelope'(v) = envelope(v) + d · v`
+$`envelope'(v) = envelope(v) + d · v`
 -/
 def translateBy (d : Vec2) (env : Envelope) : Envelope := env.modify fun env' v =>
   env' v + d.dot v
 
-/-- Envelope of an axis-aligned bounding box with corners `{lit}lo` and `{lit}hi`. -/
+/-- Envelope of an axis-aligned bounding box with corners {name}`lo` and {name}`hi`. -/
 def ofBounds (lo hi : Vec2) : Envelope := .nonempty fun v =>
   let x := if v.x ≥ 0 then hi.x else lo.x
   let y := if v.y ≥ 0 then hi.y else lo.y
   x * v.x + y * v.y
 
-/-- Envelope of a convex hull of vertices: `{lit}max(v · pᵢ)` over all points. -/
+/-- Envelope of a convex hull of vertices: $`max(v · pᵢ)` over all points. -/
 def ofVertices (pts : List Vec2) : Envelope :=
   if pts.isEmpty then .empty
   else

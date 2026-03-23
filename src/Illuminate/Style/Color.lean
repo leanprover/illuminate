@@ -50,9 +50,13 @@ instance : Inhabited FillSpec := ⟨{ color := Color.lightGray }⟩
 /--
 Fill style for closed paths.
 
-- {lit}`none` — unfilled; the interior is not rendered and not hittable.
-- {lit}`solid` — filled with a color; the interior is rendered and hittable,
-  even if the color is fully transparent.
+: {name (full := Fill.none)}`none`
+
+  Unfilled; the interior is not rendered and not hittable.
+
+: {name (full := Fill.solid)}`solid`
+
+  Filled with a color; the interior is rendered and hittable, even if the color is fully transparent.
 -/
 inductive Fill where
   /-- No fill — the interior is not rendered and not hittable. -/

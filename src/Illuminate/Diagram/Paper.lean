@@ -16,10 +16,10 @@ namespace Diagram
 /--
 A sheet of paper with a folded corner in the upper right, centered at the origin.
 
-The {lit}`cornerFold` parameter controls the fold size as a fraction (0–1) of the
+The {name}`cornerFold` parameter controls the fold size as a fraction (0–1) of the
 minimum of width and height; it defaults to 0.25 and is clamped with a warning
-if out of range. If {lit}`label` is provided, it is centered on the page. If only one
-of {lit}`width`/{lit}`height` is given, the other is computed to match the A4 aspect ratio
+if out of range. If {name}`label` is provided, it is centered on the page. If only one
+of {name}`width`/{name}`height` is given, the other is computed to match the A4 aspect ratio
 (297∶210 ≈ √2∶1). If neither is given, the smallest A4-proportioned rectangle
 surrounding the label is used.
 -/
