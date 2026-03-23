@@ -8,9 +8,9 @@ import Tests.Helpers
 
 open Illuminate
 
--- ══════════════════════════════════════════════════════════════════
--- CommDiag (10)
--- ══════════════════════════════════════════════════════════════════
+/-!
+# CommDiag (10)
+-/
 
 #diagram commDiag do
   let a ← CommDiagM.node "A"

@@ -8,9 +8,9 @@ import Tests.Helpers
 
 open Illuminate
 
--- ══════════════════════════════════════════════════════════════════
--- Layer 2: CorePrimitive variants
--- ══════════════════════════════════════════════════════════════════
+/-!
+# Layer 2: CorePrimitive variants
+-/
 
 def testCorePrim_path : IO Unit := do
   let p := CorePrimitive.path (PathData.rect 2 2) default {}
@@ -37,9 +37,9 @@ def testCorePrim_beq : IO Unit := do
   assertTrue (a == b) "same text eq"
   assertTrue (a != c) "diff text neq"
 
--- ══════════════════════════════════════════════════════════════════
--- Layer 2: Diagram smart constructors
--- ══════════════════════════════════════════════════════════════════
+/-!
+# Layer 2: Diagram smart constructors
+-/
 
 def testDiag_empty : IO Unit := do
   let d : Diagram SVG := Diagram.emptyDiagram
@@ -72,9 +72,9 @@ def testDiag_line : IO Unit := do
   | .prim (.path _ (.solid _) _) => throw <| IO.userError "expected no fill on line"
   | _ => throw <| IO.userError "expected prim/core/path"
 
--- ══════════════════════════════════════════════════════════════════
--- Layer 2: Diagram tree structure
--- ══════════════════════════════════════════════════════════════════
+/-!
+# Layer 2: Diagram tree structure
+-/
 
 def testDiagTree_compose : IO Unit := do
   let a : Diagram SVG := Diagram.rect 1 1
@@ -115,9 +115,9 @@ def testDiagTree_nested : IO Unit := do
     | _ => throw <| IO.userError "expected named inside"
   | _ => throw <| IO.userError "expected transform at top"
 
--- ══════════════════════════════════════════════════════════════════
--- Layer 3: PathData.bounds
--- ══════════════════════════════════════════════════════════════════
+/-!
+# Layer 3: PathData.bounds
+-/
 
 def testBounds_rect : IO Unit := do
   let (lo, hi) := (PathData.rect 4 2).bounds
@@ -148,9 +148,9 @@ def testBounds_negativeLine : IO Unit := do
   assertVec2Eq lo ⟨-3, -7⟩ "neg line bounds lo"
   assertVec2Eq hi ⟨-1, -2⟩ "neg line bounds hi"
 
--- ══════════════════════════════════════════════════════════════════
--- Layer 3: Diagram.getEnvelope
--- ══════════════════════════════════════════════════════════════════
+/-!
+# Layer 3: Diagram.getEnvelope
+-/
 
 def testGetEnv_rect : IO Unit := do
   let d : Diagram SVG := Diagram.rect 6 4
@@ -183,9 +183,9 @@ def testGetEnv_compose : IO Unit := do
   assertApproxEq env[Vec2.east] 2 "compose env east = max(2,1)"
   assertApproxEq env[Vec2.north] 3 "compose env north = max(1,3)"
 
--- ══════════════════════════════════════════════════════════════════
--- Layer 3: hjoin / vjoin / beside
--- ══════════════════════════════════════════════════════════════════
+/-!
+# Layer 3: hjoin / vjoin / beside
+-/
 
 def testHcomp_envelopeWidth : IO Unit := do
   let a : Diagram SVG := Diagram.rect 4 2  -- half-width 2
@@ -226,9 +226,9 @@ def testHcomp_empty : IO Unit := do
   let env := d.getEnvelope
   assertApproxEq env[Vec2.east] 2 "hjoin with empty east" (tol := 0.01)
 
--- ══════════════════════════════════════════════════════════════════
--- Layer 3: hcat / vcat
--- ══════════════════════════════════════════════════════════════════
+/-!
+# Layer 3: hcat / vcat
+-/
 
 def testHcat_three : IO Unit := do
   let boxes : List (Diagram SVG) := [Diagram.rect 2 2, Diagram.rect 2 2, Diagram.rect 2 2]
@@ -261,9 +261,9 @@ def testHcat_singleBox : IO Unit := do
   -- Single element stays at origin. rect 4 2 has half-width 2.
   assertApproxEq env[Vec2.east] 2 "hcat single east" (tol := 0.01)
 
--- ══════════════════════════════════════════════════════════════════
--- Layer 3: grid
--- ══════════════════════════════════════════════════════════════════
+/-!
+# Layer 3: grid
+-/
 
 def testGrid_2x2 : IO Unit := do
   let cell : Diagram SVG := Diagram.rect 2 2
@@ -299,9 +299,9 @@ def testGrid_1x3 : IO Unit := do
   -- 1×3 grid of 2×2 cells: total width = 6, centered → east = west = 3.
   assertApproxEq env[Vec2.east] 3 "grid 1x3 east" (tol := 0.1)
 
--- ══════════════════════════════════════════════════════════════════
--- Layer 3: anchor / named
--- ══════════════════════════════════════════════════════════════════
+/-!
+# Layer 3: anchor / named
+-/
 
 def testAnchor_zeroEnvelope : IO Unit := do
   let d : Diagram SVG := Diagram.anchor `myPoint
@@ -334,9 +334,9 @@ def testNamed_nestedLookup : IO Unit := do
   | .named `outer (.named `inner _) => pure ()
   | _ => throw <| IO.userError "expected nested named"
 
--- ══════════════════════════════════════════════════════════════════
--- Layer 3: floating / strut / withEnvelope
--- ══════════════════════════════════════════════════════════════════
+/-!
+# Layer 3: floating / strut / withEnvelope
+-/
 
 def testFloating_zeroEnvelope : IO Unit := do
   let d : Diagram SVG := Diagram.floating (Diagram.rect 10 10)
@@ -370,9 +370,9 @@ def testFloating_inCompose : IO Unit := do
   -- dist = 2 + 0 = 2, floating at (2,0). Union: east = max(2, 2+0) = 2
   assertApproxEq env[Vec2.east] 2 "floating doesn't extend hjoin" (tol := 0.01)
 
--- ══════════════════════════════════════════════════════════════════
--- Layer 3: padding
--- ══════════════════════════════════════════════════════════════════
+/-!
+# Layer 3: padding
+-/
 
 def testPad_uniform : IO Unit := do
   let d : Diagram SVG := Diagram.pad 3 (Diagram.rect 4 2)
@@ -405,9 +405,9 @@ def testPad_zero : IO Unit := do
   let env := d.getEnvelope
   assertApproxEq env[Vec2.east] 2 "pad zero east unchanged"
 
--- ══════════════════════════════════════════════════════════════════
--- Layer 3: setEnvelope / hGap / vGap
--- ══════════════════════════════════════════════════════════════════
+/-!
+# Layer 3: setEnvelope / hGap / vGap
+-/
 
 def testSetEnvelopeRight : IO Unit := do
   let d : Diagram SVG := Diagram.setEnvelopeRight 10 (Diagram.rect 4 2)
@@ -441,9 +441,9 @@ def testHGap_inCompose : IO Unit := do
   -- rect4 + gap6 + rect4 = total width 14, centered → east = west = 7.
   assertApproxEq env[Vec2.east] 7 "hGap in compose east" (tol := 0.01)
 
--- ══════════════════════════════════════════════════════════════════
--- Layer 3: hAppendAlign
--- ══════════════════════════════════════════════════════════════════
+/-!
+# Layer 3: hAppendAlign
+-/
 
 def testAlignFraction_bottom : IO Unit := do
   let a : Diagram SVG := Diagram.rect 2 4  -- half-height 2
@@ -494,9 +494,9 @@ def testAlignAnchor_fallback : IO Unit := do
   let env := d.getEnvelope
   assertApproxEq env[Vec2.north] 4 "anchor fallback north" (tol := 0.01)
 
--- ══════════════════════════════════════════════════════════════════
--- HorizontalAlignment / VerticalAlignment
--- ══════════════════════════════════════════════════════════════════
+/-!
+# HorizontalAlignment / VerticalAlignment
+-/
 
 def testHcat_topAlign : IO Unit := do
   let a : Diagram SVG := Diagram.rect 2 4  -- half-height 2
@@ -552,9 +552,9 @@ def testVsep_leftAlign : IO Unit := do
   assertApproxEq env[Vec2.east] 4 "vsep left east" (tol := 0.01)
   assertApproxEq env[Vec2.west] 4 "vsep left west" (tol := 0.01)
 
--- ══════════════════════════════════════════════════════════════════
--- Envelope convexity
--- ══════════════════════════════════════════════════════════════════
+/-!
+# Envelope convexity
+-/
 
 def testConvex_rect : IO Unit := do
   let env := (Diagram.rect 6 4 : Diagram SVG).getEnvelope

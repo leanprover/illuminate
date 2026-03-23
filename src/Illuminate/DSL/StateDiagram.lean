@@ -51,14 +51,14 @@ private def posOf (cfg : StateDiagramConfig) (i : Nat) : Vec2 :=
 /-- Builds a default arrowhead configuration for this state diagram. -/
 private def defaultArrowhead (_ : StateDiagramConfig) : Arrowhead := {}
 
-/-- Draws a normal (non-accepting) state at position `i` with the given label. -/
+/-- Draws a normal (non-accepting) state at position {name}`i` with the given label. -/
 def state (cfg : StateDiagramConfig) (i : Nat) (label : String) : Diagram β :=
   Diagram.transform (Matrix.translate (cfg.posOf i).x (cfg.posOf i).y)
     (Diagram.compose
       (Diagram.circle cfg.radius (fill := .solid cfg.stateColor) (stroke := cfg.stateStroke))
       (.text label cfg.labelStyle))
 
-/-- Draws an accepting state (double circle) at position `i` with the given label. -/
+/-- Draws an accepting state (double circle) at position {name}`i` with the given label. -/
 def accept (cfg : StateDiagramConfig) (i : Nat) (label : String) : Diagram β :=
   let transparentAccept : Color := { cfg.acceptColor with a := 0 }
   Diagram.transform (Matrix.translate (cfg.posOf i).x (cfg.posOf i).y)
@@ -70,7 +70,7 @@ def accept (cfg : StateDiagramConfig) (i : Nat) (label : String) : Diagram β :=
           (stroke := cfg.stateStroke)))
       (.text label cfg.labelStyle))
 
-/-- Draws a start arrow pointing into state `i`. -/
+/-- Draws a start arrow pointing into state {name}`i`. -/
 def start (cfg : StateDiagramConfig) (i : Nat) : Diagram β :=
   let target := cfg.posOf i
   let a : Vec2 := ⟨target.x - 40, target.y⟩
@@ -79,7 +79,7 @@ def start (cfg : StateDiagramConfig) (i : Nat) : Diagram β :=
   let tgtEnd : LineEnd := { point := .anonymous, arrowhead := some cfg.defaultArrowhead }
   ArrowDraw.drawLine a b srcEnd tgtEnd cfg.arrowStroke
 
-/-- Draws a straight labeled edge from state `i` to state `j`. -/
+/-- Draws a straight labeled edge from state {name}`i` to state {name}`j`. -/
 def edge (cfg : StateDiagramConfig) (i j : Nat) (label : String) : Diagram β :=
   let a := Vec2.add (cfg.posOf i) ⟨cfg.radius + 2, 0⟩
   let b := Vec2.sub (cfg.posOf j) ⟨cfg.radius + 2, 0⟩
@@ -91,7 +91,7 @@ def edge (cfg : StateDiagramConfig) (i j : Nat) (label : String) : Diagram β :=
     (.text label cfg.transStyle)
   Diagram.compose arrow lbl
 
-/-- Draws a curved labeled arc from state `i` to state `j`, bending up or down. -/
+/-- Draws a curved labeled arc from state {name}`i` to state {name}`j`, bending up or down. -/
 def arc (cfg : StateDiagramConfig) (i j : Nat) (label : String) (bendY : Float) : Diagram β :=
   let r := cfg.radius + 2
   let srcCenter := cfg.posOf i
@@ -122,7 +122,7 @@ def arc (cfg : StateDiagramConfig) (i j : Nat) (label : String) (bendY : Float) 
     (.text label cfg.transStyle)
   Diagram.compose arrow lbl
 
-/-- Draws a self-loop on state `i` with the given label. -/
+/-- Draws a self-loop on state {name}`i` with the given label. -/
 def loop (cfg : StateDiagramConfig) (i : Nat) (label : String) : Diagram β :=
   let cx := (cfg.posOf i).x
   let loopR := 14.0

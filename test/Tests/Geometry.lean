@@ -8,9 +8,9 @@ import Tests.Helpers
 
 open Illuminate
 
--- ══════════════════════════════════════════════════════════════════
--- Vec2.dot
--- ══════════════════════════════════════════════════════════════════
+/-!
+# Vec2.dot
+-/
 
 def testDot_perpendicular : IO Unit := do
   assertApproxEq (Vec2.east.dot Vec2.north) 0 "perpendicular dot"
@@ -33,9 +33,9 @@ def testDot_general : IO Unit := do
   let b : Vec2 := ⟨1, 2⟩
   assertApproxEq (a.dot b) 11 "dot general"
 
--- ══════════════════════════════════════════════════════════════════
--- Vec2.length
--- ══════════════════════════════════════════════════════════════════
+/-!
+# Vec2.length
+-/
 
 def testLength_345 : IO Unit := do
   assertApproxEq (Vec2.mk 3 4).length 5 "3-4-5 triangle"
@@ -52,9 +52,9 @@ def testLength_negative : IO Unit := do
 def testLength_diagonal : IO Unit := do
   assertApproxEq (Vec2.mk 1 1).length (Float.sqrt 2) "diagonal" (tol := 1e-9)
 
--- ══════════════════════════════════════════════════════════════════
--- Vec2.normalize
--- ══════════════════════════════════════════════════════════════════
+/-!
+# Vec2.normalize
+-/
 
 def testNormalize_unit : IO Unit := do
   assertApproxEq (Vec2.mk 3 4).normalize.length 1 "normalized has unit length"
@@ -74,9 +74,9 @@ def testNormalize_large : IO Unit := do
   let n := (Vec2.mk 1000 0).normalize
   assertVec2Eq n Vec2.east "normalizing large vector"
 
--- ══════════════════════════════════════════════════════════════════
--- Vec2.rotate
--- ══════════════════════════════════════════════════════════════════
+/-!
+# Vec2.rotate
+-/
 
 def testRotate_90 : IO Unit := do
   assertVec2Eq (Vec2.rotate (pi / 2) Vec2.east) Vec2.north "90° east→north"
@@ -95,9 +95,9 @@ def testRotate_preservesLength : IO Unit := do
   let v : Vec2 := ⟨3, 4⟩
   assertApproxEq (Vec2.rotate 1.23 v).length v.length "rotation preserves length" (tol := 1e-9)
 
--- ══════════════════════════════════════════════════════════════════
--- Vec2 arithmetic (add, sub, neg, scale)
--- ══════════════════════════════════════════════════════════════════
+/-!
+# Vec2 arithmetic (add, sub, neg, scale)
+-/
 
 def testArith_addZero : IO Unit := do
   let v : Vec2 := ⟨3, 7⟩
@@ -120,9 +120,9 @@ def testArith_scaleZero : IO Unit := do
   let v : Vec2 := ⟨3, 4⟩
   assertVec2Eq (0.0 • v) Vec2.zero "scale by zero"
 
--- ══════════════════════════════════════════════════════════════════
--- Matrix.identity
--- ══════════════════════════════════════════════════════════════════
+/-!
+# Matrix.identity
+-/
 
 def testIdentity_apply : IO Unit := do
   assertVec2Eq (Matrix.identity.apply ⟨3, 7⟩) ⟨3, 7⟩ "identity apply"
@@ -142,9 +142,9 @@ def testIdentity_inverse : IO Unit := do
   | none => throw <| IO.userError "identity should be invertible"
   | some inv => assertVec2Eq (inv.apply ⟨3, 7⟩) ⟨3, 7⟩ "identity inverse"
 
--- ══════════════════════════════════════════════════════════════════
--- Matrix.translate
--- ══════════════════════════════════════════════════════════════════
+/-!
+# Matrix.translate
+-/
 
 def testTranslate_basic : IO Unit := do
   assertVec2Eq (Matrix.translate 5 (-3) |>.apply ⟨1, 2⟩) ⟨6, -1⟩ "translate basic"
@@ -166,9 +166,9 @@ def testTranslate_linearPart : IO Unit := do
   let v : Vec2 := ⟨3, 4⟩
   assertVec2Eq (Matrix.translate 100 200 |>.applyLinear v) v "translate doesn't affect linear"
 
--- ══════════════════════════════════════════════════════════════════
--- Matrix.scale
--- ══════════════════════════════════════════════════════════════════
+/-!
+# Matrix.scale
+-/
 
 def testScale_basic : IO Unit := do
   assertVec2Eq (Matrix.scale 2 3 |>.apply ⟨4, 5⟩) ⟨8, 15⟩ "scale basic"
@@ -186,9 +186,9 @@ def testScale_compose : IO Unit := do
 def testScale_det : IO Unit := do
   assertApproxEq (Matrix.scale 2 3).det 6 "scale det"
 
--- ══════════════════════════════════════════════════════════════════
--- Matrix.rotate
--- ══════════════════════════════════════════════════════════════════
+/-!
+# Matrix.rotate
+-/
 
 def testMRotate_90 : IO Unit := do
   assertVec2Eq (Matrix.rotate (pi / 2) |>.apply Vec2.east) Vec2.north "rotate 90°"
@@ -207,9 +207,9 @@ def testMRotate_preservesLength : IO Unit := do
   let v : Vec2 := ⟨3, 4⟩
   assertApproxEq (Matrix.rotate 2.1 |>.apply v).length v.length "rotation preserves length" (tol := 1e-9)
 
--- ══════════════════════════════════════════════════════════════════
--- Matrix.shear
--- ══════════════════════════════════════════════════════════════════
+/-!
+# Matrix.shear
+-/
 
 def testShear_xOnly : IO Unit := do
   assertVec2Eq (Matrix.shear 1 0 |>.apply ⟨0, 1⟩) ⟨1, 1⟩ "shear x"
@@ -231,9 +231,9 @@ def testShear_invertible : IO Unit := do
     let v : Vec2 := ⟨3, 7⟩
     assertVec2Eq (inv.apply (m.apply v)) v "shear inverse round-trip" (tol := 1e-9)
 
--- ══════════════════════════════════════════════════════════════════
--- Matrix.mul (composition)
--- ══════════════════════════════════════════════════════════════════
+/-!
+# Matrix.mul (composition)
+-/
 
 def testMul_scaleThenTranslate : IO Unit := do
   -- s * t: apply t first (translate), then s (scale)
@@ -260,9 +260,9 @@ def testMul_identityRight : IO Unit := do
   let m := Matrix.translate 3 4 * Matrix.rotate 1.0
   assertVec2Eq ((m * Matrix.identity).apply ⟨5, 6⟩) (m.apply ⟨5, 6⟩) "identity right unit"
 
--- ══════════════════════════════════════════════════════════════════
--- Matrix.inverse
--- ══════════════════════════════════════════════════════════════════
+/-!
+# Matrix.inverse
+-/
 
 def testInverse_roundTrip : IO Unit := do
   let m := Matrix.translate 3 4 * Matrix.rotate 1.0 * Matrix.scale 2 3
@@ -291,9 +291,9 @@ def testInverse_translation : IO Unit := do
   | none => throw <| IO.userError "translate should be invertible"
   | some inv => assertVec2Eq (inv.apply ⟨3, 7⟩) Vec2.zero "inverse undoes translation"
 
--- ══════════════════════════════════════════════════════════════════
--- Matrix.apply / applyLinear
--- ══════════════════════════════════════════════════════════════════
+/-!
+# Matrix.apply / applyLinear
+-/
 
 def testApply_origin : IO Unit := do
   let m := Matrix.translate 5 3 * Matrix.rotate 1.0
@@ -321,9 +321,9 @@ def testApply_compositeChain : IO Unit := do
   -- origin → translate → (1,0) → rotate 90° → (0,1) → scale 2 → (0,2)
   assertVec2Eq result ⟨0, 2⟩ "composite chain" (tol := 1e-9)
 
--- ══════════════════════════════════════════════════════════════════
--- Envelope.empty
--- ══════════════════════════════════════════════════════════════════
+/-!
+# Envelope.empty
+-/
 
 def testEmpty_east : IO Unit := do
   assertApproxEq (Envelope.empty[Vec2.east]) 0 "empty east"
@@ -342,9 +342,9 @@ def testEmpty_unionIdentity : IO Unit := do
   assertApproxEq (Envelope.empty.union env)[Vec2.east] 3 "empty is union identity (east)"
   assertApproxEq (Envelope.empty.union env)[Vec2.north] 2 "empty is union identity (north)"
 
--- ══════════════════════════════════════════════════════════════════
--- Envelope.ofRect
--- ══════════════════════════════════════════════════════════════════
+/-!
+# Envelope.ofRect
+-/
 
 def testOfRect_cardinals : IO Unit := do
   let env := Envelope.ofRect 3 2
@@ -373,9 +373,9 @@ def testOfRect_viaSize : IO Unit := do
   assertApproxEq env[Vec2.east]  3 "ofSize east"
   assertApproxEq env[Vec2.north] 2 "ofSize north"
 
--- ══════════════════════════════════════════════════════════════════
--- Envelope.ofCircle
--- ══════════════════════════════════════════════════════════════════
+/-!
+# Envelope.ofCircle
+-/
 
 def testCircle_cardinal : IO Unit := do
   let env := Envelope.ofCircle 5
@@ -396,9 +396,9 @@ def testCircle_symmetry : IO Unit := do
   assertApproxEq env[Vec2.east] env[Vec2.west] "circle east = west"
   assertApproxEq env[Vec2.north] env[Vec2.south] "circle north = south"
 
--- ══════════════════════════════════════════════════════════════════
--- Envelope.transform
--- ══════════════════════════════════════════════════════════════════
+/-!
+# Envelope.transform
+-/
 
 def testTransform_rotate90 : IO Unit := do
   let env := Envelope.ofRect 3 2
@@ -430,9 +430,9 @@ def testTransform_nonUniformScale : IO Unit := do
   assertApproxEq scaled[Vec2.east] 3 "non-uniform scale east" (tol := 1e-7)
   assertApproxEq scaled[Vec2.north] 5 "non-uniform scale north" (tol := 1e-7)
 
--- ══════════════════════════════════════════════════════════════════
--- Envelope.union
--- ══════════════════════════════════════════════════════════════════
+/-!
+# Envelope.union
+-/
 
 def testUnion_disjointHorizontal : IO Unit := do
   let e1 := Envelope.translateBy ⟨-5, 0⟩ (Envelope.ofRect 1 1)
@@ -466,9 +466,9 @@ def testUnion_commutative : IO Unit := do
   assertApproxEq (a ∪ b)[Vec2.east] (b ∪ a)[Vec2.east] "union commutative east"
   assertApproxEq (a ∪ b)[Vec2.north] (b ∪ a)[Vec2.north] "union commutative north"
 
--- ══════════════════════════════════════════════════════════════════
--- Envelope.translateBy
--- ══════════════════════════════════════════════════════════════════
+/-!
+# Envelope.translateBy
+-/
 
 def testTranslateBy_east : IO Unit := do
   let env := Envelope.translateBy ⟨5, 0⟩ (Envelope.ofRect 1 1)
@@ -492,9 +492,9 @@ def testTranslateBy_negative : IO Unit := do
   assertApproxEq env[Vec2.east] (-9) "translateBy negative east"
   assertApproxEq env[Vec2.west] 11 "translateBy negative west"
 
--- ══════════════════════════════════════════════════════════════════
--- CardinalAnchors.fromEnvelope
--- ══════════════════════════════════════════════════════════════════
+/-!
+# CardinalAnchors.fromEnvelope
+-/
 
 def testAnchors_symmetric : IO Unit := do
   let some anchors := CardinalAnchors.fromEnvelope (Envelope.ofRect 3 2)
@@ -527,9 +527,9 @@ def testAnchors_square : IO Unit := do
   assertVec2Eq anchors.north ⟨0, 5⟩ "square north"
   assertVec2Eq anchors.east ⟨5, 0⟩ "square east"
 
--- ══════════════════════════════════════════════════════════════════
--- Layer 2: PathData constructors
--- ══════════════════════════════════════════════════════════════════
+/-!
+# Layer 2: PathData constructors
+-/
 
 def testPathData_empty : IO Unit := do
   assertTrue (PathData.empty.commands.size == 0) "empty path has no commands"

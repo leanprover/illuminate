@@ -9,9 +9,9 @@ import Illuminate.Diagram.Compile
 
 namespace Illuminate
 
--- ═══════════════════════════════════════════════════════════════
--- Validation errors
--- ═══════════════════════════════════════════════════════════════
+/-!
+# Validation errors
+-/
 
 /-- Structural errors detected during validation. -/
 inductive DiagramError where
@@ -26,9 +26,9 @@ instance : ToString DiagramError where
     | .duplicateName n   => s!"duplicate name: {n}"
     | .malformedPath msg => s!"malformed path: {msg}"
 
--- ═══════════════════════════════════════════════════════════════
--- Validation pass
--- ═══════════════════════════════════════════════════════════════
+/-!
+# Validation pass
+-/
 
 /--
 Validates a diagram for structural well-formedness before rendering.
@@ -42,16 +42,16 @@ def validate {β : Type} [Backend β] (d : Diagram β) : Except (Array DiagramEr
   if errors.isEmpty then .ok ()
   else .error errors
 where
-  checkDuplicateNames (names : List (Lean.Name × Vec2)) (acc : Array DiagramError)
-      : Array DiagramError :=
+  checkDuplicateNames (names : List (Lean.Name × Vec2)) (acc : Array DiagramError) :
+      Array DiagramError :=
     let seen := names.foldl (init := (acc, ([] : List Lean.Name))) fun (errs, seen) (name, _) =>
       if seen.any (· == name) then
         (errs.push (.duplicateName name), seen)
       else
         (errs, name :: seen)
     seen.1
-  checkCommands (cmds : Array (DrawCmd β)) (acc : Array DiagramError)
-      : Array DiagramError :=
+  checkCommands (cmds : Array (DrawCmd β)) (acc : Array DiagramError) :
+      Array DiagramError :=
     cmds.foldl (init := acc) fun errs cmd =>
       match cmd with
       | .fillPath pd _ =>

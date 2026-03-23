@@ -8,9 +8,9 @@ import Tests.Helpers
 
 open Illuminate
 
--- ══════════════════════════════════════════════════════════════════
--- Name resolution (5)
--- ══════════════════════════════════════════════════════════════════
+/-!
+# Name resolution (5)
+-/
 
 def testLayout_renderDiagram : IO Unit := do
   let d : Diagram SVG := Diagram.rect 4 2
@@ -47,9 +47,9 @@ def testLayout_compileText : IO Unit := do
   let cmds2 := d.compile
   assertTrue (cmds1.size == cmds2.size) "same cmd structure"
 
--- ══════════════════════════════════════════════════════════════════
--- Validate (5)
--- ══════════════════════════════════════════════════════════════════
+/-!
+# Validate (5)
+-/
 
 def testValidate_wellFormed : IO Unit := do
   let d : Diagram SVG := .named `A (Diagram.rect 4 4)

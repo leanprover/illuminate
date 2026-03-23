@@ -11,9 +11,9 @@ import Illuminate.Diagram
 
 namespace Illuminate
 
--- ═══════════════════════════════════════════════════════════════
--- Types
--- ═══════════════════════════════════════════════════════════════
+/-!
+# Types
+-/
 
 /-- Which side of an arrow to place a label on. -/
 inductive LabelSide where
@@ -71,9 +71,9 @@ structure Morphism where
   tag : Option Nat := none
 deriving Repr, BEq
 
--- ═══════════════════════════════════════════════════════════════
--- DSL state and monad
--- ═══════════════════════════════════════════════════════════════
+/-!
+# DSL state and monad
+-/
 
 /-- Accumulated state of the commutative diagram builder. -/
 structure CommDiagState where
@@ -120,9 +120,9 @@ def arrowWith (src tgt : NodeRef) (opts : MorphismOpts) : CommDiagM Unit := do
 
 end CommDiagM
 
--- ═══════════════════════════════════════════════════════════════
--- Compilation: state → Diagram β
--- ═══════════════════════════════════════════════════════════════
+/-!
+# Compilation: state → Diagram β
+-/
 
 namespace CommDiag
 
@@ -140,7 +140,7 @@ def arrowStroke : Stroke := .defaultArrow
 /-- Default arrowhead configuration for commutative diagram arrows. -/
 private def defaultArrowhead : Arrowhead := {}
 
-/-- Shortens a line segment by `amount` at each end. -/
+/-- Shortens a line segment by {lit}`amount` at each end. -/
 private def shortenSegment (a b : Vec2) (shortenSrc shortenTgt : Float) : Vec2 × Vec2 :=
   let dir := Vec2.sub b a
   let len := dir.length
@@ -242,7 +242,7 @@ where
     | .right => ⟨12, 0⟩
 
 /--
-Compiles a commutative diagram from the DSL state to a `Diagram β`.
+Compiles a commutative diagram from the DSL state to a {lean}`Diagram β`.
 Builds a node layer and resolves arrow positions eagerly.
 -/
 def compile (m : CommDiagM Unit) : Diagram β :=

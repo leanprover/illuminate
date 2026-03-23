@@ -11,11 +11,11 @@ namespace Illuminate
 
 /-- Horizontal anchor point for text rendering. -/
 inductive TextAnchor where
-  /-- Text is centered on its position (SVG `text-anchor="middle"`). -/
+  /-- Text is centered on its position (SVG {lit}`text-anchor="middle"`). -/
   | middle
-  /-- Text starts at its position (SVG `text-anchor="start"`). -/
+  /-- Text starts at its position (SVG {lit}`text-anchor="start"`). -/
   | start
-  /-- Text ends at its position (SVG `text-anchor="end"`). -/
+  /-- Text ends at its position (SVG {lit}`text-anchor="end"`). -/
   | «end»
 deriving Repr, BEq, Inhabited, Hashable
 

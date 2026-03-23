@@ -9,7 +9,7 @@ import Illuminate.Geometry.Vec2
 
 namespace Illuminate
 
-/-- A 2D point representing a position in space, distinct from `Vec2` which represents a direction or offset. -/
+/-- A 2D point representing a position in space, distinct from {name}`Vec2` which represents a direction or offset. -/
 structure Point where
   /-- Horizontal coordinate. -/
   x : Float
@@ -19,19 +19,19 @@ deriving Repr, BEq, Inhabited, Hashable
 
 namespace Point
 
-/-- The origin point `(0, 0)`. -/
+/-- The origin point {lit}`(0, 0)`. -/
 def origin : Point := ⟨0, 0⟩
 
 /-- Translates a point by a vector offset. -/
 def translate (p : Point) (v : Vec2) : Point := ⟨p.x + v.x, p.y + v.y⟩
 
-/-- Computes the vector from point `a` to point `b`. -/
+/-- Computes the vector from point {lean}`a` to point {lean}`b`. -/
 def vecTo (a b : Point) : Vec2 := ⟨b.x - a.x, b.y - a.y⟩
 
-/-- Converts a point to a `Vec2` (interpreting the position as an offset from the origin). -/
+/-- Converts a point to a {name}`Vec2` (interpreting the position as an offset from the origin). -/
 def toVec2 (p : Point) : Vec2 := ⟨p.x, p.y⟩
 
-/-- Constructs a point from a `Vec2` (interpreting the offset as a position). -/
+/-- Constructs a point from a {name}`Vec2` (interpreting the offset as a position). -/
 def ofVec2 (v : Vec2) : Point := ⟨v.x, v.y⟩
 
 instance : HAdd Point Vec2 Point := ⟨translate⟩

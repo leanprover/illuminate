@@ -9,9 +9,9 @@ import Tests.Helpers
 
 open Illuminate
 
--- ═══════════════════════════════════════════════════════════════
--- Hit test tests
--- ═══════════════════════════════════════════════════════════════
+/-!
+# Hit test tests
+-/
 
 def testHitTest_filledRect_interior : IO Unit := do
   let d : Diagram SVG := Diagram.rect 10 10

@@ -12,9 +12,9 @@ import Illuminate.Geometry.PathData
 
 namespace Illuminate
 
--- ═══════════════════════════════════════════════════════════════
--- Raw intersection type (shared by Trace and StrokeTrace)
--- ═══════════════════════════════════════════════════════════════
+/-!
+# Raw intersection type (shared by Trace and StrokeTrace)
+-/
 
 /-- A raw ray intersection: the ray parameter and the outward surface normal at the hit point. -/
 private structure RawHit where
@@ -23,7 +23,7 @@ private structure RawHit where
   /-- Outward surface normal at the intersection point. -/
   normal : Vec2
 
-/-- Inserts a raw hit into a sorted position (by `t`) in a small array. -/
+/-- Inserts a raw hit into a sorted position (by {name}`RawHit.t`) in a small array. -/
 private def sortedInsertRaw (arr : Array RawHit) (val : RawHit) : Array RawHit := Id.run do
   let mut inserted := false
   let mut result : Array RawHit := Array.mkEmpty (arr.size + 1)
@@ -35,14 +35,15 @@ private def sortedInsertRaw (arr : Array RawHit) (val : RawHit) : Array RawHit :
   if !inserted then result := result.push val
   return result
 
--- ═══════════════════════════════════════════════════════════════
--- Ray-segment intersection
--- ═══════════════════════════════════════════════════════════════
+/-!
+# Ray-segment intersection
+-/
 
 /--
-Computes the ray parameter and outward normal where the ray `p + t * v` intersects
-the line segment from `a` to `b`. The normal points to the left of the segment
-direction (from `a` to `b`). Returns `none` if no intersection or `t < 0`.
+{given -show}`t : Float`
+Computes the ray parameter and outward normal where the ray {lean}`p + t * v` intersects
+the line segment from {name}`a` to {name}`b`. The normal points to the left of the segment
+direction (from {name}`a` to {name}`b`). Returns {name}`none` if no intersection or {lean}`t < 0`.
 -/
 private def raySegment (p : Point) (v : Vec2) (a b : Vec2) : Option RawHit :=
   let d := Vec2.mk (b.x - a.x) (b.y - a.y)
@@ -56,13 +57,13 @@ private def raySegment (p : Point) (v : Vec2) (a b : Vec2) : Option RawHit :=
       some { t, normal := Vec2.normalize ⟨-d.y, d.x⟩ }
     else none
 
--- ═══════════════════════════════════════════════════════════════
--- Shared shape intersection functions
--- ═══════════════════════════════════════════════════════════════
+/-!
+# Shared shape intersection functions
+-/
 
 /--
 Computes ray intersections with a circle centered at the origin.
-Solves `|p + t*v|² = r²` as a quadratic in `t`.
+Solves $`|p + t*v|² = r²` as a quadratic in $`t`.
 -/
 private def circleHits (radius : Float) (p : Point) (v : Vec2) : Array RawHit := Id.run do
   let a := v.x * v.x + v.y * v.y
@@ -90,7 +91,7 @@ private def circleHits (radius : Float) (p : Point) (v : Vec2) : Array RawHit :=
 
 /--
 Computes ray intersections with an axis-aligned rectangle centered at the origin,
-with half-width `hw` and half-height `hh`.
+with half-width {name}`hw` and half-height {name}`hh`.
 -/
 private def rectHits (hw hh : Float) (p : Point) (v : Vec2) : Array RawHit := Id.run do
   let edges := [
@@ -106,8 +107,8 @@ private def rectHits (hw hh : Float) (p : Point) (v : Vec2) : Array RawHit := Id
   return result
 
 /--
-Computes ray intersections with an ellipse centered at the origin with half-widths `rx` and `ry`.
-Solves `(px + t*vx)²/rx² + (py + t*vy)²/ry² = 1`.
+Computes ray intersections with an ellipse centered at the origin with half-widths {name}`rx` and {name}`ry`.
+Solves $`(px + t*vx)²/rx² + (py + t*vy)²/ry² = 1`.
 -/
 private def ellipseHits (rx ry : Float) (p : Point) (v : Vec2) : Array RawHit := Id.run do
   if nearZero rx || nearZero ry then return #[]
@@ -140,8 +141,8 @@ private def ellipseHits (rx ry : Float) (p : Point) (v : Vec2) : Array RawHit :=
 Computes ray intersections with a rounded rectangle centered at the origin.
 Tests the 4 straight edges (shortened by corner radius) and the 4 corner arcs.
 -/
-private def roundedRectHits (hw hh : Float) (cr : Float) (p : Point) (v : Vec2)
-    : Array RawHit := Id.run do
+private def roundedRectHits (hw hh : Float) (cr : Float) (p : Point) (v : Vec2) :
+    Array RawHit := Id.run do
   let r := min cr (min hw hh)
   let mut result : Array RawHit := #[]
   -- Straight edges (shortened by corner radius)
@@ -182,7 +183,7 @@ private def roundedRectHits (hw hh : Float) (cr : Float) (p : Point) (v : Vec2)
   return result
 
 /--
-Finds real roots of the cubic equation `a*x³ + b*x² + c*x + d = 0` that lie in `[0, 1]`.
+Finds real roots of the cubic equation $`a*x³ + b*x² + c*x + d = 0` that lie in $`[0, 1]`.
 Handles degenerate cases (quadratic, linear) when leading coefficients are near zero.
 Uses the trigonometric method for three real roots and Cardano's formula otherwise.
 -/
@@ -233,12 +234,12 @@ private def cubicRootsInUnitInterval (a b c d : Float) : Array Float := Id.run d
   return roots
 
 /--
-Computes ray intersections with a cubic Bézier curve from `p0` through
-control points `c1`, `c2` to endpoint `ep`. Solves the intersection
+Computes ray intersections with a cubic Bézier curve from {name}`p0` through
+control points {name}`c1`, {name}`c2` to endpoint {name}`ep`. Solves the intersection
 algebraically by reducing to a cubic polynomial in the Bézier parameter.
 -/
-private def rayCubicBezier (p : Point) (v : Vec2) (p0 c1 c2 ep : Vec2)
-    : Array RawHit := Id.run do
+private def rayCubicBezier (p : Point) (v : Vec2) (p0 c1 c2 ep : Vec2) :
+    Array RawHit := Id.run do
   -- Bézier in monomial form: B(s) = As³ + Bs² + Cs + D
   let dx := p0.x
   let cx := 3 * (c1.x - p0.x)
@@ -273,12 +274,12 @@ private def rayCubicBezier (p : Point) (v : Vec2) (p0 c1 c2 ep : Vec2)
   return result
 
 /--
-Computes ray intersections with a path defined by `PathCmd` commands.
+Computes ray intersections with a path defined by {name}`PathCmd` commands.
 Line segments are tested exactly. Cubic Béziers are solved algebraically
 via cubic polynomial root-finding.
 -/
-private def pathDataHits (commands : Array PathCmd) (p : Point) (v : Vec2)
-    : Array RawHit := Id.run do
+private def pathDataHits (commands : Array PathCmd) (p : Point) (v : Vec2) :
+    Array RawHit := Id.run do
   let mut result : Array RawHit := #[]
   let mut current : Vec2 := ⟨0, 0⟩
   let mut subpathStart : Vec2 := ⟨0, 0⟩
@@ -308,15 +309,16 @@ private def pathDataHits (commands : Array PathCmd) (p : Point) (v : Vec2)
       lastT := result[i].t
   return deduped
 
--- ═══════════════════════════════════════════════════════════════
--- Trace
--- ═══════════════════════════════════════════════════════════════
+/-!
+# Trace
+-/
 
 /--
+{given -show}`t : Float, p : Point, v : Vec2`
 A trace maps a ray (origin point + unit direction) to the sorted array of
-parameter values `t ≥ 0` where the ray intersects a shape's boundary.
-Given point `p` and direction `v`, each returned `t` means the ray hits
-the boundary at `p + t • v`.
+parameter values {lean}`t ≥ 0` where the ray intersects a shape's boundary.
+Given point {name}`p` and direction {name}`v`, each returned {name}`t` means the ray hits
+the boundary at {lean}`p + t • v`.
 -/
 structure Trace where
   /-- The trace function: given a ray origin and unit direction, returns sorted intersection parameters. -/
@@ -378,9 +380,9 @@ def transform (m : Matrix) (t : Trace) : Trace :=
         let vNorm := Vec2.mk (v'.x / vLen) (v'.y / vLen)
         (t.trace p' vNorm).map (· * scale)⟩
 
--- ═══════════════════════════════════════════════════════════════
--- Primitive shape traces
--- ═══════════════════════════════════════════════════════════════
+/-!
+# Primitive shape traces
+-/
 
 /-- Trace of a circle centered at the origin with the given radius. -/
 def ofCircle (radius : Float) : Trace :=
@@ -390,7 +392,7 @@ def ofCircle (radius : Float) : Trace :=
 def ofRect (hw hh : Float) : Trace :=
   ⟨fun p v => (rectHits hw hh p v).map (·.t)⟩
 
-/-- Trace of an ellipse centered at the origin with half-widths `rx` and `ry`. -/
+/-- Trace of an ellipse centered at the origin with half-widths {name}`rx` and {name}`ry`. -/
 def ofEllipse (rx ry : Float) : Trace :=
   ⟨fun p v => (ellipseHits rx ry p v).map (·.t)⟩
 
@@ -399,7 +401,7 @@ def ofRoundedRect (hw hh : Float) (cr : Float) : Trace :=
   ⟨fun p v => (roundedRectHits hw hh cr p v).map (·.t)⟩
 
 /--
-Trace of a path defined by `PathCmd` commands.
+Trace of a path defined by {name}`PathCmd` commands.
 Line segments are tested exactly. Cubic Béziers are subdivided into
 short line segments for approximate intersection.
 -/
@@ -408,16 +410,16 @@ def ofPathData (commands : Array PathCmd) : Trace :=
 
 end Trace
 
--- ═══════════════════════════════════════════════════════════════
--- StrokeTrace: width-aware trace
--- ═══════════════════════════════════════════════════════════════
+/-!
+# StrokeTrace: width-aware trace
+-/
 
 /--
 A stroke-aware intersection: the ray parameter where the ray first contacts the
 painted edge of a stroked shape, paired with the apparent stroke width along the ray.
 
-The `edge` field gives the offset along the ray where the outer edge of the stroke
-begins (i.e., the centerline intersection minus half the apparent width). The `width`
+The {name}`StrokeHit.edge` field gives the offset along the ray where the outer edge of the stroke
+begins (i.e., the centerline intersection minus half the apparent width). The {name}`StrokeHit.width`
 field gives the full apparent stroke width along the ray direction, accounting for
 the incidence angle.
 -/
@@ -429,8 +431,8 @@ structure StrokeHit where
 deriving Repr, BEq, Inhabited
 
 /--
-A stroke-aware trace maps a ray to a sorted array of `StrokeHit` values.
-Unlike `Trace` which returns centerline intersections, `StrokeTrace` accounts
+A stroke-aware trace maps a ray to a sorted array of {name}`StrokeHit` values.
+Unlike {name}`Trace` which returns centerline intersections, {name}`StrokeTrace` accounts
 for stroke width and incidence angle to report where the ray contacts the
 visible painted surface.
 -/
@@ -510,7 +512,7 @@ def transform (m : Matrix) (t : StrokeTrace) : StrokeTrace :=
 /--
 Computes the apparent stroke width along a ray given the stroke width and the
 cosine of the angle between the ray and the surface normal. Clamps to avoid
-division by near-zero (grazing incidence), capping at `10 * strokeWidth`.
+division by near-zero (grazing incidence), capping at {lean}`10 * strokeWidth`.
 -/
 private def apparentWidth (strokeWidth cosTheta : Float) : Float :=
   let absCos := cosTheta.abs
@@ -518,8 +520,8 @@ private def apparentWidth (strokeWidth cosTheta : Float) : Float :=
   else strokeWidth / absCos
 
 /--
-Builds a `StrokeHit` from a raw intersection hit, the ray direction `v`, and
-the stroke width. Uses the dot product `|v · n|` (cosine of incidence angle)
+Builds a {name}`StrokeHit` from a raw intersection hit, the ray direction {name}`v`, and
+the stroke width. Uses the dot product $`|v · n|` (cosine of incidence angle)
 to compute the apparent width.
 -/
 private def mkStrokeHit (hit : RawHit) (v : Vec2) (strokeWidth : Float) : StrokeHit :=
@@ -528,13 +530,13 @@ private def mkStrokeHit (hit : RawHit) (v : Vec2) (strokeWidth : Float) : Stroke
   { edge := hit.t - aw / 2, width := aw }
 
 /-- Converts an array of raw hits to stroke hits with the given stroke width. -/
-private def rawToStroke (hits : Array RawHit) (v : Vec2) (strokeWidth : Float)
-    : Array StrokeHit :=
+private def rawToStroke (hits : Array RawHit) (v : Vec2) (strokeWidth : Float) :
+    Array StrokeHit :=
   hits.map fun hit => mkStrokeHit hit v strokeWidth
 
--- ═══════════════════════════════════════════════════════════════
--- Primitive shape stroke traces
--- ═══════════════════════════════════════════════════════════════
+/-!
+# Primitive shape stroke traces
+-/
 
 /-- Stroke trace of a circle centered at the origin with the given radius and stroke width. -/
 def ofCircle (radius strokeWidth : Float) : StrokeTrace :=
@@ -544,7 +546,7 @@ def ofCircle (radius strokeWidth : Float) : StrokeTrace :=
 def ofRect (hw hh strokeWidth : Float) : StrokeTrace :=
   ⟨fun p v => rawToStroke (rectHits hw hh p v) v strokeWidth⟩
 
-/-- Stroke trace of an ellipse centered at the origin with half-widths `rx` and `ry`. -/
+/-- Stroke trace of an ellipse centered at the origin with half-widths {name}`rx` and {name}`ry`. -/
 def ofEllipse (rx ry strokeWidth : Float) : StrokeTrace :=
   ⟨fun p v => rawToStroke (ellipseHits rx ry p v) v strokeWidth⟩
 
@@ -553,10 +555,9 @@ def ofRoundedRect (hw hh cr strokeWidth : Float) : StrokeTrace :=
   ⟨fun p v => rawToStroke (roundedRectHits hw hh cr p v) v strokeWidth⟩
 
 /--
-Stroke trace of a path defined by `PathCmd` commands.
+Stroke trace of a path defined by {name}`PathCmd` commands.
 Line segments are tested exactly. Cubic Béziers are subdivided into
 short line segments for approximate intersection.
 -/
 def ofPathData (commands : Array PathCmd) (strokeWidth : Float) : StrokeTrace :=
   ⟨fun p v => rawToStroke (pathDataHits commands p v) v strokeWidth⟩
-

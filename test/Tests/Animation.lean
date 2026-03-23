@@ -11,9 +11,9 @@ open Illuminate
 
 private def step (d : Float) : Step := { duration := d }
 
--- ═══════════════════════════════════════════════════════════════
--- Easing tests
--- ═══════════════════════════════════════════════════════════════
+/-!
+# Easing tests
+-/
 
 def easingTests : List (String × IO Unit) :=
   [ ("easing: linear 0→0, 1→1", do
@@ -43,9 +43,9 @@ def easingTests : List (String × IO Unit) :=
       assertApproxEq (Easing.backOut 1) 1 "backOut(1)" (tol := 1e-6))
   ]
 
--- ═══════════════════════════════════════════════════════════════
--- Interpolation tests
--- ═══════════════════════════════════════════════════════════════
+/-!
+# Interpolation tests
+-/
 
 def interpolationTests : List (String × IO Unit) :=
   [ ("interpolate: Float", do
@@ -84,9 +84,9 @@ def interpolationTests : List (String × IO Unit) :=
       assertApproxEq mid.d 1 "matrix mid d")
   ]
 
--- ═══════════════════════════════════════════════════════════════
--- Timeline tests
--- ═══════════════════════════════════════════════════════════════
+/-!
+# Timeline tests
+-/
 
 def timelineTests : List (String × IO Unit) :=
   [ ("totalDuration: basic", do
@@ -142,9 +142,9 @@ def timelineTests : List (String × IO Unit) :=
       assertApproxEq (v[3]) 0.0 "v[3] padded")
   ]
 
--- ═══════════════════════════════════════════════════════════════
--- Effects tests
--- ═══════════════════════════════════════════════════════════════
+/-!
+# Effects tests
+-/
 
 private def disc : Diagram Empty := Diagram.circle 10 (fill := .solid { color := Color.red })
 private def blueDisc : Diagram Empty := Diagram.circle 10 (fill := .solid { color := Color.blue })
@@ -193,9 +193,9 @@ def effectsTests : List (String × IO Unit) :=
         assertApproxEq m.c 0.0 "sin" (tol := 1e-6)) "rotate t=1")
   ]
 
--- ═══════════════════════════════════════════════════════════════
--- Compilation tests
--- ═══════════════════════════════════════════════════════════════
+/-!
+# Compilation tests
+-/
 
 def compilationTests : List (String × IO Unit) :=
   [ ("compile: basic animation has correct frame count", do
@@ -377,9 +377,9 @@ p \{ color: #888; font-size: 14px; }
       IO.println s!"  → wrote test_output/anim-dual-test.html ({html.length} bytes)")
   ]
 
--- ═══════════════════════════════════════════════════════════════
--- All animation tests
--- ═══════════════════════════════════════════════════════════════
+/-!
+# All animation tests
+-/
 
 def animationTests : List (String × IO Unit) :=
   easingTests ++ interpolationTests ++ timelineTests ++ effectsTests ++ compilationTests

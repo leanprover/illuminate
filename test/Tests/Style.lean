@@ -8,9 +8,9 @@ import Tests.Helpers
 
 open Illuminate
 
--- ══════════════════════════════════════════════════════════════════
--- Style defaults (5)
--- ══════════════════════════════════════════════════════════════════
+/-!
+# Style defaults (5)
+-/
 
 def testStyle_fillDefault : IO Unit := do
   let f : Fill := default
@@ -37,9 +37,9 @@ def testStyle_colorEq : IO Unit := do
   assertTrue (Color.black != Color.white) "black neq white"
   assertTrue (Color.red != Color.blue) "red neq blue"
 
--- ══════════════════════════════════════════════════════════════════
--- Test list
--- ══════════════════════════════════════════════════════════════════
+/-!
+# Test list
+-/
 
 def styleTests : List (String × IO Unit) :=
   [ -- Style defaults (5)

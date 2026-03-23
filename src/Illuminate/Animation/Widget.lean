@@ -15,7 +15,7 @@ import Illuminate.Backend.SVG
 namespace Illuminate
 
 /--
-Wraps an animation render function for preview in the Lean infoview via `#diagram`.
+Wraps an animation render function for preview in the Lean InfoView via {kw}`#diagram`.
 
 The returned function takes a time slider value and produces the diagram at that time,
 allowing interactive scrubbing through the animation.
@@ -28,9 +28,9 @@ def previewAnimation (steps : List Step)
     let vec := progressVector progress steps.length
     render vec
 
--- ═══════════════════════════════════════════════════════════════
--- Animation widget
--- ═══════════════════════════════════════════════════════════════
+/-!
+# Animation widget
+-/
 
 open Lean Widget in
 /-- Widget module that plays compiled animations with requestAnimationFrame-driven SVG playback. -/
@@ -38,15 +38,15 @@ open Lean Widget in
 def animateWidget : Lean.Widget.Module where
   javascript := animCoreJs ++ "\n" ++ include_str "../../../player_js/animate_widget.js"
 
--- ═══════════════════════════════════════════════════════════════
--- #animate command
--- ═══════════════════════════════════════════════════════════════
+/-!
+# #animate command
+-/
 
-/-- Syntax for the `#animate` command that plays an animation in the infoview. -/
+/-- Syntax for the {lit}`#animate` command that plays an animation in the InfoView. -/
 syntax (name := animateCmd) "#animate " ("(" &"fps" " := " num ") ")? term:max term : command
 
 open Lean Widget Elab Command Term Meta in
-/-- Elaborates the `#animate` command, compiling the animation and rendering it in the infoview. -/
+/-- Elaborates the {kw}`#animate` command, compiling the animation and rendering it in the InfoView. -/
 @[command_elab animateCmd]
 unsafe def elabAnimateCmd : CommandElab := fun stx => do
   let fpsOpt := stx[1]

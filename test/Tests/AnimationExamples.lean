@@ -10,10 +10,11 @@ set_option linter.missingDocs false
 
 open Illuminate
 
--- ══════════════════════════════════════════════════════════════════
--- Animation examples — hover over #animate to see playback in the
--- infoview, with play/pause button and scrub bar.
--- ══════════════════════════════════════════════════════════════════
+/-!
+# Animation Examples
+
+Hover over {lit}`#animate` to see playback in the InfoView, with play/pause button and scrub bar.
+-/
 
 -- Growing circle: holds, grows from 10 to 50 while changing color, holds
 #animate (fps := 120)

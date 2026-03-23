@@ -24,17 +24,17 @@ def fadeOut {β : Type} (d : Diagram β) (t : Float) : Diagram β :=
 def crossFade {β : Type} (a b : Diagram β) (t : Float) : Diagram β :=
   .compose (.cellophane (1 - t) a) (.cellophane t b)
 
-/-- Slides a diagram from position `start` to position `finish`. -/
+/-- Slides a diagram from position {name}`start` to position {name}`finish`. -/
 def slide {β : Type} (d : Diagram β) (start finish : Vec2) (t : Float) : Diagram β :=
   let pos := Interpolate.interpolate start finish t
   .transform (Matrix.translate pos.x pos.y) d
 
-/-- Scales a diagram from factor `s0` to factor `s1`. -/
+/-- Scales a diagram from factor {name}`s0` to factor {name}`s1`. -/
 def animScale {β : Type} (d : Diagram β) (s0 s1 : Float) (t : Float) : Diagram β :=
   let s := Interpolate.interpolate s0 s1 t
   .transform (Matrix.uniformScale s) d
 
-/-- Rotates a diagram from angle `a0` to angle `a1` (radians). -/
+/-- Rotates a diagram from angle {name}`a0` to angle {name}`a1` (radians). -/
 def animRotate {β : Type} (d : Diagram β) (a0 a1 : Float) (t : Float) : Diagram β :=
   let a := Interpolate.interpolate a0 a1 t
   .transform (Matrix.rotate a) d

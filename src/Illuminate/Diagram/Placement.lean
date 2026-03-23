@@ -11,15 +11,13 @@ import Illuminate.Diagram.Basic
 
 namespace Illuminate
 
--- ═══════════════════════════════════════════════════════════════
--- PathData bounds computation
--- ═══════════════════════════════════════════════════════════════
+/-!
+# PathData bounds computation
+-/
 
 namespace PathData
 
-/--
-Evaluates a cubic Bézier at parameter `t`.
--/
+/-- Evaluates a cubic Bézier at parameter {name}`t`. -/
 private def evalBezier (p0 c1 c2 p3 : Vec2) (t : Float) : Vec2 :=
   let u := 1 - t
   Vec2.mk
@@ -29,7 +27,7 @@ private def evalBezier (p0 c1 c2 p3 : Vec2) (t : Float) : Vec2 :=
 /--
 Computes the exact extremal points of a cubic Bézier curve by solving the derivative
 (a quadratic) for each axis independently. Returns the two endpoints plus any interior
-extrema where `t ∈ (0, 1)`.
+extrema where $`t ∈ (0, 1)`.
 -/
 private def bezierExtrema (p0 c1 c2 p3 : Vec2) : List Vec2 :=
   let solve (v0 v1 v2 v3 : Float) : List Float :=
@@ -65,7 +63,7 @@ private def extendBounds (acc : Option (Vec2 × Vec2)) (p : Vec2) : Option (Vec2
     some (⟨Min.min lo.x p.x, Min.min lo.y p.y⟩,
           ⟨Max.max hi.x p.x, Max.max hi.y p.y⟩)
 
-/-- Computes the axis-aligned bounding box of a path as `(lo, hi)` corners. -/
+/-- Computes the axis-aligned bounding box of a path as {lit}`(lo, hi)` corners. -/
 def bounds (pd : PathData) : Vec2 × Vec2 :=
   let acc := pd.commands.foldl (init := (none, Vec2.mk 0 0)) fun (acc, cur) cmd =>
     match cmd with
@@ -79,9 +77,9 @@ def bounds (pd : PathData) : Vec2 × Vec2 :=
 
 end PathData
 
--- ═══════════════════════════════════════════════════════════════
--- Envelope computation from primitives and diagrams
--- ═══════════════════════════════════════════════════════════════
+/-!
+# Envelope computation from primitives and diagrams
+-/
 
 namespace CorePrimitive
 
@@ -138,9 +136,9 @@ def toEnvelope (cp : CorePrimitive) : Envelope :=
 
 end CorePrimitive
 
--- ═══════════════════════════════════════════════════════════════
--- Trace computation from primitives
--- ═══════════════════════════════════════════════════════════════
+/-!
+# Trace computation from primitives
+-/
 
 /-- Computes the bounding-box half-width and half-height for a text primitive. -/
 private def textTraceDims (s : String) (style : TextStyle) : Float × Float :=
@@ -156,7 +154,7 @@ namespace CorePrimitive
 
 /--
 Computes the trace of a core primitive.
-Path primitives use `Trace.ofPathData`. Text and image use bounding-box traces.
+Path primitives use {name}`Trace.ofPathData`. Text and image use bounding-box traces.
 -/
 def toTrace (cp : CorePrimitive) : Trace :=
   match cp with
@@ -172,15 +170,15 @@ def toTrace (cp : CorePrimitive) : Trace :=
 end CorePrimitive
 
 
--- ═══════════════════════════════════════════════════════════════
--- StrokeTrace computation from primitives
--- ═══════════════════════════════════════════════════════════════
+/-!
+# StrokeTrace computation from primitives
+-/
 
 namespace CorePrimitive
 
 /--
 Computes the stroke-aware trace of a core primitive.
-Path primitives use `StrokeTrace.ofPathData`. Text and image use bounding-box traces
+Path primitives use {name}`StrokeTrace.ofPathData`. Text and image use bounding-box traces
 with zero stroke width.
 -/
 def toStrokeTrace (cp : CorePrimitive) : StrokeTrace :=
@@ -201,9 +199,9 @@ namespace Diagram
 
 variable {β : Type} [Backend β]
 
--- ═══════════════════════════════════════════════════════════════
--- Envelope extraction
--- ═══════════════════════════════════════════════════════════════
+/-!
+# Envelope extraction
+-/
 
 /-- Computes the envelope of a diagram by recursive traversal. -/
 def getEnvelope (d : Diagram β) : Envelope :=
@@ -220,9 +218,9 @@ def getEnvelope (d : Diagram β) : Envelope :=
   | .cellophane _ d => d.getEnvelope
   | .clip _ d => d.getEnvelope
 
--- ═══════════════════════════════════════════════════════════════
--- Trace extraction
--- ═══════════════════════════════════════════════════════════════
+/-!
+# Trace extraction
+-/
 
 /-- Computes the trace of a diagram by recursive traversal. -/
 def getTrace (d : Diagram β) : Trace :=
@@ -239,9 +237,9 @@ def getTrace (d : Diagram β) : Trace :=
   | .cellophane _ d => d.getTrace
   | .clip _ d => d.getTrace
 
--- ═══════════════════════════════════════════════════════════════
--- StrokeTrace extraction
--- ═══════════════════════════════════════════════════════════════
+/-!
+# StrokeTrace extraction
+-/
 
 /-- Computes the stroke-aware trace of a diagram by recursive traversal. -/
 def getStrokeTrace (d : Diagram β) : StrokeTrace :=
@@ -258,9 +256,9 @@ def getStrokeTrace (d : Diagram β) : StrokeTrace :=
   | .cellophane _ d => d.getStrokeTrace
   | .clip _ d => d.getStrokeTrace
 
--- ═══════════════════════════════════════════════════════════════
--- Name resolution
--- ═══════════════════════════════════════════════════════════════
+/-!
+# Name resolution
+-/
 
 /-- Collects all named anchor positions from a diagram tree. -/
 def collectNames (d : Diagram β) (xform : Matrix) (pfx : Lean.Name)
@@ -289,8 +287,8 @@ def collectNames (d : Diagram β) (xform : Matrix) (pfx : Lean.Name)
 
 /--
 Extracts the named subdiagram from a diagram, wrapped in its accumulated transform.
-Searches hierarchically: for a qualified name like `` `A.east ``, first matches `A`,
-then searches inside for `east`. Returns `.warning ... .empty` if the name is not found.
+Searches hierarchically: for a qualified name like {lean}`` `A.east ``, first matches {lit}`A`,
+then searches inside for {lit}`east`. Returns {lit}`.warning ... .empty` if the name is not found.
 -/
 def find (target : Lean.Name) (d : Diagram β) : Diagram β :=
   match go target .anonymous Matrix.identity d with
@@ -320,7 +318,7 @@ where
     | .cellophane _ d => go target pfx xform d
     | .clip _ d => go target pfx xform d
 
-/-- Computes the origin of a diagram (where `(0,0)` maps to under accumulated transforms). -/
+/-- Computes the origin of a diagram (where {lit}`(0,0)` maps to under accumulated transforms). -/
 def origin (d : Diagram β) : Point :=
   go Matrix.identity d
 where
@@ -360,9 +358,9 @@ def height (d : Diagram β) : Float :=
   | .nonempty env =>
     env Vec2.north + env Vec2.south
 
--- ═══════════════════════════════════════════════════════════════
--- Alignment types
--- ═══════════════════════════════════════════════════════════════
+/-!
+# Alignment types
+-/
 
 /-- Cross-axis alignment for elements arranged horizontally. -/
 inductive HorizontalAlignment where
@@ -384,9 +382,9 @@ inductive VerticalAlignment where
   | right
 deriving Repr, BEq, Inhabited
 
--- ═══════════════════════════════════════════════════════════════
--- Spatial composition
--- ═══════════════════════════════════════════════════════════════
+/-!
+# Spatial composition
+-/
 
 /--
 Translates a diagram so the center of its envelope is at the origin.
@@ -401,12 +399,12 @@ private def centerOrigin (d : Diagram β) : Diagram β :=
     if cx.abs < 0.001 && cy.abs < 0.001 then d
     else .transform (Matrix.translate (-cx) (-cy)) d
 
-/-- Layers `b` atop `a`, sharing the origin. `a` is drawn first (behind), `b` on top. -/
+/-- Layers {name}`b` atop {name}`a`, sharing the origin. {name}`a` is drawn first (behind), {name}`b` on top. -/
 def atop (a b : Diagram β) : Diagram β := .compose a b
 
 /--
-Places `b` beside `a` in direction `v` with the given gap.
-The displacement is `envA(v) + envB(-v) + gap` in the direction `v`.
+Places {name}`b` beside {name}`a` in direction {name}`v` with the given gap.
+The displacement is $`envA(v) + envB(-v) + gap` in the direction {name}`v`.
 The result is re-centered at the origin.
 -/
 def beside (v : Vec2) (gap : Float := 0) (a b : Diagram β) : Diagram β :=
@@ -417,7 +415,7 @@ def beside (v : Vec2) (gap : Float := 0) (a b : Diagram β) : Diagram β :=
   centerOrigin (.compose a (.transform (Matrix.translate offset.x offset.y) b))
 
 /--
-Places `b` to the right of `a` with a gap, aligning vertically according
+Places {name}`b` to the right of {name}`a` with a gap, aligning vertically according
 to the envelope centers (or top/bottom edges).
 -/
 private def besideH (gap : Float) (align : HorizontalAlignment)
@@ -435,7 +433,7 @@ private def besideH (gap : Float) (align : HorizontalAlignment)
   .compose a (.transform (Matrix.translate dx dy) b)
 
 /--
-Places `b` below `a` with a gap, aligning horizontally according
+Places {name}`b` below {name}`a` with a gap, aligning horizontally according
 to the envelope centers (or left/right edges).
 -/
 private def besideV (gap : Float) (align : VerticalAlignment)
@@ -452,11 +450,11 @@ private def besideV (gap : Float) (align : VerticalAlignment)
     | .right => envA[Vec2.east] - envB[Vec2.east]
   .compose a (.transform (Matrix.translate dx dy) b)
 
-/-- Places `b` to the right of `a` with zero gap. -/
+/-- Places {name}`b` to the right of {name}`a` with zero gap. -/
 def hjoin (a b : Diagram β) : Diagram β :=
   beside Vec2.east 0 a b
 
-/-- Places `b` below `a` with zero gap. -/
+/-- Places {name}`b` below {name}`a` with zero gap. -/
 def vjoin (a b : Diagram β) : Diagram β :=
   beside Vec2.south 0 a b
 
@@ -492,7 +490,7 @@ def vsep (spacing : Float) (ds : List (Diagram β))
 
 /--
 Lay out diagrams in a grid with uniform cell sizes.
-`None` entries are treated as empty cells.
+{name}`Option.none` entries are treated as empty cells.
 -/
 def grid (rows : Array (Array (Option (Diagram β))))
     (hSpacing : Float := 0) (vSpacing : Float := 0) : Diagram β :=
@@ -528,17 +526,17 @@ def grid (rows : Array (Array (Option (Diagram β))))
       hsep hSpacing cells
     vsep vSpacing rowDiagrams.toList
 
--- ═══════════════════════════════════════════════════════════════
--- Anchors
--- ═══════════════════════════════════════════════════════════════
+/-!
+# Anchors
+-/
 
 /-- A zero-size named point at the current origin. -/
 def anchor (name : Lean.Name) : Diagram β :=
   .named name .empty
 
--- ═══════════════════════════════════════════════════════════════
--- Padding
--- ═══════════════════════════════════════════════════════════════
+/-!
+# Padding
+-/
 
 /-- Uniform padding on all sides. -/
 def pad (amount : Float) (d : Diagram β) : Diagram β :=
@@ -582,9 +580,9 @@ def padXY (px py : Float) (d : Diagram β) : Diagram β :=
 def padLRTB (l r t b : Float) (d : Diagram β) : Diagram β :=
   padLeft l (padRight r (padTop t (padBottom b d)))
 
--- ═══════════════════════════════════════════════════════════════
--- Envelope overrides
--- ═══════════════════════════════════════════════════════════════
+/-!
+# Envelope overrides
+-/
 
 /-- Replace the envelope of a diagram entirely. -/
 def withEnvelope (env : Envelope) (d : Diagram β) : Diagram β :=
@@ -592,7 +590,7 @@ def withEnvelope (env : Envelope) (d : Diagram β) : Diagram β :=
 
 /--
 Renders content but contributes zero envelope to layout (invisible to composition). The dual of
-`ghost`, which contributes envelope but renders nothing.
+{name (scope := "Illuminate.Diagram.Placement")}`ghost`, which contributes envelope but renders nothing.
 -/
 def floating (d : Diagram β) : Diagram β :=
   .withEnv Envelope.empty d
@@ -601,37 +599,37 @@ def floating (d : Diagram β) : Diagram β :=
 def strut (env : Envelope) : Diagram β :=
   .withEnv env .empty
 
-/-- Set the rightward (east) extent of the envelope. -/
+/-- Sets the rightward (east) extent of the envelope. -/
 def setEnvelopeRight (extent : Float) (d : Diagram β) : Diagram β :=
   let env := d.getEnvelope
   let adjusted : Envelope := env.modify fun f v =>
     if v == Vec2.east then extent else f v
   .withEnv adjusted d
 
-/-- Set the leftward (west) extent of the envelope. -/
+/-- Sets the leftward (west) extent of the envelope. -/
 def setEnvelopeLeft (extent : Float) (d : Diagram β) : Diagram β :=
   let env := d.getEnvelope
   let adjusted : Envelope := env.modify fun f v =>
     if v == Vec2.west then extent else f v
   .withEnv adjusted d
 
-/-- Set the upward (north) extent of the envelope. -/
+/-- Sets the upward (north) extent of the envelope. -/
 def setEnvelopeTop (extent : Float) (d : Diagram β) : Diagram β :=
   let env := d.getEnvelope
   let adjusted : Envelope := env.modify fun f v =>
     if v == Vec2.north then extent else f v
   .withEnv adjusted d
 
-/-- Set the downward (south) extent of the envelope. -/
+/-- Sets the downward (south) extent of the envelope. -/
 def setEnvelopeBottom (extent : Float) (d : Diagram β) : Diagram β :=
   let env := d.getEnvelope
   let adjusted : Envelope := env.modify fun f v =>
     if v == Vec2.south then extent else f v
   .withEnv adjusted d
 
--- ═══════════════════════════════════════════════════════════════
--- Gap spacers
--- ═══════════════════════════════════════════════════════════════
+/-!
+# Gap spacers
+-/
 
 /-- A horizontal spacer with the given width. -/
 def hGap (width : Float) : Diagram β :=
@@ -641,9 +639,9 @@ def hGap (width : Float) : Diagram β :=
 def vGap (height : Float) : Diagram β :=
   strut (Envelope.ofRect 0 (height / 2))
 
--- ═══════════════════════════════════════════════════════════════
--- Frame
--- ═══════════════════════════════════════════════════════════════
+/-!
+# Frame
+-/
 
 /--
 Draws a stroked rectangle around the envelope of a diagram. The border is drawn behind the content.
@@ -715,13 +713,13 @@ def filledFrame (d : Diagram β) (fill : Fill := default) (stroke : Stroke := {}
     Diagram.pad halfStroke (Diagram.compose border d)
   else d
 
--- ═══════════════════════════════════════════════════════════════
--- Envelope visualization
--- ═══════════════════════════════════════════════════════════════
+/-!
+# Envelope visualization
+-/
 
 /--
 Overlays a translucent polygon showing the diagram's envelope boundary.
-Samples the envelope at `samples` evenly-spaced directions to build the polygon.
+Samples the envelope at {name}`samples` evenly-spaced directions to build the polygon.
 Useful for debugging layout and envelope behavior.
 -/
 def showEnvelope (d : Diagram β) (samples : Nat := 64)
@@ -815,7 +813,7 @@ private def traceOverlay {β : Type} [Backend β] (trace : Trace) (p : Point) (v
 
 /--
 Overlays a ray and intersection dots to visualize a trace query.
-The ray extends from `p` along `v`; if the trace returns hits, the ray
+The ray extends from {name}`p` along {name}`v`; if the trace returns hits, the ray
 goes 30% past the last hit, otherwise it is 10 units long. Each
 intersection point is marked with a small filled circle.
 -/
@@ -835,9 +833,9 @@ def showTraces (d : Diagram β) (specs : List (Point × Vec2 × Color))
     Diagram.compose acc (traceOverlay trace p v dotRadius c)
   Diagram.compose d overlay
 
--- ═══════════════════════════════════════════════════════════════
--- Aligned composition
--- ═══════════════════════════════════════════════════════════════
+/-!
+# Aligned composition
+-/
 
 /-- A guide for alignment during composition. -/
 inductive AlignGuide where
@@ -848,11 +846,11 @@ inductive AlignGuide where
 
 /--
 Horizontal append with vertical alignment.
-`.fraction 0` aligns bottoms, `.fraction 1` aligns tops,
-`.fraction 0.5` aligns centers.
+{lit}`.fraction 0` aligns bottoms, {lit}`.fraction 1` aligns tops,
+{lit}`.fraction 0.5` aligns centers.
 
-**Note:** `.anchor` alignment requires the name table from the layout pass and is
-not yet implemented; it currently falls back to center alignment (`.fraction 0.5`).
+**Note:** {name}`AlignGuide.anchor` alignment requires the name table from the layout pass and is
+not yet implemented; it currently falls back to center alignment ({lit}`.fraction 0.5`).
 -/
 def hAppendAlign (guide : AlignGuide) (a b : Diagram β) : Diagram β :=
   match guide with
@@ -887,9 +885,9 @@ def hAppendAlign (guide : AlignGuide) (a b : Diagram β) : Diagram β :=
     let dist := envA[Vec2.east] + envB[Vec2.west]
     .compose a (.transform (Matrix.translate dist dy) b)
 
--- ═══════════════════════════════════════════════════════════════
--- Convenience transforms
--- ═══════════════════════════════════════════════════════════════
+/-!
+# Convenience transforms
+-/
 
 /-- Scales a diagram uniformly by the given factor. -/
 def scale (s : Float) (d : Diagram β) : Diagram β :=
@@ -899,7 +897,7 @@ def scale (s : Float) (d : Diagram β) : Diagram β :=
 def scaleXY (sx sy : Float) (d : Diagram β) : Diagram β :=
   .transform (Matrix.scale sx sy) d
 
-/-- Rotates a diagram counter-clockwise by `θ` radians. -/
+/-- Rotates a diagram counter-clockwise by {name}`θ` radians. -/
 def rotate (θ : Float) (d : Diagram β) : Diagram β :=
   .transform (Matrix.rotate θ) d
 
@@ -911,18 +909,18 @@ def hflip (d : Diagram β) : Diagram β :=
 def vflip (d : Diagram β) : Diagram β :=
   .transform (Matrix.scale 1 (-1)) d
 
--- ═══════════════════════════════════════════════════════════════
--- Ghost and refocus
--- ═══════════════════════════════════════════════════════════════
+/-!
+# Ghost and refocus
+-/
 
 /--
 Contributes the diagram's envelope to layout but renders nothing (invisible spacer). The dual of
-`floating`, which renders but has zero envelope.
+{name}`floating`, which renders but has zero envelope.
 -/
 def ghost (d : Diagram β) : Diagram β :=
   strut d.getEnvelope
 
-/-- Uses the envelope of `sub` for the combined diagram `d`. -/
+/-- Uses the envelope of {name}`sub` for the combined diagram {name}`d`. -/
 def refocus (sub : Diagram β) (d : Diagram β) : Diagram β :=
   .withEnv sub.getEnvelope d
 
@@ -934,20 +932,20 @@ def clipCircle (radius : Float) (d : Diagram β) : Diagram β :=
 def clipRect (width height : Float) (d : Diagram β) : Diagram β :=
   .clip (PathData.rect width height) d
 
-/-- Places `overlay` at a point, on top of `d`. -/
+/-- Places {name}`overlay` at a point, on top of {name}`d`. -/
 def pinOver' (pos : Point) (overlay : Diagram β) (d : Diagram β) : Diagram β :=
   .compose d (.transform (Matrix.translate pos.x pos.y) overlay)
 
-/-- Places `overlay` at the position of a named anchor in `d`, on top of `d`. -/
+/-- Places {name}`overlay` at the position of a named anchor in {name}`d`, on top of {name}`d`. -/
 def pinOver (anchorName : Lean.Name) (overlay : Diagram β) (d : Diagram β) : Diagram β :=
   let pos := (d.find anchorName).origin
   pinOver' pos overlay d
 
-/-- Places `underlay` at a point, beneath `d`. -/
+/-- Places {name}`underlay` at a point, beneath {name}`d`. -/
 def pinUnder' (pos : Point) (underlay : Diagram β) (d : Diagram β) : Diagram β :=
   .compose (.transform (Matrix.translate pos.x pos.y) underlay) d
 
-/-- Places `underlay` at the position of a named anchor in `d`, beneath `d`. -/
+/-- Places {name}`underlay` at the position of a named anchor in {name}`d`, beneath {name}`d`. -/
 def pinUnder (anchorName : Lean.Name) (underlay : Diagram β) (d : Diagram β) : Diagram β :=
   let pos := (d.find anchorName).origin
   pinUnder' pos underlay d
