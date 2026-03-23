@@ -113,7 +113,7 @@ def hitTest (d : Diagram β) (p : Point) : Click :=
     match cp with
     | .path pd fill stroke =>
       let fillHit := match fill with
-        | .solid _ => pd.contains p
+        | .solid _ | .gradient _ => pd.contains p
         | .none => false
       let strokeHit := stroke.width > 0 && stroke.color.a > 0 &&
         pointOnStroke pd stroke.width p

@@ -107,6 +107,12 @@ var animCheckPauseSteps = function (steps, currentStep, frame) {
  * Indexes SVG elements depth-first, starting from the content group
  * inside `<svg><g transform="scale(1,-1)">...</g></svg>`.
  * This matches the DrawCmd element ordering used by paramMap.
+ *
+ * `<defs>` elements are transparent containers: they are not indexed
+ * themselves, but their children (gradient definitions, clip paths)
+ * are indexed and patchable. `<stop>` elements inside gradients and
+ * `<clipPath>` wrappers inside clip defs are skipped since they are
+ * not individually patchable via drawCmdAttrs.
  * @param {HTMLElement} container
  * @returns {Element[]}
  */
@@ -121,9 +127,17 @@ var animIndexElements = function (container) {
     function walk(node) {
         for (var i = 0; i < node.childNodes.length; i++) {
             var child = node.childNodes[i];
-            if (child.nodeType === 1) {
-                elems.push(/** @type {Element} */ (child));
-                walk(/** @type {Element} */ (child));
+            if (child.nodeType !== 1) continue;
+            var el = /** @type {Element} */ (child);
+            var tag = el.tagName.toLowerCase();
+            if (tag === "defs") {
+                // Transparent: walk children but don't index <defs> itself
+                walk(el);
+            } else if (tag === "stop" || tag === "clippath") {
+                // Skip non-patchable internals
+            } else {
+                elems.push(el);
+                walk(el);
             }
         }
     }

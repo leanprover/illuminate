@@ -54,7 +54,7 @@ where
       Array DiagramError :=
     cmds.foldl (init := acc) fun errs cmd =>
       match cmd with
-      | .fillPath pd _ =>
+      | .fillPath pd _ _ =>
         if pd.commands.isEmpty then errs.push (.malformedPath "empty fill path")
         else errs
       | .strokePath pd _ =>

@@ -95,6 +95,24 @@ def testHitTest_circle : IO Unit := do
   assertTrue hitInside.isHit "circle interior should hit"
   assertTrue (!hitOutside.isHit) "outside circle should miss"
 
+def testHitTest_gradientFill_interior : IO Unit := do
+  let g := Gradient.vertical 10 #[
+    { offset := 0, color := Color.red },
+    { offset := 1, color := Color.blue }
+  ]
+  let d : Diagram SVG := Diagram.rect 10 10 (fill := .gradient g)
+  let result := d.hitTest (Point.mk 0 0)
+  assertTrue result.isHit "gradient fill interior should hit"
+
+def testHitTest_gradientFill_outside : IO Unit := do
+  let g := Gradient.vertical 10 #[
+    { offset := 0, color := Color.red },
+    { offset := 1, color := Color.blue }
+  ]
+  let d : Diagram SVG := Diagram.rect 10 10 (fill := .gradient g)
+  let result := d.hitTest (Point.mk 20 20)
+  assertTrue (!result.isHit) "gradient fill outside should miss"
+
 def hitTestTests : List (String × IO Unit) :=
   [ ("hitTest: filled rect interior", testHitTest_filledRect_interior)
   , ("hitTest: filled rect outside", testHitTest_filledRect_outside)
@@ -108,4 +126,6 @@ def hitTestTests : List (String × IO Unit) :=
   , ("hitTest: compose fallthrough", testHitTest_compose_fallthrough)
   , ("hitTest: transform", testHitTest_transform)
   , ("hitTest: circle", testHitTest_circle)
+  , ("hitTest: gradient fill interior", testHitTest_gradientFill_interior)
+  , ("hitTest: gradient fill outside", testHitTest_gradientFill_outside)
   ]

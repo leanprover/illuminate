@@ -825,6 +825,37 @@ def linkDemo : Diagram SVG :=
 
 #diagram linkDemo
 
+/-!
+# Gradient demos
+-/
+
+def gradientRectDemo : Diagram SVG :=
+  let stops := #[
+    ({ offset := 0, color := { r := 66, g := 133, b := 244 } } : GradientStop),
+    { offset := 1, color := { r := 234, g := 67, b := 53 } }
+  ]
+  let linearRect := Diagram.rect 80 40
+    (fill := .gradient (Gradient.horizontal 80 stops))
+    (stroke := { color := Color.black, width := (1 : Float) })
+  let radialStops : Array GradientStop := #[
+    { offset := 0, color := Color.white },
+    { offset := 1, color := { r := 66, g := 133, b := 244 } }
+  ]
+  let radialCircle := Diagram.circle 25
+    (fill := .gradient (Gradient.radialSymmetric 25 radialStops))
+    (stroke := { color := Color.black, width := (1 : Float) })
+  Diagram.hsep 20 [linearRect, radialCircle]
+
+#diagram gradientRectDemo
+
+def testVisual_gradients : IO Unit :=
+  testVisualWrite "gradients.svg" gradientRectDemo
+    (checks := [
+      ("<linearGradient", "has linear gradient def"),
+      ("<radialGradient", "has radial gradient def"),
+      ("url(#grad", "references gradient by ID")
+    ])
+
 def visualTests : List (String × IO Unit) := [
   ("Visual/roundedRects", testVisual_roundedRects),
   ("Visual/roundedRects_2_5", testVisual_roundedRects_2_5),
@@ -847,5 +878,6 @@ def visualTests : List (String × IO Unit) := [
   ("Visual/traceTransformed", testVisual_traceTransformed),
   ("Visual/tracePath", testVisual_tracePath),
   ("Visual/traceConnect", testVisual_traceConnect),
-  ("Visual/traceConnectAngled", testVisual_traceConnectAngled)
+  ("Visual/traceConnectAngled", testVisual_traceConnectAngled),
+  ("Visual/gradients", testVisual_gradients)
 ]

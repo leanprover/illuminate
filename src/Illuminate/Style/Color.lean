@@ -47,6 +47,63 @@ deriving Repr, BEq, Hashable
 
 instance : Inhabited FillSpec := ⟨{ color := Color.lightGray }⟩
 
+/-- A color stop in a gradient, positioned at a fractional offset along the gradient axis. -/
+structure GradientStop where
+  /-- Fractional position along the gradient (0.0 = start, 1.0 = end). -/
+  offset : Float
+  /-- Color at this stop. -/
+  color : Color
+deriving Inhabited, Repr, BEq, Hashable
+
+/-- Controls how a gradient extends beyond its defined region. -/
+inductive SpreadMethod where
+  /-- Extends the terminal colors beyond the gradient bounds. -/
+  | pad
+  /-- Mirrors the gradient repeatedly. -/
+  | reflect
+  /-- Tiles the gradient repeatedly. -/
+  | repeat
+deriving Inhabited, Repr, BEq, Inhabited, Hashable
+
+/--
+A gradient fill specification with coordinates in diagram-local space.
+
+Gradient coordinates are absolute in the diagram's local coordinate system and transform
+with the diagram when affine transforms (translate, rotate, scale) are applied.
+-/
+inductive Gradient where
+  /-- Linear gradient between two points. -/
+  | linear (x1 y1 x2 y2 : Float) (stops : Array GradientStop)
+      (spread : SpreadMethod := .pad)
+  /--
+  Radial gradient between two circles (SVG/Cairo two-circle model).
+
+  The gradient radiates from the focal circle ({name}`fx`, {name}`fy`, {name}`fr`)
+  to the outer circle ({name}`cx`, {name}`cy`, {name}`r`).
+  -/
+  | radial (cx cy r : Float) (fx fy fr : Float)
+      (stops : Array GradientStop) (spread : SpreadMethod := .pad)
+deriving Inhabited, Repr, BEq, Hashable
+
+namespace Gradient
+
+/-- Creates a vertical linear gradient spanning the given height, centered at the origin. -/
+def vertical (height : Float) (stops : Array GradientStop)
+    (spread : SpreadMethod := .pad) : Gradient :=
+  .linear 0 (height / 2) 0 (-height / 2) stops spread
+
+/-- Creates a horizontal linear gradient spanning the given width, centered at the origin. -/
+def horizontal (width : Float) (stops : Array GradientStop)
+    (spread : SpreadMethod := .pad) : Gradient :=
+  .linear (-width / 2) 0 (width / 2) 0 stops spread
+
+/-- Creates a centered radial gradient with the given radius. -/
+def radialSymmetric (radius : Float) (stops : Array GradientStop)
+    (spread : SpreadMethod := .pad) : Gradient :=
+  .radial 0 0 radius 0 0 0 stops spread
+
+end Gradient
+
 /--
 Fill style for closed paths.
 
@@ -57,12 +114,19 @@ Fill style for closed paths.
 : {name (full := Fill.solid)}`solid`
 
   Filled with a color; the interior is rendered and hittable, even if the color is fully transparent.
+
+: {name (full := Fill.gradient)}`gradient`
+
+  Gradient fill; the interior is rendered and hittable. Gradient coordinates are in diagram-local
+  space and transform with the diagram.
 -/
 inductive Fill where
   /-- No fill — the interior is not rendered and not hittable. -/
   | none
   /-- Solid color fill — the interior is rendered and hittable, even if the color is fully transparent. -/
   | solid : FillSpec → Fill
+  /-- Gradient fill — the interior is rendered and hittable. -/
+  | gradient : Gradient → Fill
 deriving Repr, BEq, Hashable
 
 instance : Inhabited Fill := ⟨.solid default⟩
@@ -70,3 +134,5 @@ instance : Inhabited Fill := ⟨.solid default⟩
 instance : Coe Color FillSpec := ⟨FillSpec.mk⟩
 
 instance : Coe FillSpec Fill := ⟨.solid⟩
+
+instance : Coe Gradient Fill := ⟨.gradient⟩
