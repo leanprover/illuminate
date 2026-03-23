@@ -122,7 +122,7 @@ def testConnect_explicitArrowhead : IO Unit := do
   -- The two circles also have default fill (lightGray, a=1), producing fills.
   -- So we expect 3 fills: 2 circles + 1 stealth head.
   let fillCmds := d.compile.filter fun cmd => match cmd with
-    | .fillPath _ _ => true
+    | .fillPath _ _ _ => true
     | _ => false
   assertTrue (fillCmds.size == 3)
     s!"explicit arrowhead should produce a fill (expected 3 fills, got {fillCmds.size})"

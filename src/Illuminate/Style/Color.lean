@@ -53,7 +53,7 @@ structure GradientStop where
   offset : Float
   /-- Color at this stop. -/
   color : Color
-deriving Repr, BEq, Hashable
+deriving Inhabited, Repr, BEq, Hashable
 
 /-- Controls how a gradient extends beyond its defined region. -/
 inductive SpreadMethod where
@@ -63,7 +63,7 @@ inductive SpreadMethod where
   | reflect
   /-- Tiles the gradient repeatedly. -/
   | repeat
-deriving Repr, BEq, Inhabited, Hashable
+deriving Inhabited, Repr, BEq, Inhabited, Hashable
 
 /--
 A gradient fill specification with coordinates in diagram-local space.
@@ -83,7 +83,7 @@ inductive Gradient where
   -/
   | radial (cx cy r : Float) (fx fy fr : Float)
       (stops : Array GradientStop) (spread : SpreadMethod := .pad)
-deriving Repr, BEq, Hashable
+deriving Inhabited, Repr, BEq, Hashable
 
 namespace Gradient
 

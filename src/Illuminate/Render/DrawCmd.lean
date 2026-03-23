@@ -12,8 +12,13 @@ namespace Illuminate
 
 /-- The display list: drawing commands parameterized by a backend-specific foreign type. -/
 inductive DrawCmd (β : Type) where
-  /-- Fills a path with the given fill style. -/
-  | fillPath : PathData → Fill → DrawCmd β
+  /--
+  Fills a path with the given fill style. The optional {name}`Nat` is the gradient index assigned
+  during compilation. It ties this command to its corresponding {name (full := DrawCmd.defGradient)}`defGradient` so that
+  {name (scope := "Illuminate.Render.Svg")}`drawCmdAttrs` can emit the correct {lit}`url(#...)` fill
+  without relying on command ordering.
+  -/
+  | fillPath : PathData → Fill → Option Nat → DrawCmd β
   /-- Strokes a path with the given stroke style. -/
   | strokePath : PathData → Stroke → DrawCmd β
   /-- Draws a text string at the given position. -/

@@ -157,7 +157,7 @@ pairs regardless of values, so frame-to-frame comparison by position is safe.
 def drawCmdAttrs {β : Type} [BackendRender β]
     (cmd : DrawCmd β) (clipPrefix : String := "") : CmdAttrInfo :=
   match cmd with
-  | .fillPath pd fill =>
+  | .fillPath pd fill gradIdx =>
     match fill with
     | .none => ⟨false, #[]⟩
     | .solid fs => ⟨true, #[
@@ -165,11 +165,12 @@ def drawCmdAttrs {β : Type} [BackendRender β]
         ("fill", colorToSvg fs.color),
         ("fill-opacity", fmtNum fs.color.a)]⟩
     | .gradient _ =>
-      -- The fill URL is stable (positional ID from defGradient) and set by renderCmd.
-      -- We emit a placeholder here; the actual url(...) is injected at render time.
+      let fillVal := match gradIdx with
+        | some gi => s!"url(#{gradientIdOf gi clipPrefix})"
+        | none => ""
       ⟨true, #[
         ("d", pathDataToD pd),
-        ("fill", ""),
+        ("fill", fillVal),
         ("fill-opacity", "1")]⟩
   | .strokePath pd stroke => ⟨true, #[
       ("d", pathDataToD pd),
@@ -232,20 +233,14 @@ private def findAttr (attrs : Array (String × String)) (name : String) : String
 /--
 Renders a single {name}`DrawCmd` to an SVG fragment. The {name}`clipPrefix` distinguishes
 clip-path IDs across independently compiled diagrams on the same page.
-The {name}`lastGradId` is the SVG ID of the most recently emitted gradient definition,
-used for {name (full := Fill.gradient)}`gradient` fills.
 -/
 def renderCmd {β : Type} [BackendRender β] (cmd : DrawCmd β)
-    (clipPrefix : String := "") (lastGradId : String := "") : String :=
+    (clipPrefix : String := "") : String :=
   let info := drawCmdAttrs cmd clipPrefix
   match cmd with
-  | .fillPath _ .none => ""
-  | .fillPath _ (.solid _) =>
+  | .fillPath _ .none _ => ""
+  | .fillPath _ (.solid _) _ | .fillPath _ (.gradient _) _ =>
     s!"<path{renderAttrs info.attrs}/>"
-  | .fillPath _ (.gradient _) =>
-    let attrs := info.attrs.map fun (k, v) =>
-      if k == "fill" then ("fill", s!"url(#{lastGradId})") else (k, v)
-    s!"<path{renderAttrs attrs}/>"
   | .strokePath .. =>
     s!"<path{renderAttrs info.attrs}/>"
   | .drawTextRun s style pos =>
@@ -288,11 +283,7 @@ The {name}`clipPrefix` distinguishes clip-path IDs when multiple SVGs share a pa
 def render {β : Type} [BackendRender β] (cmds : Array (DrawCmd β)) (viewBox : ViewBox)
     (clipPrefix : String := "") : String :=
   let header := s!"<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"{fmtNum viewBox.minX} {fmtNum viewBox.minY} {fmtNum viewBox.width} {fmtNum viewBox.height}\">"
-  let (body, _) := cmds.foldl (fun (acc, lastGradId) cmd =>
-    let newGradId := match cmd with
-      | .defGradient gi _ => gradientIdOf gi clipPrefix
-      | _ => lastGradId
-    (acc ++ "\n" ++ renderCmd cmd clipPrefix newGradId, newGradId))
-    ("", "")
+  let body := cmds.foldl (init := "") fun acc cmd =>
+    acc ++ "\n" ++ renderCmd cmd clipPrefix
   -- Flip y-axis: SVG y points down, diagram y points up
   header ++ "\n<g transform=\"scale(1,-1)\">" ++ body ++ "\n</g>\n</svg>"

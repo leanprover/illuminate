@@ -28,13 +28,17 @@ where
         let (acc, gi) :=
           match fill with
           | .solid fs =>
-            if fs.color.a > 0 then (acc.push (.fillPath pd fill), gi) else (acc, gi)
+            if fs.color.a > 0 then
+              (acc.push (.fillPath pd fill none), gi)
+            else (acc, gi)
           | .gradient g =>
             let acc := acc.push (.defGradient gi g)
-            (acc.push (.fillPath pd fill), gi + 1)
+            (acc.push (.fillPath pd fill (some gi)), gi + 1)
           | .none => (acc, gi)
-        if stroke.width > 0 && stroke.color.a > 0 then (acc.push (.strokePath pd stroke), gi)
-        else (acc, gi)
+        if stroke.width > 0 && stroke.color.a > 0 then
+          (acc.push (.strokePath pd stroke), gi)
+        else
+          (acc, gi)
       | .text s style =>
         (acc.push (.drawTextRun s style ⟨0, 0⟩), gi)
       | .image _ => (acc, gi)

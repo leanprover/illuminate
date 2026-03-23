@@ -140,7 +140,7 @@ Hover over {lit}`#animate` to see playback in the InfoView, with play/pause butt
     crossFade sq circ t)
 
 -- Gradient spotlight: radial gradient focal point orbits inside a drifting ellipse
-#animate (fps := 30)
+#animate
   [{ duration := 3.0, loop := true }]
   (fun progress =>
     let t := progress[0]
