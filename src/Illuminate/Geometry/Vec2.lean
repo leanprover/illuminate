@@ -9,7 +9,7 @@ import Illuminate.Geometry.Basic
 
 namespace Illuminate
 
-/-- A 2D vector with `x` and `y` components. -/
+/-- A 2D vector with {name (full := Vec2.x)}`x` and {name (full := Vec2.y)}`y` components. -/
 structure Vec2 where
   /-- Horizontal component. -/
   x : Float
@@ -19,12 +19,12 @@ deriving Repr, BEq, Inhabited, Hashable
 
 namespace Vec2
 
-/-- The zero vector `(0, 0)`. -/
+/-- The zero vector {lit}`(0, 0)`. -/
 def zero : Vec2 := ⟨0, 0⟩
 
 /-- Adds two vectors component-wise. -/
 def add (a b : Vec2) : Vec2 := ⟨a.x + b.x, a.y + b.y⟩
-/-- Subtracts `b` from `a` component-wise. -/
+/-- Subtracts {lean}`b` from {lean}`a` component-wise. -/
 def sub (a b : Vec2) : Vec2 := ⟨a.x - b.x, a.y - b.y⟩
 /-- Scales a vector by a scalar factor. -/
 def scale (s : Float) (v : Vec2) : Vec2 := ⟨s * v.x, s * v.y⟩
@@ -44,7 +44,7 @@ def normalize (v : Vec2) : Vec2 :=
   let l := v.length
   if nearZero l then zero else ⟨v.x / l, v.y / l⟩
 
-/-- Rotates a vector by angle `θ` (radians) counter-clockwise. -/
+/-- Rotates a vector by angle {lean}`θ` (radians) counter-clockwise. -/
 def rotate (θ : Float) (v : Vec2) : Vec2 :=
   let c := θ.cos
   let s := θ.sin

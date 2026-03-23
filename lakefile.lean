@@ -8,7 +8,7 @@ import Lake
 open Lake DSL
 
 package «illuminate» where
-  leanOptions := #[⟨`autoImplicit, false⟩, ⟨`linter.missingDocs, true⟩]
+  leanOptions := #[⟨`autoImplicit, false⟩, ⟨`linter.missingDocs, true⟩, ⟨`doc.verso, true⟩]
 
 input_dir playerJs where
   text := true

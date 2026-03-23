@@ -31,9 +31,9 @@ private def drawCmdTag {β : Type} (cmd : DrawCmd β) : UInt8 :=
   | .pushForeign .. => 11
   | .popForeign .. => 12
 
--- ═══════════════════════════════════════════════════════════════
--- Structural comparison
--- ═══════════════════════════════════════════════════════════════
+/-!
+# Structural comparison
+-/
 
 /-- Checks whether two draw command arrays have the same structural tags. -/
 private def structurallyIdentical {β : Type}
@@ -41,16 +41,16 @@ private def structurallyIdentical {β : Type}
   a.size == b.size &&
   (Array.zip a b).all fun (ca, cb) => drawCmdTag ca == drawCmdTag cb
 
--- ═══════════════════════════════════════════════════════════════
--- Template extraction for a single segment
--- ═══════════════════════════════════════════════════════════════
+/-!
+# Template extraction for a single segment
+-/
 
 /--
 Extracts a param map and per-frame parameter arrays from structurally identical draw lists.
 
-Returns `(paramMap, params)` where:
-- `paramMap[i]` maps param `i` to an SVG element index and attribute name
-- `params[frame][i]` is the string value of param `i` for that frame
+Returns {lit}`(paramMap, params)` where:
+- {lit}`paramMap[i]` maps param {lit}`i` to an SVG element index and attribute name
+- {lit}`params[frame][i]` is the string value of param {lit}`i` for that frame
 -/
 private def extractParams {β : Type} [BackendRender β]
     (frames : Array (Array (DrawCmd β))) :
@@ -113,12 +113,12 @@ private def extractParams {β : Type} [BackendRender β]
 
     (paramMap, allParams)
 
--- ═══════════════════════════════════════════════════════════════
--- Segmentation and full compilation
--- ═══════════════════════════════════════════════════════════════
+/-!
+# Segmentation and full compilation
+-/
 
 /--
-Compiles an animation into a `CompiledAnimation`.
+Compiles an animation into a {name}`CompiledAnimation`.
 
 Evaluates the render function at every frame time to produce draw lists,
 segments them by structural identity, and extracts parameterized templates.

@@ -48,7 +48,7 @@ def curveTo (c1 c2 ep : Vec2) (pd : PathData) : PathData :=
 def close (pd : PathData) : PathData :=
   ⟨pd.commands.push .closePath⟩
 
-/-- Builds a straight line segment from `a` to `b`. -/
+/-- Builds a straight line segment from {lean}`a` to {lean}`b`. -/
 def line (a b : Vec2) : PathData :=
   ⟨#[.moveTo a, .lineTo b]⟩
 

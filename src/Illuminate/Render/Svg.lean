@@ -67,7 +67,7 @@ def fmtNum (f : Float) : String :=
 private def colorToSvg (c : Color) : String :=
   s!"rgb({c.r},{c.g},{c.b})"
 
-/-- Converts PathData to an SVG `d` attribute string. -/
+/-- Converts {name}`PathData` to an SVG `{lit}d` attribute string. -/
 def pathDataToD (pd : PathData) : String :=
   pd.commands.foldl (init := "") fun acc cmd =>
     let seg := match cmd with
@@ -78,19 +78,19 @@ def pathDataToD (pd : PathData) : String :=
       | .closePath => "Z"
     if acc.isEmpty then seg else acc ++ " " ++ seg
 
-/-- Converts a LineCap to its SVG string. -/
+/-- Converts a {name}`LineCap` to its SVG string. -/
 private def lineCapToSvg : LineCap → String
   | .butt   => "butt"
   | .round  => "round"
   | .square => "square"
 
-/-- Converts a LineJoin to its SVG string. -/
+/-- Converts a {name}`LineJoin` to its SVG string. -/
 private def lineJoinToSvg : LineJoin → String
   | .miter => "miter"
   | .round => "round"
   | .bevel => "bevel"
 
-/-- Converts a StrokeDash to the value of an SVG `stroke-dasharray` attribute. -/
+/-- Converts a {name}`StrokeDash` to the value of an SVG `{lit}stroke-dasharray` attribute. -/
 private def dashArrayValue (dash : StrokeDash) (w : Float) : String :=
   match dash with
   | .solid => "none"
@@ -98,26 +98,26 @@ private def dashArrayValue (dash : StrokeDash) (w : Float) : String :=
   | .dotted => s!"{fmtNum w} {fmtNum w}"
   | .dashDot => s!"{fmtNum (w * 4)} {fmtNum w} {fmtNum w} {fmtNum w}"
 
-/-- Converts a Matrix to an SVG `transform` attribute value. -/
+/-- Converts a {name}`Matrix` to an SVG `{lit}transform` attribute value. -/
 private def matrixToSvg (m : Matrix) : String :=
   s!"matrix({fmtNum m.a},{fmtNum m.c},{fmtNum m.b},{fmtNum m.d},{fmtNum m.tx},{fmtNum m.ty})"
 
-/-- Converts a TextAnchor to its SVG string. -/
+/-- Converts a {name}`TextAnchor` to its SVG string. -/
 private def anchorToSvg : TextAnchor → String
   | .start => "start"
   | .«end» => "end"
   | .middle => "middle"
 
--- ═══════════════════════════════════════════════════════════════
--- Shared attribute extraction
--- ═══════════════════════════════════════════════════════════════
+/-!
+# Shared attribute extraction
+-/
 
 /-- Extracted SVG attributes for a draw command, used by both SVG rendering
     and animation parameter extraction. -/
 structure CmdAttrInfo where
   /-- Whether this command produces an SVG DOM element (vs. a close tag or nothing). -/
   producesElement : Bool
-  /-- Attribute name-value pairs. Text content uses the pseudo-attribute `"textContent"`. -/
+  /-- Attribute name-value pairs. Text content uses the pseudo-attribute `{lit}"textContent"`. -/
   attrs : Array (String × String)
 deriving Repr, Inhabited
 
@@ -125,7 +125,7 @@ deriving Repr, Inhabited
 Extracts SVG attribute name-value pairs from a draw command.
 
 This is the single source of truth for attribute values shared by
-`renderCmd` (SVG rendering) and animation parameter extraction.
+{lit}`renderCmd` (SVG rendering) and animation parameter extraction.
 Each draw command variant always produces the same number of attribute
 pairs regardless of values, so frame-to-frame comparison by position is safe.
 -/
@@ -174,13 +174,13 @@ def drawCmdAttrs {β : Type} [BackendRender β]
 private def renderAttrs (attrs : Array (String × String)) : String :=
   attrs.foldl (fun acc (k, v) => acc ++ s!" {k}=\"{v}\"") ""
 
-/-- Looks up an attribute value by name, returning `""` if absent. -/
+/-- Looks up an attribute value by name, returning `{lit}""` if absent. -/
 private def findAttr (attrs : Array (String × String)) (name : String) : String :=
   match attrs.find? (·.1 == name) with
   | some (_, v) => v
   | none => ""
 
-/-- Renders a single DrawCmd to an SVG fragment. The `clipPrefix` distinguishes
+/-- Renders a single {name}`DrawCmd` to an SVG fragment. The `{lit}clipPrefix` distinguishes
     clip-path IDs across independently compiled diagrams on the same page. -/
 def renderCmd {β : Type} [BackendRender β] (cmd : DrawCmd β) (clipPrefix : String := "") : String :=
   let info := drawCmdAttrs cmd clipPrefix
@@ -216,7 +216,7 @@ def renderCmd {β : Type} [BackendRender β] (cmd : DrawCmd β) (clipPrefix : St
   | .popTransform | .popAnnotation | .popOpacity | .popClip => "</g>"
 
 /-- Renders an array of draw commands to a complete SVG document string.
-    The `clipPrefix` distinguishes clip-path IDs when multiple SVGs share a page. -/
+    The `{lit}clipPrefix` distinguishes clip-path IDs when multiple SVGs share a page. -/
 def render {β : Type} [BackendRender β] (cmds : Array (DrawCmd β)) (viewBox : ViewBox)
     (clipPrefix : String := "") : String :=
   let header := s!"<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"{fmtNum viewBox.minX} {fmtNum viewBox.minY} {fmtNum viewBox.width} {fmtNum viewBox.height}\">"

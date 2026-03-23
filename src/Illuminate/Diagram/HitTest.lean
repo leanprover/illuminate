@@ -21,7 +21,7 @@ deriving Repr, BEq, Inhabited
 
 namespace Click
 
-/-- Returns `true` if the click hit something (either tagged or untagged). -/
+/-- Returns {lean}`true` if the click hit something (either tagged or untagged). -/
 def isHit : Click → Bool
   | .nothing => false
   | .something => true
@@ -35,15 +35,15 @@ instance : ToString Click where
 
 end Click
 
--- ═══════════════════════════════════════════════════════════════
--- Point-in-path (ray casting)
--- ═══════════════════════════════════════════════════════════════
+/-!
+# Point-in-path (ray casting)
+-/
 
 namespace PathData
 
 /--
 Tests whether a point lies inside a closed path using the ray-casting algorithm.
-Casts a horizontal ray to the right from `p` and counts boundary crossings;
+Casts a horizontal ray to the right from {lit}`p` and counts boundary crossings;
 an odd count means the point is inside.
 -/
 def contains (pd : PathData) (p : Point) : Bool :=
@@ -52,14 +52,14 @@ def contains (pd : PathData) (p : Point) : Bool :=
 
 end PathData
 
--- ═══════════════════════════════════════════════════════════════
--- Point-on-stroke check
--- ═══════════════════════════════════════════════════════════════
+/-!
+# Point-on-stroke check
+-/
 
 /--
 Tests whether a point lies within the stroke band of a path.
 Casts rays in several directions from the point; if any ray's closest
-stroke hit has `edge ≤ 0`, the point is inside the stroke band.
+stroke hit has {lit}`edge ≤ 0`, the point is inside the stroke band.
 -/
 private def pointOnStroke (pd : PathData) (strokeWidth : Float) (p : Point) : Bool :=
   if strokeWidth <= 0 then false
@@ -73,9 +73,9 @@ private def pointOnStroke (pd : PathData) (strokeWidth : Float) (p : Point) : Bo
       | some hit => hit.edge <= 0
       | none => false
 
--- ═══════════════════════════════════════════════════════════════
--- Hit testing
--- ═══════════════════════════════════════════════════════════════
+/-!
+# Hit testing
+-/
 
 /--
 Tests whether a point lies inside a text bounding box, accounting for anchor alignment.
@@ -101,9 +101,9 @@ variable {β : Type} [Backend β]
 /--
 Hit-tests a diagram at the given point, returning the topmost hit.
 
-Respects front-to-back ordering: in `compose a b`, `b` (drawn on top) is
-tested first. A `Fill.solid` interior is hittable even if transparent. A
-`Fill.none` interior is not hittable — only its stroke boundary is.
+Respects front-to-back ordering: in {lit}`compose a b`, {lit}`b` (drawn on top) is
+tested first. A {name}`Fill.solid` interior is hittable even if transparent. A
+{name}`Fill.none` interior is not hittable — only its stroke boundary is.
 Clicking within the border stroke of a shape counts as clicking the shape.
 -/
 def hitTest (d : Diagram β) (p : Point) : Click :=

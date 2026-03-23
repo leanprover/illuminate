@@ -10,9 +10,9 @@ import Illuminate.Animation.Types
 
 namespace Illuminate
 
--- ═══════════════════════════════════════════════════════════════
--- JSON serialization using Lean.Json
--- ═══════════════════════════════════════════════════════════════
+/-!
+# JSON serialization using Lean.Json
+-/
 
 open Lean in
 /-- Serializes a ParamBinding to a Lean JSON value. -/
@@ -55,9 +55,9 @@ def compiledAnimationToJson (ca : CompiledAnimation) : String :=
     |>.replace "</" "<\\/"
     |>.replace "]]>" "]]\\>"
 
--- ═══════════════════════════════════════════════════════════════
--- HTML player
--- ═══════════════════════════════════════════════════════════════
+/-!
+# HTML player
+-/
 
 /-- Escapes a string for safe inclusion in a JavaScript single-quoted string literal. -/
 private def escapeJs (s : String) : String :=
@@ -77,7 +77,7 @@ def animCoreJs : String :=
 /--
 The JavaScript player code for standalone SVG DOM playback.
 
-Uses `__ILLUMINATE_DATA_98712__` and `__ILLUMINATE_SELECTOR_98712__` as placeholders that callers replace
+Uses {lit}`__ILLUMINATE_DATA_98712__` and {lit}`__ILLUMINATE_SELECTOR_98712__` as placeholders that callers replace
 with the serialized animation JSON and a CSS selector string, respectively.
 -/
 private def playerJs : String :=
@@ -86,12 +86,12 @@ private def playerJs : String :=
 /--
 The JavaScript player code for reveal.js fragment-driven playback.
 
-Uses `__ILLUMINATE_DATA_98712__` and `__ILLUMINATE_SELECTOR_98712__` as placeholders.
+Uses {lit}`__ILLUMINATE_DATA_98712__` and {lit}`__ILLUMINATE_SELECTOR_98712__` as placeholders.
 -/
 private def revealJs : String :=
   animCoreJs ++ "\n" ++ include_str "../../../player_js/reveal.js"
 
-/-- Renders a `CompiledAnimation` to a self-contained HTML file. -/
+/-- Renders a {name}`CompiledAnimation` to a self-contained HTML file. -/
 def CompiledAnimation.renderHTML (ca : CompiledAnimation)
     (selector : String := "#anim-container") : String :=
   let dataJson := compiledAnimationToJson ca
@@ -123,7 +123,7 @@ body \{ margin: 0; display: flex; flex-direction: column; align-items: center; j
 </body>
 </html>"
 
-/-- Renders a `CompiledAnimation` as a `<script>` snippet that initializes playback into
+/-- Renders a {name}`CompiledAnimation` as a {lit}`<script>` snippet that initializes playback into
     the first element matching the given CSS selector. Designed for embedding in reveal.js
     slides or any page with multiple animations. -/
 def CompiledAnimation.renderRevealHTML (ca : CompiledAnimation)

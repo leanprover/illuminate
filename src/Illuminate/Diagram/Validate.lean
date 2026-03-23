@@ -9,9 +9,9 @@ import Illuminate.Diagram.Compile
 
 namespace Illuminate
 
--- ═══════════════════════════════════════════════════════════════
--- Validation errors
--- ═══════════════════════════════════════════════════════════════
+/-!
+# Validation errors
+-/
 
 /-- Structural errors detected during validation. -/
 inductive DiagramError where
@@ -26,9 +26,9 @@ instance : ToString DiagramError where
     | .duplicateName n   => s!"duplicate name: {n}"
     | .malformedPath msg => s!"malformed path: {msg}"
 
--- ═══════════════════════════════════════════════════════════════
--- Validation pass
--- ═══════════════════════════════════════════════════════════════
+/-!
+# Validation pass
+-/
 
 /--
 Validates a diagram for structural well-formedness before rendering.

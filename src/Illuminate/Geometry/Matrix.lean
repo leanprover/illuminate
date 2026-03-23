@@ -12,7 +12,7 @@ namespace Illuminate
 
 /--
 A 3×3 homogeneous matrix for 2D affine transforms.
-Stored as six values (the third row is always [0, 0, 1]):
+Stored as six values (the third row is always {lit}`[0, 0, 1]`):
 ```
 ⎡ a  b  tx ⎤
 ⎢ c  d  ty ⎥
@@ -48,16 +48,16 @@ def scale (sx sy : Float) : Matrix := ⟨sx, 0, 0, 0, sy, 0⟩
 /-- Creates a uniform scaling matrix. -/
 def uniformScale (s : Float) : Matrix := scale s s
 
-/-- Creates a rotation matrix for angle `θ` (radians) counter-clockwise. -/
+/-- Creates a rotation matrix for angle {lean}`θ` (radians) counter-clockwise. -/
 def rotate (θ : Float) : Matrix :=
   let c := θ.cos
   let s := θ.sin
   ⟨c, -s, 0, s, c, 0⟩
 
-/-- Creates a shear matrix with factors `kx` (horizontal) and `ky` (vertical). -/
+/-- Creates a shear matrix with factors {lean}`kx` (horizontal) and {lean}`ky` (vertical). -/
 def shear (kx ky : Float) : Matrix := ⟨1, kx, 0, ky, 1, 0⟩
 
-/-- Matrix multiplication (composition). `mul m1 m2` applies `m2` first, then `m1`. -/
+/-- Matrix multiplication (composition). {lean}`mul m1 m2` applies {lean}`m2` first, then {lean}`m1`. -/
 def mul (m1 m2 : Matrix) : Matrix :=
   { a := m1.a * m2.a + m1.b * m2.c
     b := m1.a * m2.b + m1.b * m2.d

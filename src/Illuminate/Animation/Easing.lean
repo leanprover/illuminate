@@ -9,7 +9,7 @@ import Illuminate.Geometry.Basic
 
 namespace Illuminate
 
-/-- An easing function maps normalized time `[0, 1]` to `[0, 1]`. -/
+/-- An easing function maps normalized time {lit}`[0, 1]` to {lit}`[0, 1]`. -/
 abbrev Easing := Float → Float
 
 namespace Easing

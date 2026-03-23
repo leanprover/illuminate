@@ -13,9 +13,9 @@ import Illuminate.Backend.SVG
 
 namespace Illuminate
 
--- ═══════════════════════════════════════════════════════════════
--- DiagramWithInfo
--- ═══════════════════════════════════════════════════════════════
+/-!
+# DiagramWithInfo
+-/
 
 /-- A diagram bundled with human-readable labels for tagged regions. -/
 structure DiagramWithInfo where
@@ -27,24 +27,24 @@ structure DiagramWithInfo where
 instance : Coe (Diagram SVG) DiagramWithInfo where
   coe d := { diagram := d }
 
--- ═══════════════════════════════════════════════════════════════
--- Gadget types
--- ═══════════════════════════════════════════════════════════════
+/-!
+# Gadget types
+-/
 
-/-- A slider parameter with a label, min, max, and optional initial value. Reduces to `Float`. -/
+/-- A slider parameter with a label, min, max, and optional initial value. Reduces to {name}`Float`. -/
 def Slider (_name : String) (_min _max : Float)
     (_initial : Float := (_min + _max) / 2) : Type :=
   Float
 
-/-- A text input parameter with a label and optional initial value. Reduces to `String`. -/
+/-- A text input parameter with a label and optional initial value. Reduces to {name}`String`. -/
 def TextInput (_name : String) (_initial : String := "") : Type := String
 
-/-- A checkbox parameter with a label and optional initial value. Reduces to `Bool`. -/
+/-- A checkbox parameter with a label and optional initial value. Reduces to {name}`Bool`. -/
 def Checkbox (_name : String) (_initial : Bool := false) : Type := Bool
 
--- ═══════════════════════════════════════════════════════════════
--- Widget
--- ═══════════════════════════════════════════════════════════════
+/-!
+# Widget
+-/
 
 open Lean Widget in
 /-- Widget module that renders diagrams with optional parameter controls and hit-test hover. -/
@@ -52,23 +52,23 @@ open Lean Widget in
 def diagramWidget : Lean.Widget.Module where
   javascript := include_str "../../player_js/diagram_widget.js"
 
--- ═══════════════════════════════════════════════════════════════
--- Helpers
--- ═══════════════════════════════════════════════════════════════
+/-!
+# Helpers
+-/
 
-/-- Renders a `Diagram SVG` to SVG with default settings. -/
+/-- Renders a {lean}`Diagram SVG` to SVG with default settings. -/
 def diagramToSvg (d : Diagram SVG) : String :=
   d.renderDiagram (padding := 5)
 
-/-- Hit-tests a `Diagram SVG` at the given point. -/
+/-- Hit-tests a {lean}`Diagram SVG` at the given point. -/
 def diagramHitTest (d : Diagram SVG) (x y : Float) : Click :=
   d.hitTest (Point.mk x y)
 
-/-- Renders a `DiagramWithInfo` to SVG with default settings. -/
+/-- Renders a {name}`DiagramWithInfo` to SVG with default settings. -/
 def dwiToSvg (dwi : DiagramWithInfo) : String :=
   dwi.diagram.renderDiagram (padding := 5)
 
-/-- Hit-tests a `DiagramWithInfo` at the given point. -/
+/-- Hit-tests a {name}`DiagramWithInfo` at the given point. -/
 def dwiHitTest (dwi : DiagramWithInfo) (x y : Float) : Click :=
   dwi.diagram.hitTest (Point.mk x y)
 
@@ -80,12 +80,12 @@ def validateDiagram (d : Diagram SVG) : List String :=
     | .error errs => errs.toList.map toString
   treeWarnings ++ layoutWarnings
 
--- ═══════════════════════════════════════════════════════════════
--- Float expression helper
--- ═══════════════════════════════════════════════════════════════
+/-!
+# Float expression helper
+-/
 
 open Lean in
-/-- Builds a Lean `Expr` representing a `Float` literal, including negative values. -/
+/-- Builds a Lean {name}`Expr` representing a {name}`Float` literal, including negative values. -/
 private def mkFloatExpr (f : Float) : Expr :=
   -- Float.ofScientific (m : Nat) (s : Bool) (e : Nat) : Float
   -- Represents m × 10^(if s then -e else e)
@@ -101,9 +101,9 @@ private def mkFloatExpr (f : Float) : Expr :=
   else
     posExpr
 
--- ═══════════════════════════════════════════════════════════════
--- RPC infrastructure
--- ═══════════════════════════════════════════════════════════════
+/-!
+# RPC infrastructure
+-/
 
 /-- Stored diagram for RPC re-evaluation and hit testing. -/
 structure StoredDiagram where
@@ -117,7 +117,7 @@ structure StoredDiagram where
   gadgets : Array Lean.Json
   /-- Maps tag IDs to human-readable labels, evaluated at elaboration time. -/
   regions : Std.HashMap Nat String := {}
-  /-- Whether the stored expression produces `DiagramWithInfo` (after applying gadget values). -/
+  /-- Whether the stored expression produces {name}`DiagramWithInfo` (after applying gadget values). -/
   returnsDwi : Bool := false
 
 /-- Global store for diagram expressions, keyed by unique ID. -/
@@ -156,7 +156,7 @@ deriving Lean.FromJson, Lean.ToJson
 structure HitTestResponse where
   /-- The kind of hit: "nothing", "something", or "tag". -/
   kind : String
-  /-- The tag value (only meaningful when `kind` is "tag"). -/
+  /-- The tag value (only meaningful when {lit}`kind` is "tag"). -/
   value : Nat := 0
   /-- Human-readable label for the hit region, if available. -/
   label : String := ""
@@ -164,7 +164,7 @@ deriving Lean.FromJson, Lean.ToJson
 
 /--
 Applies stored gadget parameter values to a diagram expression, producing the
-fully-applied `Diagram SVG` expression.
+fully-applied {lean}`Diagram SVG` expression.
 -/
 private def applyGadgetValues (sd : StoredDiagram) (values : Array Lean.Json)
     : Except String Lean.Expr := do
@@ -216,7 +216,7 @@ private unsafe def evalParamDiagramUnsafe (req : EvalParamRequest) :
       throw (.mk .internalError "diagram evaluation failed" : RequestError)
 
 open Lean Server in
-/-- Safe wrapper for the unsafe evaluator, linked via `@[implementedBy]`. -/
+/-- Safe wrapper for the unsafe evaluator, linked via {lit}`@[implementedBy]`. -/
 @[implemented_by evalParamDiagramUnsafe]
 private opaque evalParamDiagramImpl (req : EvalParamRequest) :
     RequestM (RequestTask EvalParamResponse)
@@ -228,9 +228,9 @@ def evalParamDiagram (req : EvalParamRequest) :
     RequestM (RequestTask EvalParamResponse) :=
   evalParamDiagramImpl req
 
--- ═══════════════════════════════════════════════════════════════
--- Hit-test RPC
--- ═══════════════════════════════════════════════════════════════
+/-!
+# Hit-test RPC
+-/
 
 open Lean Server Elab Term Meta in
 /-- Unsafe implementation of the hit-test RPC evaluator. -/
@@ -284,7 +284,7 @@ private unsafe def hitTestDiagramUnsafe (req : HitTestRequest) :
       throw (.mk .internalError "hit test evaluation failed" : RequestError)
 
 open Lean Server in
-/-- Safe wrapper for the unsafe hit-test evaluator, linked via `@[implementedBy]`. -/
+/-- Safe wrapper for the unsafe hit-test evaluator, linked via {lit}`@[implementedBy]`. -/
 @[implemented_by hitTestDiagramUnsafe]
 private opaque hitTestDiagramImpl (req : HitTestRequest) :
     RequestM (RequestTask HitTestResponse)
@@ -296,14 +296,14 @@ def hitTestDiagram (req : HitTestRequest) :
     RequestM (RequestTask HitTestResponse) :=
   hitTestDiagramImpl req
 
--- ═══════════════════════════════════════════════════════════════
--- Gadget extraction
--- ═══════════════════════════════════════════════════════════════
+/-!
+# Gadget extraction
+-/
 
 open Lean Meta in
 /--
 Extracts gadget parameter specifications from a function type.
-Walks binders, recognizing `Slider`, `TextInput`, `Checkbox` applications.
+Walks binders, recognizing {name}`Slider`, {name}`TextInput`, {name}`Checkbox` applications.
 Returns an array of JSON gadget specs.
 -/
 unsafe def extractGadgets (ty : Expr) : MetaM (Array Json) := do
@@ -354,12 +354,12 @@ where
       else return none
     else return none
 
--- ═══════════════════════════════════════════════════════════════
--- #diagram command
--- ═══════════════════════════════════════════════════════════════
+/-!
+# #diagram command
+-/
 
 open Lean Widget Elab Command Term Meta in
-/-- Syntax for the `#diagram` command that renders a diagram in the infoview. -/
+/-- Syntax for the {lit}`#diagram` command that renders a diagram in the infoview. -/
 syntax (name := diagramCmd) "#diagram " term : command
 
 open Lean Widget Elab Command Term Meta in
@@ -385,7 +385,7 @@ private unsafe def applyInitialGadgetValues (e : Expr) (gadgets : Array Json) : 
   return app
 
 open Lean Widget Elab Command Term Meta in
-/-- Elaborates the `#diagram` command, evaluating the term and rendering it as SVG. -/
+/-- Elaborates the {lit}`#diagram` command, evaluating the term and rendering it as SVG. -/
 @[command_elab diagramCmd]
 unsafe def elabDiagramCmd : CommandElab := fun stx => do
   let t := stx[1]

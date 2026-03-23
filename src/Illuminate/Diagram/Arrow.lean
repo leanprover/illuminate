@@ -32,10 +32,10 @@ structure LineEnd where
   point : Lean.Name
   /-- Additional offset applied to the resolved anchor position. -/
   shift : Vec2 := 0
-  /-- Departure/arrival angle in radians. If `none`, defaults to the straight-line angle. -/
+  /-- Departure/arrival angle in radians. If {lean}`none`, defaults to the straight-line angle. -/
   angle : Option Float := none
   /-- Controls how far the Bézier control point extends from this endpoint,
-      as a fraction of the distance between endpoints. Like Racket pict's `pull`. -/
+      as a fraction of the distance between endpoints. Like Racket pict's {lit}`pull`. -/
   pull : Float := 0.25
   /-- Optional arrowhead drawn at this endpoint. -/
   arrowhead : Option Arrowhead := none
@@ -44,9 +44,9 @@ deriving Repr, BEq
 instance : Coe Lean.Name LineEnd where
   coe point := { point }
 
--- ═══════════════════════════════════════════════════════════════
--- Arrowhead rendering
--- ═══════════════════════════════════════════════════════════════
+/-!
+# Arrowhead rendering
+-/
 
 namespace ArrowDraw
 
@@ -76,7 +76,7 @@ private def minHalfAngle (ah : Arrowhead) (strokeWidth : Float) : Float :=
 
 /--
 Computes how much the shaft must be shortened for a given arrowhead type.
-Takes the stroke width to match the minimum angle enforcement in `drawArrowhead`.
+Takes the stroke width to match the minimum angle enforcement in {lit}`drawArrowhead`.
 -/
 def arrowheadShorten (ah : Arrowhead) (strokeWidth : Float) : Float :=
   let headLen := baseHeadLen * ah.length
@@ -88,7 +88,7 @@ def arrowheadShorten (ah : Arrowhead) (strokeWidth : Float) : Float :=
   | .circle => headLen * 0.4 * 2
 
 /--
-Draws an arrowhead at `tip` pointing in direction `dir`.
+Draws an arrowhead at {lit}`tip` pointing in direction {lit}`dir`.
 Returns the arrowhead diagram and the amount the shaft should be shortened
 to avoid overlapping the head.
 -/
@@ -140,16 +140,16 @@ def drawArrowhead (ah : Arrowhead) (tip dir : Vec2) (stroke : Stroke)
       (Diagram.circle r (fill := .solid stroke.color) (stroke := stroke))
     (d, r * 2)
 
--- ═══════════════════════════════════════════════════════════════
--- Bézier curve computation
--- ═══════════════════════════════════════════════════════════════
+/-!
+# Bézier curve computation
+-/
 
-/-- Evaluates a cubic Bézier curve at parameter `t`. -/
+/-- Evaluates a cubic Bézier curve at parameter {lit}`t`. -/
 def bezierAt (p0 c1 c2 p3 : Vec2) (t : Float) : Vec2 :=
   let u := 1 - t
   (u * u * u) • p0 + (3 * u * u * t) • c1 + (3 * u * t * t) • c2 + (t * t * t) • p3
 
-/-- Computes the tangent (first derivative) of a cubic Bézier at parameter `t`. -/
+/-- Computes the tangent (first derivative) of a cubic Bézier at parameter {lit}`t`. -/
 def bezierTangent (p0 c1 c2 p3 : Vec2) (t : Float) : Vec2 :=
   let u := 1 - t
   (3 * u * u) • (c1 - p0) + (6 * u * t) • (c2 - c1) + (3 * t * t) • (p3 - c2)
@@ -158,7 +158,7 @@ def bezierTangent (p0 c1 c2 p3 : Vec2) (t : Float) : Vec2 :=
 /-- Computes the unit direction vector for a given angle in radians. -/
 private def angleDir (θ : Float) : Vec2 := ⟨Float.cos θ, Float.sin θ⟩
 
-/-- Computes the angle (in radians) from `a` to `b`. -/
+/-- Computes the angle (in radians) from {lit}`a` to {lit}`b`. -/
 def angleBetween (a b : Vec2) : Float :=
   Float.atan2 (b.y - a.y) (b.x - a.x)
 
@@ -167,9 +167,9 @@ Computes cubic Bézier control points for a line between two resolved endpoints.
 
 Each endpoint has an angle (the direction the line departs/arrives) and a pull
 (how far the control point extends as a fraction of the endpoint distance).
-This matches Racket pict's `pin-arrow-line` behaviour:
-- `c1 = src + pull × dist × dir(srcAngle)`
-- `c2 = tgt - pull × dist × dir(tgtAngle)`
+This matches Racket pict's {lit}`pin-arrow-line` behaviour:
+- {lit}`c1 = src + pull × dist × dir(srcAngle)`
+- {lit}`c2 = tgt - pull × dist × dir(tgtAngle)`
 -/
 def computeControlPoints (src tgt : Vec2)
     (srcAngle tgtAngle : Float) (srcPull tgtPull : Float)
@@ -179,13 +179,13 @@ def computeControlPoints (src tgt : Vec2)
   let c2 := tgt - (tgtPull * dist) • angleDir tgtAngle
   (c1, c2)
 
--- ═══════════════════════════════════════════════════════════════
--- High-level line/arrow drawing
--- ═══════════════════════════════════════════════════════════════
+/-!
+# High-level line/arrow drawing
+-/
 
 /--
 Draws a line or arrow between two resolved points with the given endpoint specs.
-This is the low-level function that operates on concrete `Vec2` positions.
+This is the low-level function that operates on concrete {name}`Vec2` positions.
 -/
 def drawLine (srcPos tgtPos : Vec2)
     (srcEnd tgtEnd : LineEnd) (stroke : Stroke := .defaultArrow)
@@ -245,9 +245,9 @@ def drawLine (srcPos tgtPos : Vec2)
 
 end ArrowDraw
 
--- ═══════════════════════════════════════════════════════════════
--- Diagram-level API
--- ═══════════════════════════════════════════════════════════════
+/-!
+# Diagram-level API
+-/
 
 /--
 Builds the arrow diagram between two concrete points with the given endpoint specs and label.
@@ -320,7 +320,7 @@ def Diagram.connect' {β : Type} [Backend β] (srcPoint tgtPoint : Point) (start
 
 /--
 Draws a line or arrow between two named anchor points in a diagram.
-Resolves names eagerly using `find` and `origin`.
+Resolves names eagerly using {name}`Diagram.find` and {name}`Diagram.origin`.
 -/
 def Diagram.connect {β : Type} [Backend β] (start stop : LineEnd)
     (stroke : Stroke := .defaultArrow)
@@ -344,7 +344,7 @@ deriving Repr, BEq, Inhabited
 
 /--
 Draws an L-shaped (right-angle) line or arrow between two points.
-`bend` controls whether the line goes horizontally or vertically first.
+{lit}`bend` controls whether the line goes horizontally or vertically first.
 -/
 def Diagram.connectL' {β : Type} [Backend β] (srcPoint tgtPoint : Point) (start stop : LineEnd)
     (bend : BendDirection := .vertical)
@@ -373,7 +373,7 @@ def Diagram.connectL' {β : Type} [Backend β] (srcPoint tgtPoint : Point) (star
 
 /--
 Draws an L-shaped (right-angle) line or arrow between two named anchor points.
-`bend` controls whether the line goes horizontally or vertically first.
+{lit}`bend` controls whether the line goes horizontally or vertically first.
 -/
 def Diagram.connectL {β : Type} [Backend β] (start stop : LineEnd)
     (bend : BendDirection := .vertical)
@@ -385,13 +385,13 @@ def Diagram.connectL {β : Type} [Backend β] (start stop : LineEnd)
 
 /--
 Draws a line or arrow between two named shapes using trace-based boundary detection.
-Instead of connecting to explicit anchor points (like `node.north`), this finds the
+Instead of connecting to explicit anchor points (like {lit}`node.north`), this finds the
 named subdiagrams, computes the direction between their centers, and uses traces to
 find where the arrow should start and end on each shape's boundary.
 
 When an endpoint specifies an explicit angle, it is interpreted as the absolute direction
-from the shape's center to the connection point on its boundary: `0` connects on the
-right, `pi` on the left, `pi/2` on the top, etc. Without an explicit angle, the
+from the shape's center to the connection point on its boundary: {lit}`0` connects on the
+right, {name}`pi` on the left, {lean}`pi / 2` on the top, etc. Without an explicit angle, the
 center-to-center direction is used.
 -/
 def Diagram.connectEdge {β : Type} [Backend β] (start stop : LineEnd)

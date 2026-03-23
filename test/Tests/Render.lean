@@ -8,9 +8,9 @@ import Tests.Helpers
 
 open Illuminate
 
--- ══════════════════════════════════════════════════════════════════
--- DrawCmd / Compile (5)
--- ══════════════════════════════════════════════════════════════════
+/-!
+# DrawCmd / Compile (5)
+-/
 
 def testDrawCmd_empty : IO Unit := do
   let cmds := (Diagram.empty : Diagram SVG).compile
@@ -46,9 +46,9 @@ def testDrawCmd_annotate : IO Unit := do
   | some (DrawCmd.pushAnnotation 42) => pure ()
   | _ => throw <| IO.userError "expected pushAnnotation 42"
 
--- ══════════════════════════════════════════════════════════════════
--- SVG output (5)
--- ══════════════════════════════════════════════════════════════════
+/-!
+# SVG output (5)
+-/
 
 def testSvg_pathData : IO Unit := do
   let pd := PathData.line ⟨0, 0⟩ ⟨10, 20⟩
@@ -76,9 +76,9 @@ def testSvg_viewBox : IO Unit := do
   let svg := Svg.render (β := SVG) #[] { minX := 0, minY := 0, width := 100, height := 100 }
   assertContains svg "viewBox=\"0 0 100 100\"" "viewBox"
 
--- ══════════════════════════════════════════════════════════════════
--- SVG rendering (5)
--- ══════════════════════════════════════════════════════════════════
+/-!
+# SVG rendering (5)
+-/
 
 def testSvg_rectRender : IO Unit := do
   let d : Diagram SVG := Diagram.rect 4 4
@@ -114,9 +114,9 @@ def testSvg_renderDiagram : IO Unit := do
   assertContains svg "viewBox" "has viewBox"
   assertContains svg "<path" "has path"
 
--- ══════════════════════════════════════════════════════════════════
--- Smiley face demo (5)
--- ══════════════════════════════════════════════════════════════════
+/-!
+# Smiley face demo (5)
+-/
 
 def smileyYellow : Color := { r := 255, g := 220, b := 50 }
 
@@ -165,9 +165,9 @@ def testSmiley_writeSvg : IO Unit := do
   assertContains contents "</svg>" "written file is complete"
   IO.println s!"  → wrote smiley.svg ({svg.length} bytes)"
 
--- ══════════════════════════════════════════════════════════════════
--- Test registration
--- ══════════════════════════════════════════════════════════════════
+/-!
+# Test registration
+-/
 
 def renderTests : List (String × IO Unit) := [
   -- DrawCmd / Compile (5)

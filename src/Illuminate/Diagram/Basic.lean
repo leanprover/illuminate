@@ -24,18 +24,18 @@ deriving Repr, BEq, Inhabited, Hashable
 
 /-- A backend-independent primitive that can be rendered by any backend. -/
 inductive CorePrimitive where
-  /-- Draws a filled and/or stroked path. `none` fields inherit from config. -/
+  /-- Draws a filled and/or stroked path. {lit}`none` fields inherit from config. -/
   | path : PathData → Fill → Stroke → CorePrimitive
-  /-- Renders a text string. `none` fields inherit style from config. -/
+  /-- Renders a text string. {lit}`none` fields inherit style from config. -/
   | text : String → TextStyle → CorePrimitive
   /-- References an external image resource for raster or vector embedding. -/
   | image : ImageRef → CorePrimitive
 deriving Repr, BEq, Inhabited, Hashable
 
 /--
-The core diagram type, parameterized by a backend-specific foreign type `β`.
+The core diagram type, parameterized by a backend-specific foreign type {lit}`β`.
 Backends can embed their own rendering objects alongside built-in primitives
-by instantiating `β`. Pure geometric diagrams use `Empty` for this parameter.
+by instantiating {lit}`β`. Pure geometric diagrams use {name}`Empty` for this parameter.
 -/
 inductive Diagram (β : Type) where
   /-- Represents the empty diagram: renders nothing and has a zero envelope. -/
@@ -64,8 +64,8 @@ deriving Hashable
 
 /--
 Controls how a backend-specific foreign value interacts with the diagram pipeline.
-The `envelope` and `trace` methods adjust the inner diagram's geometry.
-The `compile` method wraps or replaces the compiled inner drawing commands.
+The {lit}`envelope` and {lit}`trace` methods adjust the inner diagram's geometry.
+The {lit}`compile` method wraps or replaces the compiled inner drawing commands.
 -/
 class Backend (β : Type) where
   /-- Adjusts the inner diagram's envelope. Receives the inner envelope, returns the final one. -/
@@ -85,9 +85,9 @@ instance : Backend Empty where
 
 namespace Diagram
 
--- ═══════════════════════════════════════════════════════════════
--- Smart constructors
--- ═══════════════════════════════════════════════════════════════
+/-!
+# Smart constructors
+-/
 
 variable {β : Type}
 
@@ -141,7 +141,7 @@ def text (s : String) (style : TextStyle := {})
       (`southeast, ⟨right, -h⟩), (`southwest, ⟨left, -h⟩)
     ]
 
-/-- A line segment from `a` to `b`. -/
+/-- A line segment from {lit}`a` to {lit}`b`. -/
 def line (a b : Vec2) (stroke : Stroke := {}) : Diagram β :=
   fromStroke (PathData.line a b) stroke
 
@@ -209,7 +209,7 @@ def ellipse (rx ry : Float) (fill : Fill := default) (stroke : Stroke := {})
     ]
 
 /-- A regular polygon centered at the origin with the given number of sides and circumradius.
-    If `sides` is less than 3, uses 3 and attaches a validation warning. -/
+    If {lit}`sides` is less than 3, uses 3 and attaches a validation warning. -/
 def polygon (sides : Nat) (radius : Float)
     (fill : Fill := default)
     (stroke : Stroke := {}) : Diagram β :=
@@ -235,8 +235,8 @@ The first outer vertex points straight up (north).
 
 Special cases for low point counts:
 - 1 point: an equilateral triangle (inner radius is ignored).
-- 2 points: a vertical lozenge (diamond) whose half-width equals `innerRadius`.
-- 3+ points: a star with `points` outer tips and `points` inner valleys.
+- 2 points: a vertical lozenge (diamond) whose half-width equals {lit}`innerRadius`.
+- 3+ points: a star with {lit}`points` outer tips and {lit}`points` inner valleys.
 -/
 def star (points : Nat) (outerRadius innerRadius : Float)
     (fill : Fill := default)
@@ -283,7 +283,7 @@ def star (points : Nat) (outerRadius innerRadius : Float)
     let d := fromPath path fill stroke
     addPointAnchors d name outerPts
 where
-  /-- Optionally names a diagram and attaches `point0`, `point1`, … anchors. -/
+  /-- Optionally names a diagram and attaches {lit}`point0`, {lit}`point1`, … anchors. -/
   addPointAnchors (d : Diagram β) (name : Option Lean.Name) (pts : List Vec2)
       : Diagram β :=
     match name with
@@ -295,8 +295,8 @@ where
 
 /--
 A horizontal curly brace centered at the origin, pointing downward.
-The brace spans `width` horizontally and extends `depth` downward to a central tip.
-Optionally attach a `label` diagram below the tip.
+The brace spans {lit}`width` horizontally and extends {lit}`depth` downward to a central tip.
+Optionally attach a {lit}`label` diagram below the tip.
 -/
 def curlyBrace (width : Float) (depth : Float := 0)
     (roundness : Float := 0.25)

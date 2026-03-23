@@ -10,9 +10,11 @@ set_option linter.missingDocs false
 
 open Illuminate
 
--- ══════════════════════════════════════════════════════════════════
--- #diagram previews — hover to see SVG in the infoview
--- ══════════════════════════════════════════════════════════════════
+/-!
+# {lit}`#diagram` Previews
+
+Hover to see SVG in the InfoView.
+-/
 
 -- Rounded rectangle
 #diagram Diagram.roundedRect 80 40 8
@@ -116,9 +118,9 @@ def arrowDemo (arrowhead : Arrowhead) : Diagram SVG :=
         .hsep sep <| List.range rowCount |>.map fun _ =>
           .circle rad (fill := .solid { color := { r, g, b } })
 
--- ══════════════════════════════════════════════════════════════════
--- RoundedRect visual test
--- ══════════════════════════════════════════════════════════════════
+/-!
+# RoundedRect visual test
+-/
 
 def roundedRectsDiagram (pos : Slider "pos" 0 1 0.5) (pull : Slider "pull" 0 1 0.5) : Diagram SVG :=
   Diagram.hsep gap [node `left "Input", node `right "Output"]
@@ -160,9 +162,9 @@ def testVisual_roundedRects_7_2 : IO Unit :=
   testVisualWrite "roundedrects_7_2.svg" (roundedRectsDiagram (0.7 : Float) (0.2 : Float))
 
 
--- ══════════════════════════════════════════════════════════════════
--- Pipeline overview (from Lean reference manual)
--- ══════════════════════════════════════════════════════════════════
+/-!
+# Pipeline overview (from Lean reference manual)
+-/
 
 /-- Lean compilation pipeline: Code.lean → Syntax Tree → Core Type Theory → Executable -/
 def pipelineDiagram : Diagram SVG :=
@@ -227,9 +229,9 @@ where
 def testVisual_pipeline : IO Unit :=
   testVisualWrite "pipeline.svg" pipelineDiagram (padding := 20)
 
--- ══════════════════════════════════════════════════════════════════
--- String memory layout (from Lean reference manual)
--- ══════════════════════════════════════════════════════════════════
+/-!
+# String memory layout (from Lean reference manual)
+-/
 
 /-- Memory layout of lean_string: m_header | m_size | m_capacity | m_length | m_data | '\0' -/
 def stringLayoutDiagram : Diagram SVG :=
@@ -277,9 +279,9 @@ def testVisual_stringLayout : IO Unit :=
   testVisualWrite "string-layout.svg" stringLayoutDiagram
 
 
--- ══════════════════════════════════════════════════════════════════
--- Lake workspace (from Lean reference manual)
--- ══════════════════════════════════════════════════════════════════
+/-!
+# Lake workspace (from Lean reference manual)
+-/
 
 /-- Lake workspace hierarchy from the Lean reference manual. -/
 def lakeWorkspaceDiagram : Diagram SVG :=
@@ -322,9 +324,9 @@ where
 def testVisual_lakeWorkspace : IO Unit :=
   testVisualWrite "lake-workspace.svg" lakeWorkspaceDiagram
 
--- ══════════════════════════════════════════════════════════════════
--- Coercion chain (from Lean reference manual)
--- ══════════════════════════════════════════════════════════════════
+/-!
+# Coercion chain (from Lean reference manual)
+-/
 
 /-- Coercion chain diagram from the Lean reference manual (coe-chain.tex). -/
 def coeChainDiagram : Diagram SVG :=
@@ -405,9 +407,9 @@ def paperTest : Diagram SVG :=
 #diagram fun (fold : Slider "fold" 0 1 0.25) =>
   Diagram.paper (width := some 20) (cornerFold := fold)
 
--- ══════════════════════════════════════════════════════════════════
--- Stars with different point counts and dash patterns
--- ══════════════════════════════════════════════════════════════════
+/-!
+# Stars with different point counts and dash patterns
+-/
 
 /-- Grid of stars: rows = point counts (1,2,3,5,6), columns = dash patterns. -/
 def starsDiagram : Diagram SVG :=
@@ -464,9 +466,9 @@ def starAnchorsDiagram : Diagram SVG :=
 def testVisual_starAnchors : IO Unit :=
   testVisualWrite "star-anchors.svg" starAnchorsDiagram
 
--- ══════════════════════════════════════════════════════════════════
--- Ellipse
--- ══════════════════════════════════════════════════════════════════
+/-!
+# Ellipse
+-/
 
 /-- Ellipses with various aspect ratios. -/
 def ellipseDiagram : Diagram SVG :=
@@ -484,9 +486,9 @@ def ellipseDiagram : Diagram SVG :=
 def testVisual_ellipse : IO Unit :=
   testVisualWrite "ellipse.svg" ellipseDiagram
 
--- ══════════════════════════════════════════════════════════════════
--- Transforms: scale, rotate, hflip, vflip
--- ══════════════════════════════════════════════════════════════════
+/-!
+# Transforms: scale, rotate, hflip, vflip
+-/
 
 /-- A labeled arrow shape used to show transform effects. -/
 private def arrowShape : Diagram SVG :=
@@ -522,9 +524,9 @@ def testVisual_transforms : IO Unit :=
   testVisualWrite "transforms.svg" transformsDiagram
     (checks := [("matrix(", "has transform matrices")])
 
--- ══════════════════════════════════════════════════════════════════
--- Ghost and refocus
--- ══════════════════════════════════════════════════════════════════
+/-!
+# Ghost and refocus
+-/
 
 /-- Demonstrates ghost and refocus. -/
 def ghostRefocusDiagram : Diagram SVG :=
@@ -559,9 +561,9 @@ def ghostRefocusDiagram : Diagram SVG :=
 def testVisual_ghostRefocus : IO Unit :=
   testVisualWrite "ghost-refocus.svg" ghostRefocusDiagram
 
--- ══════════════════════════════════════════════════════════════════
--- Cellophane, clip, pinOver, pinUnder
--- ══════════════════════════════════════════════════════════════════
+/-!
+# Cellophane, clip, pinOver, pinUnder
+-/
 
 /-- Demonstrates cellophane (opacity), clip, pinOver, and pinUnder. -/
 def cellophaneClipDiagram : Diagram SVG :=
@@ -617,9 +619,9 @@ def testVisual_cellophaneClip : IO Unit :=
   testVisualWrite "cellophane-clip.svg" cellophaneClipDiagram
     (checks := [("opacity", "has opacity attributes"), ("clipPath", "has clip paths")])
 
--- ══════════════════════════════════════════════════════════════════
--- Trace visual tests
--- ══════════════════════════════════════════════════════════════════
+/-!
+# Trace visual tests
+-/
 
 /-- Circle with rays from four different directions. -/
 def traceCircleDiagram : Diagram SVG :=
@@ -772,9 +774,9 @@ def testVisual_traceConnectAngled : IO Unit :=
   testVisualWrite "trace-connect-angled.svg" (traceConnectAngledDiagram (1.2 * pi))
 
 
--- ══════════════════════════════════════════════════════════════════
--- Concentric circles with hit-test labels
--- ══════════════════════════════════════════════════════════════════
+/-!
+# Concentric circles with hit-test labels
+-/
 
 private def hueToColor (h : Float) : Color :=
   let h := h - h.floor  -- normalize to [0,1)

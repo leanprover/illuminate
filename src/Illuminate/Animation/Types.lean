@@ -35,7 +35,7 @@ structure Segment where
   syncFrame : String
   /-- Maps each parameter index to an SVG element index and attribute name. -/
   paramMap : Array ParamBinding
-  /-- Per-frame parameter values; `params[i][j]` is the `j`-th parameter for frame `i`. -/
+  /-- Per-frame parameter values; {lit}`params[i][j]` is the {lit}`j`-th parameter for frame {lit}`i`. -/
   params : Array (Array String)
 deriving Repr, Inhabited
 

@@ -10,15 +10,15 @@ set_option linter.missingDocs false
 
 open Illuminate
 
--- ══════════════════════════════════════════════════════════════════
--- Testable predicates
--- ══════════════════════════════════════════════════════════════════
+/-!
+# Testable predicates
+-/
 
-/-- Checks that a trace query returns exactly `n` intersections. -/
+/-- Checks that a trace query returns exactly `{lit}n` intersections. -/
 def traceHitsExactly (trace : Trace) (p : Point) (v : Vec2) (n : Nat) : Bool :=
   (trace.query p v).size == n
 
-/-- Checks that the closest intersection is approximately `expected`. -/
+/-- Checks that the closest intersection is approximately `{lit}expected`. -/
 def traceClosestApprox (trace : Trace) (p : Point) (v : Vec2) (expected : Float)
     (tol : Float := 1e-6) : Bool :=
   match trace.closest p v with
@@ -39,7 +39,7 @@ def traceHitsAllPositive (trace : Trace) (p : Point) (v : Vec2) : Bool :=
   let hits := trace.query p v
   hits.all (· >= 0)
 
-/-- Checks that a specific hit (by index) is approximately `expected`. -/
+/-- Checks that a specific hit (by index) is approximately `{lit}expected`. -/
 def traceHitApprox (trace : Trace) (p : Point) (v : Vec2) (idx : Nat) (expected : Float)
     (tol : Float := 1e-6) : Bool :=
   let hits := trace.query p v
@@ -47,9 +47,9 @@ def traceHitApprox (trace : Trace) (p : Point) (v : Vec2) (idx : Nat) (expected 
   | none => false
   | some t => (t - expected).abs < tol
 
--- ══════════════════════════════════════════════════════════════════
--- Circle trace tests
--- ══════════════════════════════════════════════════════════════════
+/-!
+# Circle trace tests
+-/
 
 def circleTrace := Trace.ofCircle 10
 
@@ -95,9 +95,9 @@ def testTrace_circle_tangent : IO Unit := do
   assertTrue (traceHitsExactly circleTrace ⟨-20, 10⟩ Vec2.east 1)
     "circle: tangent ray should hit once"
 
--- ══════════════════════════════════════════════════════════════════
--- Rectangle trace tests
--- ══════════════════════════════════════════════════════════════════
+/-!
+# Rectangle trace tests
+-/
 
 def rectTrace := Trace.ofRect 15 10
 
@@ -135,9 +135,9 @@ def testTrace_rect_fromInside : IO Unit := do
   assertTrue (traceHitsExactly rectTrace ⟨0, 0⟩ Vec2.east 1)
     "rect: ray from inside should hit once"
 
--- ══════════════════════════════════════════════════════════════════
--- Composition tests
--- ══════════════════════════════════════════════════════════════════
+/-!
+# Composition tests
+-/
 
 def testTrace_union_hitCount : IO Unit := do
   -- Two circles at the origin, one r=5 inside one r=10
@@ -151,9 +151,9 @@ def testTrace_union_sorted : IO Unit := do
   assertTrue (traceHitsSorted t ⟨-20, 0⟩ Vec2.east)
     "union: merged hits should be sorted"
 
--- ══════════════════════════════════════════════════════════════════
--- Translation tests
--- ══════════════════════════════════════════════════════════════════
+/-!
+# Translation tests
+-/
 
 def testTrace_translate_hitCount : IO Unit := do
   -- Circle of radius 10 translated to (20, 0)
@@ -174,9 +174,9 @@ def testTrace_translate_miss : IO Unit := do
   assertTrue (traceHitsExactly t ⟨0, 0⟩ Vec2.west 0)
     "translate: ray away from translated circle should miss"
 
--- ══════════════════════════════════════════════════════════════════
--- Transform tests
--- ══════════════════════════════════════════════════════════════════
+/-!
+# Transform tests
+-/
 
 def testTrace_transform_translate : IO Unit := do
   let t := Trace.transform (Matrix.translate 20 0) (Trace.ofCircle 10)
@@ -211,9 +211,9 @@ def testTrace_transform_nonUniformScale : IO Unit := do
   assertTrue (traceClosestApprox t ⟨0, -20⟩ Vec2.north 10 (tol := 1e-4))
     "transform nonUniform: y-axis unchanged"
 
--- ══════════════════════════════════════════════════════════════════
--- Empty trace tests
--- ══════════════════════════════════════════════════════════════════
+/-!
+# Empty trace tests
+-/
 
 def testTrace_empty_noHits : IO Unit := do
   assertTrue (traceHitsExactly Trace.empty ⟨0, 0⟩ Vec2.east 0)
@@ -224,9 +224,9 @@ def testTrace_empty_closestIsNone : IO Unit := do
   unless result.isNone do
     throw <| IO.userError "empty: closest should be none"
 
--- ══════════════════════════════════════════════════════════════════
--- Ellipse trace tests
--- ══════════════════════════════════════════════════════════════════
+/-!
+# Ellipse trace tests
+-/
 
 def ellipseTrace := Trace.ofEllipse 20 10
 
@@ -270,9 +270,9 @@ def testTrace_ellipse_degenerateToCircle : IO Unit := do
     assertTrue ((et - ct).abs < 1e-6) "ellipse rx=ry: should match circle"
   | _, _ => throw <| IO.userError "ellipse rx=ry: expected hits"
 
--- ══════════════════════════════════════════════════════════════════
--- Rounded rectangle trace tests
--- ══════════════════════════════════════════════════════════════════
+/-!
+# Rounded rectangle trace tests
+-/
 
 def roundedRectTrace := Trace.ofRoundedRect 15 10 3
 
@@ -314,9 +314,9 @@ def testTrace_roundedRect_zeroRadius : IO Unit := do
     assertTrue ((rrt - rt).abs < 1e-6) "roundedRect cr=0: should match plain rect"
   | _, _ => throw <| IO.userError "roundedRect cr=0: expected hits"
 
--- ══════════════════════════════════════════════════════════════════
--- Path trace tests
--- ══════════════════════════════════════════════════════════════════
+/-!
+# Path trace tests
+-/
 
 -- A simple 10×10 square as a closed path
 def squarePath := PathData.empty
@@ -356,15 +356,15 @@ def testTrace_path_sorted : IO Unit := do
   assertTrue (traceHitsSorted pathTrace ⟨-20, -2⟩ v)
     "path: diagonal hits should be sorted"
 
--- ══════════════════════════════════════════════════════════════════
--- StrokeTrace testable predicates
--- ══════════════════════════════════════════════════════════════════
+/-!
+# StrokeTrace testable predicates
+-/
 
-/-- Checks that a stroke trace query returns exactly `n` hits. -/
+/-- Checks that a stroke trace query returns exactly `{lit}n` hits. -/
 def strokeHitsExactly (st : StrokeTrace) (p : Point) (v : Vec2) (n : Nat) : Bool :=
   (st.query p v).size == n
 
-/-- Checks that the closest stroke hit's edge is approximately `expected`. -/
+/-- Checks that the closest stroke hit's edge is approximately `{lit}expected`. -/
 def strokeClosestEdgeApprox (st : StrokeTrace) (p : Point) (v : Vec2) (expected : Float)
     (tol : Float := 1e-4) : Bool :=
   match st.closest p v with
@@ -391,9 +391,9 @@ def strokeEdgeBeforeCenterline (st : StrokeTrace) (tr : Trace) (p : Point) (v : 
   | some hit, some ct => hit.edge < ct
   | _, _ => true
 
--- ══════════════════════════════════════════════════════════════════
--- StrokeTrace circle tests (stroke width 1, 10, 20)
--- ══════════════════════════════════════════════════════════════════
+/-!
+# StrokeTrace circle tests (stroke width 1, 10, 20)
+-/
 
 def testStroke_circle_sw1_hitCount : IO Unit := do
   let st := StrokeTrace.ofCircle 10 1
@@ -439,9 +439,9 @@ def testStroke_circle_miss : IO Unit := do
   assertTrue (strokeHitsExactly st ⟨0, 20⟩ Vec2.east 0)
     "strokeCircle: miss should have 0 hits"
 
--- ══════════════════════════════════════════════════════════════════
--- StrokeTrace rectangle tests (stroke width 1, 10, 20)
--- ══════════════════════════════════════════════════════════════════
+/-!
+# StrokeTrace rectangle tests (stroke width 1, 10, 20)
+-/
 
 def testStroke_rect_sw1_hitCount : IO Unit := do
   let st := StrokeTrace.ofRect 15 10 1
@@ -482,9 +482,9 @@ def testStroke_rect_diagonal_wider : IO Unit := do
     unless hit.width > 10 do
       throw <| IO.userError s!"strokeRect diagonal: apparent width {hit.width} should exceed stroke width 10"
 
--- ══════════════════════════════════════════════════════════════════
--- StrokeTrace composition and transform tests
--- ══════════════════════════════════════════════════════════════════
+/-!
+# StrokeTrace composition and transform tests
+-/
 
 def testStroke_union_hitCount : IO Unit := do
   let st := StrokeTrace.union (StrokeTrace.ofCircle 5 2) (StrokeTrace.ofCircle 10 2)
@@ -512,9 +512,9 @@ def testStroke_transform_rotate : IO Unit := do
   assertTrue (strokeClosestEdgeApprox st ⟨-20, 0⟩ Vec2.east 9 (tol := 0.1))
     "strokeTransform rotate: closest edge of rotated rect"
 
--- ══════════════════════════════════════════════════════════════════
--- StrokeTrace ellipse tests
--- ══════════════════════════════════════════════════════════════════
+/-!
+# StrokeTrace ellipse tests
+-/
 
 def testStroke_ellipse_hitCount : IO Unit := do
   let st := StrokeTrace.ofEllipse 20 10 2
@@ -538,9 +538,9 @@ def testStroke_ellipse_widthsPositive : IO Unit := do
   assertTrue (strokeWidthsPositive st ⟨-30, 0⟩ Vec2.east)
     "strokeEllipse: all widths positive"
 
--- ══════════════════════════════════════════════════════════════════
--- StrokeTrace rounded rectangle tests
--- ══════════════════════════════════════════════════════════════════
+/-!
+# StrokeTrace rounded rectangle tests
+-/
 
 def testStroke_roundedRect_hitCount : IO Unit := do
   let st := StrokeTrace.ofRoundedRect 15 10 3 2
@@ -559,9 +559,9 @@ def testStroke_roundedRect_edgeBefore : IO Unit := do
   assertTrue (strokeEdgeBeforeCenterline st tr ⟨-30, 0⟩ Vec2.east)
     "strokeRoundedRect: edge should be before centerline"
 
--- ══════════════════════════════════════════════════════════════════
--- StrokeTrace path tests
--- ══════════════════════════════════════════════════════════════════
+/-!
+# StrokeTrace path tests
+-/
 
 def strokePathTrace := StrokeTrace.ofPathData squarePath.commands 2
 
@@ -583,9 +583,9 @@ def testStroke_path_widthsPositive : IO Unit := do
   assertTrue (strokeWidthsPositive strokePathTrace ⟨-20, 0⟩ Vec2.east)
     "strokePath: all widths positive"
 
--- ══════════════════════════════════════════════════════════════════
--- Test list
--- ══════════════════════════════════════════════════════════════════
+/-!
+# Test list
+-/
 
 def traceTests : List (String × IO Unit) := [
   ("Trace/circle_fromOutside_hitCount", testTrace_circle_fromOutside_hitCount),
