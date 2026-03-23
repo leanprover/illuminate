@@ -138,3 +138,26 @@ Hover over {lit}`#animate` to see playback in the InfoView, with play/pause butt
       (fill := .solid { color := Color.red })
       (stroke := { color := Color.black, width := 1 })
     crossFade sq circ t)
+
+-- Gradient spotlight: radial gradient focal point orbits inside a drifting ellipse
+#animate (fps := 30)
+  [{ duration := 3.0, loop := true }]
+  (fun progress =>
+    let t := progress[0]
+    let θ := t * 2 * pi
+    -- Focal point orbits in a small circle inside the ellipse
+    let fx := 20 * Float.cos θ
+    let fy := 12 * Float.sin θ
+    let stops : Array GradientStop := #[
+      { offset := 0, color := Color.white },
+      { offset := 0.4, color := { r := 255, g := 220, b := 100 } },
+      { offset := 1, color := { r := 30, g := 60, b := 120 } }
+    ]
+    let grad := Gradient.radial 0 0 50 fx fy 0 stops
+    let ellipseShape := Diagram.ellipse 50 35
+      (fill := .gradient grad)
+      (stroke := { color := { r := 30, g := 60, b := 120 }, width := (2 : Float) })
+    -- Drift the whole ellipse in a gentle figure-eight
+    let dx := 30 * Float.sin θ
+    let dy := 15 * Float.sin (2 * θ)
+    Diagram.transform (Matrix.translate dx dy) ellipseShape)

@@ -115,6 +115,50 @@ def testSvg_renderDiagram : IO Unit := do
   assertContains svg "<path" "has path"
 
 /-!
+# Gradient rendering (5)
+-/
+
+def testGradientStops : Array GradientStop := #[
+  { offset := 0, color := Color.red },
+  { offset := 1, color := Color.blue }
+]
+
+def testSvg_gradientFillPath : IO Unit := do
+  let g := Gradient.linear 0 10 0 (-10) testGradientStops
+  let cmd : DrawCmd SVG := .fillPath (PathData.rect 20 20) (.gradient g)
+  let svg := Svg.renderCmd cmd (lastGradId := "grad_0")
+  assertContains svg "url(#grad_0)" "gradient fill references defs"
+  assertContains svg "<path" "gradient produces a path element"
+
+def testSvg_gradientDefs : IO Unit := do
+  let g := Gradient.linear 0 10 0 (-10) testGradientStops
+  let d : Diagram SVG := Diagram.rect 20 20 (fill := .gradient g)
+  let svg := d.renderDiagram
+  assertContains svg "<defs>" "SVG has defs block"
+  assertContains svg "<linearGradient" "defs contains linearGradient"
+  assertContains svg "gradientUnits=\"userSpaceOnUse\"" "uses userSpaceOnUse"
+  assertContains svg "<stop" "gradient has stops"
+
+def testSvg_radialGradientDefs : IO Unit := do
+  let g := Gradient.radialSymmetric 15 testGradientStops
+  let d : Diagram SVG := Diagram.circle 15 (fill := .gradient g)
+  let svg := d.renderDiagram
+  assertContains svg "<radialGradient" "defs contains radialGradient"
+  assertContains svg "stop-color=\"rgb(255,0,0)\"" "has red stop"
+  assertContains svg "stop-color=\"rgb(0,0,255)\"" "has blue stop"
+
+def testSvg_gradientSpread : IO Unit := do
+  let g := Gradient.linear 0 5 0 (-5) testGradientStops (spread := .reflect)
+  let d : Diagram SVG := Diagram.rect 20 20 (fill := .gradient g)
+  let svg := d.renderDiagram
+  assertContains svg "spreadMethod=\"reflect\"" "has reflect spread"
+
+def testSvg_gradientNone : IO Unit := do
+  let cmd : DrawCmd SVG := .fillPath (PathData.rect 4 4) .none
+  let svg := Svg.renderCmd cmd
+  assertTrue (svg.isEmpty) "none fill still produces empty string"
+
+/-!
 # Smiley face demo (5)
 -/
 
@@ -188,6 +232,12 @@ def renderTests : List (String × IO Unit) := [
   ("SVG/transformNested", testSvg_transformNested),
   ("SVG/annotationId", testSvg_annotationId),
   ("SVG/renderDiagram", testSvg_renderDiagram),
+  -- Gradient rendering (5)
+  ("SVG/gradientFillPath", testSvg_gradientFillPath),
+  ("SVG/gradientDefs", testSvg_gradientDefs),
+  ("SVG/radialGradientDefs", testSvg_radialGradientDefs),
+  ("SVG/gradientSpread", testSvg_gradientSpread),
+  ("SVG/gradientNone", testSvg_gradientNone),
   -- Smiley face demo (5)
   ("Smiley/compiles", testSmiley_compiles),
   ("Smiley/hasFace", testSmiley_hasFace),

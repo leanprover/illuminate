@@ -30,6 +30,7 @@ private def drawCmdTag {β : Type} (cmd : DrawCmd β) : UInt8 :=
   | .popClip => 10
   | .pushForeign .. => 11
   | .popForeign .. => 12
+  | .defGradient .. => 13
 
 /-!
 # Structural comparison

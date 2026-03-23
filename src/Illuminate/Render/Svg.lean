@@ -109,6 +109,29 @@ private def anchorToSvg : TextAnchor → String
   | .middle => "middle"
 
 /-!
+# Gradient SVG helpers
+-/
+
+/-- Converts a {name}`SpreadMethod` to its SVG {lit}`spreadMethod` attribute value. -/
+private def spreadToSvg : SpreadMethod → String
+  | .pad => "pad"
+  | .reflect => "reflect"
+  | .repeat => "repeat"
+
+/-- Renders a {name}`GradientStop` as an SVG {lit}`<stop>` element. -/
+private def stopToSvg (s : GradientStop) : String :=
+  s!"<stop offset=\"{fmtNum s.offset}\" stop-color=\"{colorToSvg s.color}\" stop-opacity=\"{fmtNum s.color.a}\"/>"
+
+/-- Renders all stops of a gradient as concatenated SVG {lit}`<stop>` elements. -/
+private def stopsToSvg (stops : Array GradientStop) : String :=
+  stops.foldl (fun acc s => acc ++ stopToSvg s) ""
+
+/-- Computes the SVG element ID for a gradient from its positional index and clip prefix. -/
+def gradientIdOf (gi : Nat) (clipPrefix : String) : String :=
+  s!"grad{clipPrefix}{gi}"
+
+
+/-!
 # Shared attribute extraction
 -/
 
@@ -141,6 +164,13 @@ def drawCmdAttrs {β : Type} [BackendRender β]
         ("d", pathDataToD pd),
         ("fill", colorToSvg fs.color),
         ("fill-opacity", fmtNum fs.color.a)]⟩
+    | .gradient _ =>
+      -- The fill URL is stable (positional ID from defGradient) and set by renderCmd.
+      -- We emit a placeholder here; the actual url(...) is injected at render time.
+      ⟨true, #[
+        ("d", pathDataToD pd),
+        ("fill", ""),
+        ("fill-opacity", "1")]⟩
   | .strokePath pd stroke => ⟨true, #[
       ("d", pathDataToD pd),
       ("fill", "none"),
@@ -170,6 +200,23 @@ def drawCmdAttrs {β : Type} [BackendRender β]
     ⟨true, #[("d", pathDataToD pd), ("id", cid)]⟩
   | .pushForeign f => ⟨true, #[("data-foreign", BackendRender.renderOpen f)]⟩
   | .popForeign f => ⟨false, #[("data-foreign", BackendRender.renderClose f)]⟩
+  | .defGradient gi g =>
+    -- Gradient defs are emitted inside <defs> wrappers in the body. The animation
+    -- walker skips <defs> but indexes the gradient element inside, making these
+    -- attributes patchable.
+    match g with
+    | .linear x1 y1 x2 y2 _ spread => ⟨true, #[
+        ("id", gradientIdOf gi clipPrefix),
+        ("x1", fmtNum x1), ("y1", fmtNum y1),
+        ("x2", fmtNum x2), ("y2", fmtNum y2),
+        ("gradientUnits", "userSpaceOnUse"),
+        ("spreadMethod", spreadToSvg spread)]⟩
+    | .radial cx cy r fx fy fr _ spread => ⟨true, #[
+        ("id", gradientIdOf gi clipPrefix),
+        ("cx", fmtNum cx), ("cy", fmtNum cy), ("r", fmtNum r),
+        ("fx", fmtNum fx), ("fy", fmtNum fy), ("fr", fmtNum fr),
+        ("gradientUnits", "userSpaceOnUse"),
+        ("spreadMethod", spreadToSvg spread)]⟩
   | .popTransform | .popAnnotation | .popOpacity | .popClip => ⟨false, #[]⟩
 
 /-- Joins attribute pairs into an SVG attribute string with a leading space. -/
@@ -185,13 +232,20 @@ private def findAttr (attrs : Array (String × String)) (name : String) : String
 /--
 Renders a single {name}`DrawCmd` to an SVG fragment. The {name}`clipPrefix` distinguishes
 clip-path IDs across independently compiled diagrams on the same page.
+The {name}`lastGradId` is the SVG ID of the most recently emitted gradient definition,
+used for {name (full := Fill.gradient)}`gradient` fills.
 -/
-def renderCmd {β : Type} [BackendRender β] (cmd : DrawCmd β) (clipPrefix : String := "") : String :=
+def renderCmd {β : Type} [BackendRender β] (cmd : DrawCmd β)
+    (clipPrefix : String := "") (lastGradId : String := "") : String :=
   let info := drawCmdAttrs cmd clipPrefix
   match cmd with
   | .fillPath _ .none => ""
   | .fillPath _ (.solid _) =>
     s!"<path{renderAttrs info.attrs}/>"
+  | .fillPath _ (.gradient _) =>
+    let attrs := info.attrs.map fun (k, v) =>
+      if k == "fill" then ("fill", s!"url(#{lastGradId})") else (k, v)
+    s!"<path{renderAttrs attrs}/>"
   | .strokePath .. =>
     s!"<path{renderAttrs info.attrs}/>"
   | .drawTextRun s style pos =>
@@ -217,6 +271,14 @@ def renderCmd {β : Type} [BackendRender β] (cmd : DrawCmd β) (clipPrefix : St
     s!"<defs><clipPath id=\"{cid}\"><path d=\"{d}\"/></clipPath></defs><g clip-path=\"url(#{cid})\">"
   | .pushForeign tag => BackendRender.renderOpen tag
   | .popForeign tag => BackendRender.renderClose tag
+  | .defGradient _ g =>
+    let stopsStr := match g with
+      | .linear _ _ _ _ stops _ | .radial _ _ _ _ _ _ stops _ => stopsToSvg stops
+    match g with
+    | .linear .. =>
+      s!"<defs><linearGradient{renderAttrs info.attrs}>{stopsStr}</linearGradient></defs>"
+    | .radial .. =>
+      s!"<defs><radialGradient{renderAttrs info.attrs}>{stopsStr}</radialGradient></defs>"
   | .popTransform | .popAnnotation | .popOpacity | .popClip => "</g>"
 
 /--
@@ -226,6 +288,11 @@ The {name}`clipPrefix` distinguishes clip-path IDs when multiple SVGs share a pa
 def render {β : Type} [BackendRender β] (cmds : Array (DrawCmd β)) (viewBox : ViewBox)
     (clipPrefix : String := "") : String :=
   let header := s!"<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"{fmtNum viewBox.minX} {fmtNum viewBox.minY} {fmtNum viewBox.width} {fmtNum viewBox.height}\">"
-  let body := cmds.foldl (fun acc cmd => acc ++ "\n" ++ renderCmd cmd clipPrefix) ""
+  let (body, _) := cmds.foldl (fun (acc, lastGradId) cmd =>
+    let newGradId := match cmd with
+      | .defGradient gi _ => gradientIdOf gi clipPrefix
+      | _ => lastGradId
+    (acc ++ "\n" ++ renderCmd cmd clipPrefix newGradId, newGradId))
+    ("", "")
   -- Flip y-axis: SVG y points down, diagram y points up
   header ++ "\n<g transform=\"scale(1,-1)\">" ++ body ++ "\n</g>\n</svg>"

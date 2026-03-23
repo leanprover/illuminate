@@ -16,45 +16,50 @@ variable {β : Type} [Backend β]
 
 /-- Compiles a diagram tree into a flat display list of drawing commands. -/
 def compile (d : Diagram β) : Array (DrawCmd β) :=
-  go d #[]
+  (go d #[] 0).1
 where
-  go (d : Diagram β) (acc : Array (DrawCmd β)) : Array (DrawCmd β) :=
+  go (d : Diagram β) (acc : Array (DrawCmd β)) (gi : Nat) :
+      Array (DrawCmd β) × Nat :=
     match d with
-    | .empty => acc
+    | .empty => (acc, gi)
     | .prim cp =>
       match cp with
       | .path pd fill stroke =>
-        let acc :=
+        let (acc, gi) :=
           match fill with
-          | .solid fs => if fs.color.a > 0 then acc.push (.fillPath pd fill) else acc
-          | .none => acc
-        if stroke.width > 0 && stroke.color.a > 0 then acc.push (.strokePath pd stroke)
-        else acc
+          | .solid fs =>
+            if fs.color.a > 0 then (acc.push (.fillPath pd fill), gi) else (acc, gi)
+          | .gradient g =>
+            let acc := acc.push (.defGradient gi g)
+            (acc.push (.fillPath pd fill), gi + 1)
+          | .none => (acc, gi)
+        if stroke.width > 0 && stroke.color.a > 0 then (acc.push (.strokePath pd stroke), gi)
+        else (acc, gi)
       | .text s style =>
-        acc.push (.drawTextRun s style ⟨0, 0⟩)
-      | .image _ => acc
+        (acc.push (.drawTextRun s style ⟨0, 0⟩), gi)
+      | .image _ => (acc, gi)
     | .foreign val d =>
-      let inner := go d #[]
-      acc ++ Backend.compile val inner
+      let (inner, gi) := go d #[] gi
+      (acc ++ Backend.compile val inner, gi)
     | .tag n d =>
-      let inner := go d #[]
-      (acc.push (.pushAnnotation n) ++ inner).push .popAnnotation
-    | .named _ d => go d acc
+      let (inner, gi) := go d #[] gi
+      ((acc.push (.pushAnnotation n) ++ inner).push .popAnnotation, gi)
+    | .named _ d => go d acc gi
     | .transform m d =>
-      let inner := go d #[]
-      (acc.push (.pushTransform m) ++ inner).push .popTransform
+      let (inner, gi) := go d #[] gi
+      ((acc.push (.pushTransform m) ++ inner).push .popTransform, gi)
     | .compose a b =>
-      let acc := go a acc
-      go b acc
-    | .withEnv _ d => go d acc
-    | .warning _ d => go d acc
+      let (acc, gi) := go a acc gi
+      go b acc gi
+    | .withEnv _ d => go d acc gi
+    | .warning _ d => go d acc gi
     | .cellophane α d =>
-      let inner := go d #[]
-      (acc.push (.pushOpacity α) ++ inner).push .popOpacity
+      let (inner, gi) := go d #[] gi
+      ((acc.push (.pushOpacity α) ++ inner).push .popOpacity, gi)
     | .clip pd d =>
       let clipId := acc.size
-      let inner := go d #[]
-      (acc.push (.pushClip pd clipId) ++ inner).push .popClip
+      let (inner, gi) := go d #[] gi
+      ((acc.push (.pushClip pd clipId) ++ inner).push .popClip, gi)
 
 /-- Renders a diagram to an SVG string. -/
 def renderDiagram [BackendRender β] [Hashable β] (d : Diagram β) (padding : Float := 2) : String :=

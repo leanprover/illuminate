@@ -38,5 +38,7 @@ inductive DrawCmd (β : Type) where
   | pushForeign : β → DrawCmd β
   /-- Pops the most recent foreign group. -/
   | popForeign : β → DrawCmd β
+  /-- Defines a gradient in the SVG {lit}`<defs>` block, referenced by a positional ID. -/
+  | defGradient : Nat → Gradient → DrawCmd β
 
 instance {β : Type} : Inhabited (DrawCmd β) := ⟨.popTransform⟩
