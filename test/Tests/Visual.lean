@@ -829,19 +829,11 @@ def linkDemo : Diagram SVG :=
 -/
 
 def gradientRectDemo : Diagram SVG :=
-  let stops := #[
-    ({ offset := 0, color := { r := 66, g := 133, b := 244 } } : GradientStop),
-    { offset := 1, color := { r := 234, g := 67, b := 53 } }
-  ]
   let linearRect := Diagram.rect 80 40
-    (fill := .gradient (Gradient.horizontal 80 stops))
+    (fill := .between { r := 66, g := 133, b := 244 } { r := 234, g := 67, b := 53 } .east)
     (stroke := { color := Color.black, width := (1 : Float) })
-  let radialStops : Array GradientStop := #[
-    { offset := 0, color := Color.white },
-    { offset := 1, color := { r := 66, g := 133, b := 244 } }
-  ]
   let radialCircle := Diagram.circle 25
-    (fill := .gradient (Gradient.radialSymmetric 25 radialStops))
+    (fill := .radialBetween .white { r := 66, g := 133, b := 244 })
     (stroke := { color := Color.black, width := (1 : Float) })
   Diagram.hsep 20 [linearRect, radialCircle]
 
@@ -867,43 +859,30 @@ def pizzaDemo : Diagram SVG :=
   let sliceEnd := pi / 3 + pi / 4
   let sliceMid := (sliceStart + sliceEnd) / 2
   let pullDist := 14.0
-  let sliceGrad := Gradient.radialSymmetric r #[
-    { offset := 0.0, color := { r := 255, g := 220, b := 80 } },
-    { offset := 1.0, color := { r := 220, g := 140, b := 20 } }
-  ]
-  let slice := Diagram.wedge sliceStart sliceEnd r
-    (fill := .gradient sliceGrad) (stroke := crust)
+  let sliceFill := Fill.radialBetween { r := 255, g := 220, b := 80 } { r := 220, g := 140, b := 20 }
+  let slice := Diagram.wedge sliceStart sliceEnd r (fill := sliceFill) (stroke := crust)
   let slice := Diagram.move (.dir sliceMid) pullDist slice
   -- The main body (everything except the pulled slice, with a small gap)
   let gap := 0.04
-  let bodyGrad := Gradient.radialSymmetric r #[
-    { offset := 0.0, color := { r := 250, g := 200, b := 60 } },
-    { offset := 1.0, color := { r := 210, g := 130, b := 15 } }
-  ]
+  let bodyFill := Fill.radialBetween { r := 250, g := 200, b := 60 } { r := 210, g := 130, b := 15 }
   let body := Diagram.wedge (sliceEnd + gap) (sliceStart + 2 * pi - gap) r
-    (fill := .gradient bodyGrad) (stroke := crust)
+    (fill := bodyFill) (stroke := crust)
   let pizza := Diagram.compose body slice
   -- Three ring wedges around the outside
   let ringR := r + 18
   let ringW := 10.0
   let ringStroke : Stroke := { color := { r := 40, g := 40, b := 60 }, width := (0.8 : Float) }
   let ring1 := Diagram.ringWedge (0) (2 * pi / 3 - 0.06) ringR (ringR + ringW)
-    (fill := .gradient (.linear (-ringR) 0 ringR 0 #[
-      { offset := 0, color := { r := 100, g := 180, b := 255 } },
-      { offset := 1, color := { r := 30, g := 80, b := 200 } }
-    ]))
+    (fill := .between { r := 100, g := 180, b := 255 } { r := 30, g := 80, b := 200 } .east)
     (stroke := ringStroke)
   let ring2 := Diagram.ringWedge (2 * pi / 3 + 0.02) (4 * pi / 3 - 0.06) ringR (ringR + ringW)
-    (fill := .gradient (.linear 0 (-ringR) 0 ringR #[
-      { offset := 0, color := { r := 255, g := 120, b := 180 } },
-      { offset := 1, color := { r := 200, g := 40, b := 100 } }
-    ]))
+    (fill := .between { r := 255, g := 120, b := 180 } { r := 200, g := 40, b := 100 } .north)
     (stroke := ringStroke)
   let ring3 := Diagram.ringWedge (4 * pi / 3 + 0.02) (2 * pi - 0.06) ringR (ringR + ringW)
-    (fill := .gradient (.radialSymmetric (ringR + ringW) #[
+    (fill := .radialGradient #[
       { offset := 0.6, color := { r := 100, g := 220, b := 130 } },
       { offset := 1, color := { r := 30, g := 150, b := 60 } }
-    ]))
+    ])
     (stroke := ringStroke)
   [pizza, ring1, ring2, ring3].foldl Diagram.compose Diagram.empty
 

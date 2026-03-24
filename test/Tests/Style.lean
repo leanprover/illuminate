@@ -16,7 +16,7 @@ def testStyle_fillDefault : IO Unit := do
   let f : Fill := default
   match f with
   | .solid fs => assertTrue (fs.color == Color.lightGray) "default fill color is lightGray"
-  | .none | .gradient _ => throw <| IO.userError "expected solid fill"
+  | _ => throw <| IO.userError "expected solid fill"
 
 def testStyle_strokeDefault : IO Unit := do
   let s : Stroke := {}
@@ -74,7 +74,7 @@ def testStyle_gradientFillCoe : IO Unit := do
     { offset := 0, color := Color.red },
     { offset := 1, color := Color.blue }
   ]
-  let f : Fill := g
+  let f : ResolvedFill := g
   match f with
   | .gradient _ => pure ()
   | _ => throw <| IO.userError "expected gradient fill"

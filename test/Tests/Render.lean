@@ -125,14 +125,14 @@ def testGradientStops : Array GradientStop := #[
 
 def testSvg_gradientFillPath : IO Unit := do
   let g := Gradient.linear 0 10 0 (-10) testGradientStops
-  let cmd : DrawCmd SVG := .fillPath (PathData.rect 20 20) (.gradient g) (some 0)
+  let cmd : DrawCmd SVG := .fillPath (PathData.rect 20 20) (.gradient g : ResolvedFill) (some 0)
   let svg := Svg.renderCmd cmd
   assertContains svg "url(#grad0)" "gradient fill references defs"
   assertContains svg "<path" "gradient produces a path element"
 
 def testSvg_gradientDefs : IO Unit := do
   let g := Gradient.linear 0 10 0 (-10) testGradientStops
-  let d : Diagram SVG := Diagram.rect 20 20 (fill := .gradient g)
+  let d : Diagram SVG := Diagram.rect 20 20 (fill := .resolved (.gradient g))
   let svg := d.renderDiagram
   assertContains svg "<defs>" "SVG has defs block"
   assertContains svg "<linearGradient" "defs contains linearGradient"
@@ -141,7 +141,7 @@ def testSvg_gradientDefs : IO Unit := do
 
 def testSvg_radialGradientDefs : IO Unit := do
   let g := Gradient.radialSymmetric 15 testGradientStops
-  let d : Diagram SVG := Diagram.circle 15 (fill := .gradient g)
+  let d : Diagram SVG := Diagram.circle 15 (fill := .resolved (.gradient g))
   let svg := d.renderDiagram
   assertContains svg "<radialGradient" "defs contains radialGradient"
   assertContains svg "stop-color=\"rgb(255,0,0)\"" "has red stop"
@@ -149,7 +149,7 @@ def testSvg_radialGradientDefs : IO Unit := do
 
 def testSvg_gradientSpread : IO Unit := do
   let g := Gradient.linear 0 5 0 (-5) testGradientStops (spread := .reflect)
-  let d : Diagram SVG := Diagram.rect 20 20 (fill := .gradient g)
+  let d : Diagram SVG := Diagram.rect 20 20 (fill := .resolved (.gradient g))
   let svg := d.renderDiagram
   assertContains svg "spreadMethod=\"reflect\"" "has reflect spread"
 
@@ -168,7 +168,7 @@ transform group, so {lit}`userSpaceOnUse` coordinates are interpreted in local s
 -/
 def testSvg_gradientTranslated : IO Unit := do
   let g := Gradient.horizontal 20 testGradientStops
-  let r : Diagram SVG := Diagram.rect 20 10 (fill := .gradient g)
+  let r : Diagram SVG := Diagram.rect 20 10 (fill := .resolved (.gradient g))
   let d := Diagram.transform (Matrix.translate 100 0) r
   let svg := d.renderDiagram
   -- The gradient def must appear inside the transform group.
@@ -186,7 +186,7 @@ gradient definition inside their respective transform groups.
 -/
 def testSvg_gradientHsep : IO Unit := do
   let g := Gradient.horizontal 20 testGradientStops
-  let r : Diagram SVG := Diagram.rect 20 10 (fill := .gradient g)
+  let r : Diagram SVG := Diagram.rect 20 10 (fill := .resolved (.gradient g))
   let d := Diagram.hsep 10 [r, r]
   let svg := d.renderDiagram
   -- Two gradient rects side-by-side should produce two separate gradient defs
@@ -202,7 +202,7 @@ keeps local coordinates and the defs stay inside the transform groups.
 -/
 def testSvg_gradientNestedTransform : IO Unit := do
   let g := Gradient.radialSymmetric 15 testGradientStops
-  let c : Diagram SVG := Diagram.circle 15 (fill := .gradient g)
+  let c : Diagram SVG := Diagram.circle 15 (fill := .resolved (.gradient g))
   let d := Diagram.transform (Matrix.translate 50 30)
     (Diagram.transform (Matrix.rotate (pi / 4)) c)
   let svg := d.renderDiagram

@@ -18,7 +18,7 @@ inductive DrawCmd (β : Type) where
   {name (scope := "Illuminate.Render.Svg")}`drawCmdAttrs` can emit the correct {lit}`url(#...)` fill
   without relying on command ordering.
   -/
-  | fillPath : PathData → Fill → Option Nat → DrawCmd β
+  | fillPath : PathData → ResolvedFill → Option Nat → DrawCmd β
   /-- Strokes a path with the given stroke style. -/
   | strokePath : PathData → Stroke → DrawCmd β
   /-- Draws a text string at the given position. -/
