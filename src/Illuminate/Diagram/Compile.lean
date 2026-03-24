@@ -25,15 +25,16 @@ where
     | .prim cp =>
       match cp with
       | .path pd fill stroke =>
+        let resolved : ResolvedFill := fill.resolve cp.toEnvelope
         let (acc, gi) :=
-          match fill with
+          match resolved with
           | .solid fs =>
             if fs.color.a > 0 then
-              (acc.push (.fillPath pd fill none), gi)
+              (acc.push (.fillPath pd resolved none), gi)
             else (acc, gi)
           | .gradient g =>
             let acc := acc.push (.defGradient gi g)
-            (acc.push (.fillPath pd fill (some gi)), gi + 1)
+            (acc.push (.fillPath pd resolved (some gi)), gi + 1)
           | .none => (acc, gi)
         if stroke.width > 0 && stroke.color.a > 0 then
           (acc.push (.strokePath pd stroke), gi)

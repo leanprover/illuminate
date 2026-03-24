@@ -102,8 +102,8 @@ variable {β : Type} [Backend β]
 Hit-tests a diagram at the given point, returning the topmost hit.
 
 Respects front-to-back ordering: given diagrams {given}`a, b`, in {lean}`Diagram.compose a b`, {name}`b` (drawn on top) is
-tested first. A {name}`Fill.solid` interior is hittable even if transparent. A
-{name}`Fill.none` interior is not hittable — only its stroke boundary is.
+tested first. A {name}`ResolvedFill.solid` interior is hittable even if transparent. A
+{name}`ResolvedFill.none` interior is not hittable — only its stroke boundary is.
 Clicking within the border stroke of a shape counts as clicking the shape.
 -/
 def hitTest (d : Diagram β) (p : Point) : Click :=
@@ -113,8 +113,8 @@ def hitTest (d : Diagram β) (p : Point) : Click :=
     match cp with
     | .path pd fill stroke =>
       let fillHit := match fill with
-        | .solid _ | .gradient _ => pd.contains p
         | .none => false
+        | _ => pd.contains p
       let strokeHit := stroke.width > 0 && stroke.color.a > 0 &&
         pointOnStroke pd stroke.width p
       if fillHit || strokeHit then .something else .nothing

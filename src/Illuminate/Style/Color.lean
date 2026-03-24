@@ -5,6 +5,8 @@ Author: David Thrane Christiansen
 -/
 
 import Illuminate.Geometry.Basic
+import Illuminate.Geometry.Vec2
+import Illuminate.Geometry.Envelope
 
 namespace Illuminate
 
@@ -37,7 +39,66 @@ def lightGray : Color := { r := 211, g := 211, b := 211 }
 /-- Fully transparent black. -/
 def transparent : Color := { r := 0, g := 0, b := 0, a := 0.0 }
 
+/-- Creates an opaque color from red, green, and blue channel values (0–255). -/
+def rgb (r g b : UInt8) : Color := { r, g, b }
+
+/-- Creates a color from red, green, blue, and alpha values. Channels are 0–255, alpha is 0.0–1.0. -/
+def rgba (r g b : UInt8) (a : Float) : Color := { r, g, b, a }
+
 end Color
+
+private def hexVal (c : Char) : Option Nat :=
+  if '0' ≤ c ∧ c ≤ '9' then some (c.toNat - '0'.toNat)
+  else if 'a' ≤ c ∧ c ≤ 'f' then some (c.toNat - 'a'.toNat + 10)
+  else if 'A' ≤ c ∧ c ≤ 'F' then some (c.toNat - 'A'.toNat + 10)
+  else none
+
+private def parseHexPair (s : String.Slice) : Option UInt8 := do
+  let p := s.startPos
+  if h : p = s.endPos then none
+  else
+    let c1 := p.get h
+    let p := p.next h
+    if h : p = s.endPos then none
+    else
+      let c2 := p.get h
+      let h ← hexVal c1
+      let l ← hexVal c2
+      return (h * 16 + l).toUInt8
+
+/--
+Parses a hex color literal like `rgb!"#ffcc93"` or `rgb!"#ffcc9380"` (with alpha). -/
+scoped syntax "rgb!" str : term
+
+macro_rules
+  | `(rgb! $s:str) => do
+    let str := s.getString
+    let len := if str.startsWith "#" then str.length - 1 else str.length
+    let chars := str.dropPrefix "#"
+    unless len == 6 || len == 8 do
+      Lean.Macro.throwError s!"expected 6 or 8 hex digits, got '{str}'"
+    let r := chars.take 2
+    let g := chars.drop 2 |>.take 2
+    let b := chars.drop 4 |>.take 2
+    let a := chars.drop 6 |>.take 2
+    let some r := parseHexPair r
+      | Lean.Macro.throwError s!"invalid hex digit in red channel"
+    let some g := parseHexPair g
+      | Lean.Macro.throwError s!"invalid hex digit in green channel"
+    let some b := parseHexPair b
+      | Lean.Macro.throwError s!"invalid hex digit in blue channel"
+    let rLit := Lean.Syntax.mkNumLit (toString r.toNat)
+    let gLit := Lean.Syntax.mkNumLit (toString g.toNat)
+    let bLit := Lean.Syntax.mkNumLit (toString b.toNat)
+    if len == 8 then
+      let some a := parseHexPair a
+        | Lean.Macro.throwError s!"invalid hex digit in alpha channel"
+      let aFloat := a.toFloat / 255.0
+      let aStr := toString (Float.round (aFloat * 10000) / 10000)
+      let aLit := Lean.Syntax.mkScientificLit aStr
+      `({ r := $rLit, g := $gLit, b := $bLit, a := $aLit : Color })
+    else
+      `({ r := $rLit, g := $gLit, b := $bLit : Color })
 
 /-- Specifies the color of a solid fill. -/
 structure FillSpec where
@@ -105,34 +166,118 @@ def radialSymmetric (radius : Float) (stops : Array GradientStop)
 end Gradient
 
 /--
-Fill style for closed paths.
+Resolved fill style for closed paths, with absolute gradient coordinates.
 
-: {name (full := Fill.none)}`none`
+Used internally by the core primitive and draw command types. User-facing code should
+use the {lit}`Fill` type instead, which resolves relative gradients against the shape's envelope.
+-/
+inductive ResolvedFill where
+  /-- No fill — the interior is not rendered and not hittable. -/
+  | none
+  /-- Solid color fill — the interior is rendered and hittable, even if the color is fully transparent. -/
+  | solid : FillSpec → ResolvedFill
+  /-- Gradient fill with absolute coordinates — the interior is rendered and hittable. -/
+  | gradient : Gradient → ResolvedFill
+deriving Repr, BEq, Hashable
 
-  Unfilled; the interior is not rendered and not hittable.
+instance : Inhabited ResolvedFill := ⟨.solid default⟩
 
-: {name (full := Fill.solid)}`solid`
+instance : Coe Color FillSpec := ⟨FillSpec.mk⟩
 
-  Filled with a color; the interior is rendered and hittable, even if the color is fully transparent.
+instance : Coe FillSpec ResolvedFill := ⟨.solid⟩
 
-: {name (full := Fill.gradient)}`gradient`
+instance : Coe Gradient ResolvedFill := ⟨.gradient⟩
 
-  Gradient fill; the interior is rendered and hittable. Gradient coordinates are in diagram-local
-  space and transform with the diagram.
+/--
+User-facing fill style for closed paths.
+
+Gradient variants specify direction and stops relative to the shape; absolute
+coordinates are computed automatically from the shape's envelope when the fill
+is resolved automatically by shape constructors.
 -/
 inductive Fill where
   /-- No fill — the interior is not rendered and not hittable. -/
   | none
-  /-- Solid color fill — the interior is rendered and hittable, even if the color is fully transparent. -/
+  /-- Solid color fill. -/
   | solid : FillSpec → Fill
-  /-- Gradient fill — the interior is rendered and hittable. -/
-  | gradient : Gradient → Fill
+  /-- Linear gradient along a direction, sized to the shape's envelope. -/
+  | linearGradient (dir : Vec2) (stops : Array GradientStop)
+      (spread : SpreadMethod := .pad) : Fill
+  /-- Radial gradient sized to the shape's inscribed circle. -/
+  | radialGradient (stops : Array GradientStop) (center : Vec2 := Vec2.zero)
+      (focal : Vec2 := Vec2.zero) (spread : SpreadMethod := .pad) : Fill
+  /-- Pre-resolved fill with absolute gradient coordinates. -/
+  | resolved : ResolvedFill → Fill
 deriving Repr, BEq, Hashable
 
 instance : Inhabited Fill := ⟨.solid default⟩
 
-instance : Coe Color FillSpec := ⟨FillSpec.mk⟩
-
 instance : Coe FillSpec Fill := ⟨.solid⟩
 
-instance : Coe Gradient Fill := ⟨.gradient⟩
+instance : Coe Color Fill := ⟨fun c => .solid c⟩
+
+namespace Fill
+
+/-- Creates a two-color linear gradient along the given direction. -/
+def between (c1 c2 : Color) (dir : Vec2 := Vec2.north)
+    (spread : SpreadMethod := .pad) : Fill :=
+  .linearGradient dir #[{ offset := 0, color := c1 }, { offset := 1, color := c2 }] spread
+
+/-- Creates a horizontal linear gradient (left to right). -/
+def horizontalGradient (stops : Array GradientStop)
+    (spread : SpreadMethod := .pad) : Fill :=
+  .linearGradient Vec2.east stops spread
+
+/-- Creates a vertical linear gradient (bottom to top). -/
+def verticalGradient (stops : Array GradientStop)
+    (spread : SpreadMethod := .pad) : Fill :=
+  .linearGradient Vec2.north stops spread
+
+/-- Creates a two-color radial gradient from inner to outer color. -/
+def radialBetween (inner outer : Color) (center : Vec2 := Vec2.zero)
+    (spread : SpreadMethod := .pad) : Fill :=
+  .radialGradient #[{ offset := 0, color := inner }, { offset := 1, color := outer }]
+    center Vec2.zero spread
+
+/--
+Resolves a user-facing fill against a shape's envelope, producing a {name}`ResolvedFill`
+with absolute gradient coordinates.
+-/
+def resolve (env : Envelope) (f : Fill) : ResolvedFill :=
+  match f with
+  | .none => .none
+  | .solid fs => .solid fs
+  | .resolved rf => rf
+  | .linearGradient dir stops spread =>
+    let d := Vec2.normalize dir
+    let fwd := env[d]
+    let bwd := env[Vec2.neg d]
+    let x1 := -bwd * d.x
+    let y1 := -bwd * d.y
+    let x2 := fwd * d.x
+    let y2 := fwd * d.y
+    .gradient (.linear x1 y1 x2 y2 stops spread)
+  | .radialGradient stops center focal spread =>
+    -- Compute the envelope's centroid as the midpoint of opposing extents
+    let e := env[Vec2.east]
+    let w := env[Vec2.west]
+    let n := env[Vec2.north]
+    let s := env[Vec2.south]
+    let cx := center.x + (e - w) / 2
+    let cy := center.y + (n - s) / 2
+    let fx := focal.x + (e - w) / 2
+    let fy := focal.y + (n - s) / 2
+    -- Radius from centroid: max distance to any envelope boundary point
+    let dirs := [Vec2.north, Vec2.northeast, Vec2.east, Vec2.southeast,
+                 Vec2.south, Vec2.southwest, Vec2.west, Vec2.northwest]
+    let centroid := Vec2.mk ((e - w) / 2) ((n - s) / 2)
+    let radius := dirs.foldl (init := (0 : Float)) fun acc d =>
+      let extent := env[d]
+      let bx := extent * d.x
+      let by_ := extent * d.y
+      let dist := ((bx - centroid.x) * (bx - centroid.x) +
+                   (by_ - centroid.y) * (by_ - centroid.y)).sqrt
+      max acc dist
+    .gradient (.radial cx cy radius fx fy 0 stops spread)
+
+end Fill

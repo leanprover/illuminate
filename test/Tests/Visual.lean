@@ -18,40 +18,40 @@ Hover to see SVG in the InfoView.
 
 -- Rounded rectangle
 #diagram Diagram.roundedRect 80 40 8
-  (fill := .solid { color := { r := 220, g := 235, b := 255 } })
-  (stroke := { color := Color.black, width := (1.5 : Float) })
+  (fill := rgb!"#dcebff")
+  (stroke := { color := .black, width := 1.5 })
 
 -- Frame around text
-#diagram (Diagram.pad 6 (.text "framed" { fontSize := (14 : Float) })).frame
-  (stroke := { color := Color.black, width := (1 : Float) }) (padding := 2)
+#diagram (Diagram.pad 6 (.text "framed" { fontSize := 14 })).frame
+  (stroke := { color := .black, width := 1 }) (padding := 2)
 
 -- Horizontal concatenation
 #diagram Diagram.hcat [
-  Diagram.circle 15 (fill := .solid { color := Color.red }),
-  Diagram.rect 30 30 (fill := .solid { color := Color.green }),
-  Diagram.circle 15 (fill := .solid { color := Color.blue })
+  Diagram.circle 15 (fill := Color.red),
+  Diagram.rect 30 30 (fill := Color.green),
+  Diagram.circle 15 (fill := Color.blue)
 ]
 
 -- Vertical concatenation
 #diagram Diagram.vcat [
-  .text "Top" { fontSize := (12 : Float) },
-  .rect 60 2 (fill := .solid { color := Color.black }),
-  .text "Bottom" { fontSize := (12 : Float) }
+  .text "Top" { fontSize := 12 },
+  .rect 60 2 (fill := Color.black),
+  .text "Bottom" { fontSize := 12 }
 ]
 
 -- Grid layout
 #diagram Diagram.grid #[
-  #[some (Diagram.circle 10 (fill := .solid { color := Color.red })),
-   some (Diagram.circle 10 (fill := .solid { color := Color.green }))],
-  #[some (Diagram.circle 10 (fill := .solid { color := Color.blue })),
+  #[some (.circle 10 (fill := Color.red)),
+   some (.circle 10 (fill := Color.green))],
+  #[some (.circle 10 (fill := Color.blue)),
    none]
 ]
 
 open Diagram in
 open Lean in
 def labelDia (name : Name) (pull : Float) : Diagram SVG :=
-  let start := roundedRect 25 15 0.4 (fill := .solid { color := {r := 100, g := 30, b := 132} }) (name := `start)
-  let stop := roundedRect 20 15 0.4 (fill := .solid { color := {r := 33, g := 128, b := 5} }) (name := `stop)
+  let start := roundedRect 25 15 0.4 (fill := rgb!"#641e84") (name := `start)
+  let stop := roundedRect 20 15 0.4 (fill := rgb!"#218005") (name := `stop)
   let d := hsep 5 [start, stop] |>.named `boxes
   let angle := pi / 2
   d
@@ -116,7 +116,7 @@ def arrowDemo (arrowhead : Arrowhead) : Diagram SVG :=
       List.range rows |>.map fun row =>
         let rowCount := min cols (n - row * cols)
         .hsep sep <| List.range rowCount |>.map fun _ =>
-          .circle rad (fill := .solid { color := { r, g, b } })
+          .circle rad (fill := Color.rgb r g b)
 
 /-!
 # RoundedRect visual test
@@ -129,20 +129,20 @@ def roundedRectsDiagram (pos : Slider "pos" 0 1 0.5) (pull : Slider "pull" 0 1 0
       { point := `left.north, angle := some (pi / 2), pull }
       { point := `right.north, angle := some (-(pi / 2)), pull,
         arrowhead := some {} }
-      (label := some { label := .text "forward" { fontSize := (11 : Float) }, pos })
+      (label := some { label := .text "forward" { fontSize := 11 }, pos })
     -- Backward arrow: right.south → left.south, arching downward
     |>.connect
       { point := `right.south, angle := some (-(pi / 2)), pull }
       { point := `left.south, angle := some (pi / 2), pull,
         arrowhead := some {} }
-      (label := some { label := .text "backward" { fontSize := (11 : Float) }, pos })
+      (label := some { label := .text "backward" { fontSize := 11 }, pos })
 where
   gap := 50
   node (name : Lean.Name) (label : String) : Diagram SVG :=
     Diagram.atop
-      (Diagram.roundedRect 80 40 8 (fill := .solid { color := { r := 220, g := 235, b := 255 } })
-        (stroke := { color := Color.black, width := (1.5 : Float) }) (name := name))
-      (.text label { fontSize := (14 : Float) })
+      (Diagram.roundedRect 80 40 8 (fill := rgb!"#dcebff")
+        (stroke := { color := Color.black, width := 1.5 }) (name := name))
+      (.text label { fontSize := 14 })
 
 #diagram roundedRectsDiagram
 
@@ -168,7 +168,7 @@ def testVisual_roundedRects_7_2 : IO Unit :=
 
 /-- Lean compilation pipeline: Code.lean → Syntax Tree → Core Type Theory → Executable -/
 def pipelineDiagram : Diagram SVG :=
-  let resultStyle : TextStyle := { fontSize := (20 : Float), bold := true }
+  let resultStyle : TextStyle := { fontSize := 20, bold := true }
   let result :=
     Diagram.hsep (align := .bottom) 8
       [.text "✔" { resultStyle with color := Color.green }, .text "/" resultStyle, .text "✖" resultStyle]
@@ -176,7 +176,7 @@ def pipelineDiagram : Diagram SVG :=
       |>.namedWithAnchors `result
   let codeLabel :=
     Diagram.text "Code.lean"
-      (style := { fontFamily := "monospace", fontSize := (12 : Float) })
+      (style := { fontFamily := "monospace", fontSize := 12 })
       |>.pad 12
   let code :=
     Diagram.paper
@@ -184,7 +184,7 @@ def pipelineDiagram : Diagram SVG :=
       (label := some codeLabel)
       (width := some 80)
       (height := some 100)
-      (fill := .solid { color := Color.white })
+      (fill := Color.white)
   Diagram.grid (hSpacing := 70) (vSpacing := 50) #[
     #[some code,                            none],
     #[some (box `stx "Syntax\nTree"),        none],
@@ -211,13 +211,13 @@ def pipelineDiagram : Diagram SVG :=
 where
   ah : Arrowhead := { type := .stealth }
   lbl (s : String) : Option (Label SVG) :=
-    some { label := .text s { fontSize := (10 : Float) }, upright := true }
+    some { label := .text s { fontSize := 10 }, upright := true }
   box (name : Lean.Name) (label : String) (fontFamily := "sans-serif") : Diagram SVG :=
-    Diagram.text label { fontSize := (12 : Float), fontFamily }
+    Diagram.text label { fontSize := 12, fontFamily }
       |>.pad 12
       |>.filledFrame
-        (fill := .solid { color := Color.white })
-        (stroke := { color := Color.black, width := (1 : Float) })
+        (fill := Color.white)
+        (stroke := { color := Color.black, width := 1 })
         (cornerRadius := 6)
       |>.namedWithAnchors name
 
@@ -249,19 +249,19 @@ def stringLayoutDiagram : Diagram SVG :=
   let dataCol := fieldWithBrace `data "m_data" 180 braceDepth braceGap
     (.vsep 1 [
       txt "String data",
-      .hcat [.text "char" { fontSize := (8 : Float), fontFamily := "monospace" }, txt " array"]])
+      .hcat [.text "char" { fontSize := 8, fontFamily := "monospace" }, txt " array"]])
   let nulCol := field `nul "'\\0'" 30
   Diagram.hsep 0 [headerCol, sizeCol, capCol, lenCol, dataCol, nulCol] (align := .top)
 where
-  monoStyle : TextStyle := { fontSize := (10 : Float), fontFamily := "monospace" }
+  monoStyle : TextStyle := { fontSize := 10, fontFamily := "monospace" }
   txt (s : String) : Diagram SVG :=
-    Diagram.text s { fontSize := (8 : Float), fontFamily := "sans-serif" }
+    Diagram.text s { fontSize := 8, fontFamily := "sans-serif" }
   /-- Stacks a description line above a type line. -/
   twoLine (description typeLine : String) : Diagram SVG :=
-    Diagram.vsep 1 [txt description, .text typeLine { fontSize := (8 : Float), fontFamily := "monospace" }]
+    Diagram.vsep 1 [txt description, .text typeLine { fontSize := 8, fontFamily := "monospace" }]
   field (name : Lean.Name) (label : String) (w : Float) : Diagram SVG :=
     Diagram.atop
-      ((Diagram.rect w 28 (fill := .solid { color := Color.white }) (name := name)).padRight (-0.5) |>.padLeft (-0.5))
+      ((Diagram.rect w 28 (fill := Color.white) (name := name)).padRight (-0.5) |>.padLeft (-0.5))
       (.text label monoStyle)
   /-- Builds a field box with a curly brace and label below it. -/
   fieldWithBrace (name : Lean.Name) (label : String) (w : Float)
@@ -296,7 +296,7 @@ def lakeWorkspaceDiagram : Diagram SVG :=
   let depItems := items ["Package configuration file", "Libraries", "Executables", "Artifacts"] 8
   let dep1 := borderedBox "Dependency 1" depItems 9 6
   let dep2 := borderedBox "Dependency 2" depItems 9 6
-  let dots : Diagram SVG := .text "⋯" { fontSize := (14 : Float) }
+  let dots : Diagram SVG := .text "⋯" { fontSize := 14 }
   let packages := borderedBox "Packages" <|
     Diagram.vsep 8 [Diagram.hsep 12 [dep1, dep2], dots] (align := .left)
   let artifacts := borderedBox "Artifacts" <|
@@ -351,7 +351,7 @@ def coeChainDiagram : Diagram SVG :=
     [level4, mono "CoeDep" |>.padBottom 3 |>.namedWithAnchors `CoeDep] (align := .bottom)
   -- "or" and CoeT below, named for anchor resolution
   let orLabel : Diagram SVG :=
-    Diagram.text "or" { fontSize := (10 : Float), italic := true } |>.pad 3 |>.namedWithAnchors `or
+    Diagram.text "or" { fontSize := 10, italic := true } |>.pad 3 |>.namedWithAnchors `or
   let coeTLabel : Diagram SVG := mono "CoeT" (name := `CoeT)
   let lineStroke : Stroke := .ofWidth 1
   Diagram.vsep 12 [withCoeDep, orLabel, coeTLabel]
@@ -360,30 +360,30 @@ def coeChainDiagram : Diagram SVG :=
     |>.connectL `or.south `CoeT.north (stroke := lineStroke)
 where
   mono (s : String) (name : Option Lean.Name := none) : Diagram SVG :=
-    .text s { fontSize := (10 : Float), fontFamily := "monospace" } (name := name)
+    .text s { fontSize := 10, fontFamily := "monospace" } (name := name)
 
 #diagram coeChainDiagram
 
 def testVisual_coeChain : IO Unit :=
   testVisualWrite "coe-chain.svg" coeChainDiagram
 
-#diagram (Diagram.circle 20 (fill := .solid { color := Color.transparent })).showEnvelope
+#diagram (Diagram.circle 20 (fill := Color.transparent)).showEnvelope
 
-#diagram (Diagram.rect 20 30 (fill := .solid { color := Color.transparent } )).showEnvelope
+#diagram (Diagram.rect 20 30 (fill := Color.transparent)).showEnvelope
 
-#diagram (Diagram.roundedRect 20 30 3 (fill := .solid { color := Color.transparent } )).showEnvelope
+#diagram (Diagram.roundedRect 20 30 3 (fill := Color.transparent)).showEnvelope
 
 #diagram (Diagram.text "foo").showEnvelope
 
-#diagram Diagram.hsep 30 [.circle 30 (fill := .solid { color := Color.transparent }), .rect 10 50 (fill := .solid { color := Color.transparent })] |>.showEnvelope |>.showOrigin
+#diagram Diagram.hsep 30 [.circle 30 (fill := Color.transparent), .rect 10 50 (fill := Color.transparent)] |>.showEnvelope |>.showOrigin
 
 #diagram Diagram.polygon 5 10
 
-#diagram Diagram.paper (label := some <| Diagram.text "Code.lean" { fontSize := (12 : Float) })
+#diagram Diagram.paper (label := some <| Diagram.text "Code.lean" { fontSize := 12 })
 
 #diagram Diagram.paper (width := some 80)
 
-#diagram Diagram.paper (width := some 80) (height := some 60) (fill := .solid { color := Color.white })
+#diagram Diagram.paper (width := some 80) (height := some 60) (fill := Color.white)
 
 open Diagram in
 def paperTest : Diagram SVG :=
@@ -393,7 +393,7 @@ def paperTest : Diagram SVG :=
       paper (width := some 30)
     ],
     hsep 20 [
-      paper (width := some 30) (height := some 20) (fill := .solid { color := Color.white }),
+      paper (width := some 30) (height := some 20) (fill := Color.white),
       paper (width := some 20) (cornerFold := 0.75)
     ]
   ]
@@ -418,20 +418,20 @@ def starsDiagram : Diagram SVG :=
   let dashLabels := ["solid", "dashed", "dotted", "dashDot"]
   let outerR := 20.0
   let innerR := 10.0
-  let fill : Fill := .solid { color := { r := 255, g := 230, b := 100 } }
+  let fill : Fill := rgb!"#ffe664"
   -- Column headers
   let headers := Diagram.hsep 20 (dashLabels.map fun l =>
     Diagram.withEnvelope (Envelope.ofRect 25 8)
-      (.text l { fontSize := (9 : Float) }))
+      (.text l { fontSize := 9 }))
   -- Row label + stars for each point count
   let rows := pointCounts.map fun n =>
     let label := Diagram.withEnvelope (Envelope.ofRect 12 25)
-      (Diagram.text s!"{n}pt" { fontSize := (9 : Float) })
+      (Diagram.text s!"{n}pt" { fontSize := 9 })
     let cells := dashes.map fun dash =>
       Diagram.withEnvelope (Envelope.ofRect 25 25)
         (Diagram.star n outerR innerR
           (fill := fill)
-          (stroke := { color := Color.black, width := (1.5 : Float), dash := dash }))
+          (stroke := { color := Color.black, width := 1.5, dash := dash }))
     Diagram.hsep 20 (label :: cells)
   -- Combine header row with star rows
   let headerRow := Diagram.hsep 20
@@ -447,11 +447,11 @@ def testVisual_stars : IO Unit :=
 
 /-- Three stars (7, 10, 13 points) with point5 of each connected by arrows. -/
 def starAnchorsDiagram : Diagram SVG :=
-  let fill : Fill := .solid { color := { r := 255, g := 230, b := 100 } }
-  let stroke : Stroke := { color := Color.black, width := (1.5 : Float) }
-  let s7 := Diagram.star 7 30 15 (fill := fill) (stroke := stroke) (name := some `star7)
-  let s10 := Diagram.star 10 30 15 (fill := fill) (stroke := stroke) (name := some `star10)
-  let s13 := Diagram.star 13 30 15 (fill := fill) (stroke := stroke) (name := some `star13)
+  let fill : Fill := rgb!"#ffe664"
+  let stroke : Stroke := { color := Color.black, width := 1.5 }
+  let s7 := Diagram.star 7 30 15 (fill := fill) (stroke := stroke) (name := `star7)
+  let s10 := Diagram.star 10 30 15 (fill := fill) (stroke := stroke) (name := `star10)
+  let s13 := Diagram.star 13 30 15 (fill := fill) (stroke := stroke) (name := `star13)
   let stealth : Option Arrowhead := some { type := .stealth }
   Diagram.hsep 40 [s7, s10, s13]
     |>.connect
@@ -472,8 +472,8 @@ def testVisual_starAnchors : IO Unit :=
 
 /-- Ellipses with various aspect ratios. -/
 def ellipseDiagram : Diagram SVG :=
-  let fill : Fill := .solid { color := { r := 180, g := 210, b := 255 } }
-  let stroke : Stroke := { color := Color.black, width := (1.5 : Float) }
+  let fill : Fill := rgb!"#b4d2ff"
+  let stroke : Stroke := { color := Color.black, width := 1.5 }
   Diagram.hsep 15 [
     Diagram.ellipse 30 15 (fill := fill) (stroke := stroke),
     Diagram.ellipse 15 30 (fill := fill) (stroke := stroke),
@@ -502,13 +502,13 @@ private def arrowShape : Diagram SVG :=
     |>.lineTo ⟨-15, 8⟩
     |>.close
   Diagram.fromPath path
-    (fill := .solid { color := { r := 100, g := 180, b := 100 } })
-    (stroke := { color := Color.black, width := (1 : Float) })
+    (fill := rgb!"#64b464")
+    (stroke := { color := Color.black, width := 1 })
 
 /-- Demonstrates scale, rotate, hflip, vflip on an arrow shape. -/
 def transformsDiagram : Diagram SVG :=
   let label (s : String) : Diagram SVG :=
-    .text s { fontSize := (9 : Float) }
+    .text s { fontSize := 9 }
   Diagram.hsep 20 [
     Diagram.vsep 5 [label "original", arrowShape],
     Diagram.vsep 5 [label "scale 1.5", Diagram.scale 1.5 arrowShape],
@@ -530,11 +530,11 @@ def testVisual_transforms : IO Unit :=
 
 /-- Demonstrates ghost and refocus. -/
 def ghostRefocusDiagram : Diagram SVG :=
-  let red : Fill := .solid { color := Color.red }
-  let blue : Fill := .solid { color := Color.blue }
-  let green : Fill := .solid { color := { r := 0, g := 160, b := 0, a := 0.8 } }
+  let red : Fill := Color.red
+  let blue : Fill := Color.blue
+  let green : Fill := rgb!"#00a000cc"
   let label (s : String) : Diagram SVG :=
-    .text s { fontSize := (9 : Float) }
+    .text s { fontSize := 9 }
   -- Row 1: normal vs ghost — ghost reserves space but draws nothing
   let box := Diagram.rect 30 30 (fill := red)
   let circ := Diagram.circle 15 (fill := blue)
@@ -568,10 +568,10 @@ def testVisual_ghostRefocus : IO Unit :=
 /-- Demonstrates cellophane (opacity), clip, pinOver, and pinUnder. -/
 def cellophaneClipDiagram : Diagram SVG :=
   let label (s : String) : Diagram SVG :=
-    .text s { fontSize := (9 : Float) }
-  let red : Fill := .solid { color := Color.red }
-  let blue : Fill := .solid { color := Color.blue }
-  let green : Fill := .solid { color := { r := 0, g := 160, b := 0 } }
+    .text s { fontSize := 9 }
+  let red : Fill := Color.red
+  let blue : Fill := Color.blue
+  let green : Fill := rgb!"#00a000"
   -- Row 1: cellophane at different opacities
   let box := Diagram.rect 40 30 (fill := red)
   let celloRow := Diagram.hsep 15 [
@@ -590,20 +590,20 @@ def cellophaneClipDiagram : Diagram SVG :=
   ] (align := .top)
   -- Row 3: pinOver and pinUnder
   let base1 := Diagram.hsep 40 [
-    Diagram.circle 20 (fill := blue) (name := some `left),
-    Diagram.circle 20 (fill := green) (name := some `right)
+    Diagram.circle 20 (fill := blue) (name := `left),
+    Diagram.circle 20 (fill := green) (name := `right)
   ]
   let dot := Diagram.circle 5 (fill := red)
   let pinned := base1
     |> Diagram.pinOver `left dot
     |> Diagram.pinOver `right dot
-  let semiBlue : Fill := .solid { color := { r := 0, g := 0, b := 255, a := 0.5 } }
-  let semiGreen : Fill := .solid { color := { r := 0, g := 160, b := 0, a := 0.5 } }
+  let semiBlue : Fill := rgb!"#0000ff80"
+  let semiGreen : Fill := rgb!"#00a00080"
   let base2 := Diagram.hsep 40 [
-    Diagram.circle 20 (fill := semiBlue) (name := some `left2),
-    Diagram.circle 20 (fill := semiGreen) (name := some `right2)
+    Diagram.circle 20 (fill := semiBlue) (name := `left2),
+    Diagram.circle 20 (fill := semiGreen) (name := `right2)
   ]
-  let underDot := Diagram.circle 12 (fill := .solid { color := { r := 255, g := 200, b := 0 } })
+  let underDot := Diagram.circle 12 (fill := rgb!"#ffc800")
   let pinnedUnder := base2
     |> Diagram.pinUnder `left2 underDot
   let pinRow := Diagram.hsep 30 [
@@ -624,8 +624,8 @@ def testVisual_cellophaneClip : IO Unit :=
 
 /-- Circle with rays from four different directions. -/
 def traceCircleDiagram : Diagram SVG :=
-  let c := Diagram.circle 20 (fill := .solid { color := { r := 200, g := 220, b := 255 } })
-    (stroke := { color := Color.black, width := (1 : Float) })
+  let c := Diagram.circle 20 (fill := rgb!"#c8dcff")
+    (stroke := { color := Color.black, width := 1 })
   c.showTraces [
     (⟨-40, 0⟩, ⟨1, 0⟩, .red),
     (⟨0, -40⟩, ⟨0.3, 1⟩, .green),
@@ -640,8 +640,8 @@ def testVisual_traceCircle : IO Unit :=
 
 /-- Rectangle with axis-aligned and diagonal rays. -/
 def traceRectDiagram : Diagram SVG :=
-  let r := Diagram.rect 40 30 (fill := .solid { color := { r := 255, g := 230, b := 200 } })
-    (stroke := { color := Color.black, width := (1 : Float) })
+  let r := Diagram.rect 40 30 (fill := rgb!"#ffe6c8")
+    (stroke := { color := Color.black, width := 1 })
   r.showTraces [
     (⟨-40, 0⟩, ⟨1, 0⟩, .black),
     (⟨0, -35⟩, ⟨0, 1⟩, .red),
@@ -656,13 +656,13 @@ def testVisual_traceRect : IO Unit :=
 
 /-- Two overlapping shapes (circle + rect) with a ray hitting both. -/
 def traceComposedDiagram : Diagram SVG :=
-  let c := Diagram.circle 15 (fill := .solid { color := { r := 200, g := 200, b := 255, a := 0.5 } })
+  let c := Diagram.circle 15 (fill := rgb!"#c8c8ff80")
   let r := Diagram.translate 10 0
-    (Diagram.rect 30 20 (fill := .solid { color := { r := 255, g := 200, b := 200, a := 0.5 } }))
+    (Diagram.rect 30 20 (fill := rgb!"#ffc8c880"))
   let d := Diagram.compose c r
   d.showTraces [
     (⟨-30, 0⟩, ⟨1, 0⟩, .red),
-    (⟨-25, -15⟩, ⟨1, 0.5⟩, { r := 0, g := 128, b := 0 })
+    (⟨-25, -15⟩, ⟨1, 0.5⟩, rgb!"#008000")
   ]
 
 #diagram traceComposedDiagram
@@ -673,12 +673,12 @@ def testVisual_traceComposed : IO Unit :=
 /-- Rotated rectangle with trace rays. -/
 def traceTransformedDiagram : Diagram SVG :=
   let r := Diagram.rotate (pi / 6)
-    (Diagram.rect 40 20 (fill := .solid { color := { r := 220, g := 255, b := 220 } })
-      (stroke := { color := Color.black, width := (1 : Float) }))
+    (Diagram.rect 40 20 (fill := rgb!"#dcffdc")
+      (stroke := { color := Color.black, width := 1 }))
   r.showTraces [
     (⟨-35, 0⟩, ⟨1, 0⟩, .red),
     (⟨0, -30⟩, ⟨0, 1⟩, .red),
-    (⟨-30, -20⟩, ⟨1, 1⟩, { r := 0, g := 0, b := 200 })
+    (⟨-30, -20⟩, ⟨1, 1⟩, rgb!"#0000c8")
   ]
 
 #diagram traceTransformedDiagram
@@ -702,8 +702,8 @@ def tracePathDiagram : Diagram SVG :=
     |>.lineTo ⟨0, 45⟩        -- top-left
     |>.close                  -- back to origin
   let f := Diagram.fromPath fPath
-    (fill := .solid { color := { r := 255, g := 240, b := 200 } })
-    (stroke := { color := Color.black, width := (1 : Float) })
+    (fill := rgb!"#fff0c8")
+    (stroke := { color := Color.black, width := 1 })
   f.showTraces [
     (⟨-1, -2⟩, ⟨1, 1.5⟩, .red),
     (⟨-5, 35⟩, ⟨1, -0.3⟩, .green),
@@ -718,17 +718,17 @@ def testVisual_tracePath : IO Unit :=
 /-- Trace-based arrow connections between shapes at non-cardinal angles. -/
 def traceConnectDiagram : Diagram SVG :=
   let circ := Diagram.circle 15
-    (fill := .solid { color := { r := 200, g := 220, b := 255 } })
-    (stroke := { color := Color.black, width := (1 : Float) })
-    (name := some `circ)
+    (fill := rgb!"#c8dcff")
+    (stroke := { color := Color.black, width := 1 })
+    (name := `circ)
   let box := Diagram.roundedRect 40 25 4
-    (fill := .solid { color := { r := 255, g := 230, b := 200 } })
-    (stroke := { color := Color.black, width := (1 : Float) })
-    (name := some `box)
+    (fill := rgb!"#ffe6c8")
+    (stroke := { color := Color.black, width := 1 })
+    (name := `box)
   let ell := Diagram.ellipse 20 12
-    (fill := .solid { color := { r := 220, b := 220, g := 255 } })
-    (stroke := { color := Color.black, width := (1 : Float) })
-    (name := some `ell)
+    (fill := rgb!"#dcffdc")
+    (stroke := { color := Color.black, width := 1 })
+    (name := `ell)
   -- Arrange in a triangle layout
   let top := Diagram.translate 0 50 circ
   let botLeft := Diagram.translate (-50) (-20) box
@@ -746,17 +746,17 @@ def testVisual_traceConnect : IO Unit :=
 
 def traceConnectAngledDiagram (angle3 : Slider "Angle 3" 0 (2 * pi) pi) : Diagram SVG :=
   let circ := Diagram.circle 15
-    (fill := .solid { color := { r := 200, g := 220, b := 255 } })
-    (stroke := { color := Color.black, width := (1 : Float) })
-    (name := some `circ)
+    (fill := rgb!"#c8dcff")
+    (stroke := { color := Color.black, width := 1 })
+    (name := `circ)
   let box := Diagram.roundedRect 40 25 4
-    (fill := .solid { color := { r := 255, g := 230, b := 200 } })
-    (stroke := { color := Color.black, width := (1 : Float) })
-    (name := some `box)
+    (fill := rgb!"#ffe6c8")
+    (stroke := { color := Color.black, width := 1 })
+    (name := `box)
   let ell := Diagram.star 5 20 12
-    (fill := .solid { color := { r := 220, b := 220, g := 255 } })
-    (stroke := { color := Color.black, width := (1 : Float) })
-    (name := some `ell)
+    (fill := rgb!"#dcffdc")
+    (stroke := { color := Color.black, width := 1 })
+    (name := `ell)
   -- Arrange in a triangle layout
   let top := Diagram.translate 0 50 circ
   let botLeft := Diagram.translate (-50) (-20) box
@@ -797,7 +797,7 @@ def concentricCircles (n : Slider "circles" 0 20 5) : DiagramWithInfo :=
     let radius := maxRadius * (n - i).toFloat / n.toFloat
     let color := hueToColor (i.toFloat / n.toFloat)
     let circle := Diagram.tag i
-      (Diagram.circle radius (fill := .solid { color })
+      (Diagram.circle radius (fill := color)
         (stroke := { color := Color.black, width := 1 }))
     Diagram.compose acc circle
   -- Build regions map
@@ -811,15 +811,15 @@ def concentricCircles (n : Slider "circles" 0 20 5) : DiagramWithInfo :=
 /-- Three superimposed shapes; the middle one links to lean-lang.org. -/
 def linkDemo : Diagram SVG :=
   let back := Diagram.rect 120 80
-    (fill := .solid { color := { r := 200, g := 220, b := 255 } })
-    (stroke := { color := Color.black, width := (1 : Float) })
+    (fill := rgb!"#c8dcff")
+    (stroke := { color := Color.black, width := 1 })
   let middle := Diagram.foreign (.link "https://lean-lang.org")
     (Diagram.roundedRect 80 50 8
-      (fill := .solid { color := { r := 255, g := 220, b := 180 } })
-      (stroke := { color := { r := 200, g := 100, b := 0 }, width := (2 : Float) }))
+      (fill := rgb!"#ffdcb4")
+      (stroke := { color := rgb!"#c86400", width := 2 }))
   let front := Diagram.circle 15
-    (fill := .solid { color := { r := 180, g := 255, b := 180 } })
-    (stroke := { color := Color.black, width := (1 : Float) })
+    (fill := rgb!"#b4ffb4")
+    (stroke := { color := Color.black, width := 1 })
   Diagram.compose (Diagram.compose back middle) front
 
 #diagram linkDemo
@@ -829,20 +829,12 @@ def linkDemo : Diagram SVG :=
 -/
 
 def gradientRectDemo : Diagram SVG :=
-  let stops := #[
-    ({ offset := 0, color := { r := 66, g := 133, b := 244 } } : GradientStop),
-    { offset := 1, color := { r := 234, g := 67, b := 53 } }
-  ]
   let linearRect := Diagram.rect 80 40
-    (fill := .gradient (Gradient.horizontal 80 stops))
-    (stroke := { color := Color.black, width := (1 : Float) })
-  let radialStops : Array GradientStop := #[
-    { offset := 0, color := Color.white },
-    { offset := 1, color := { r := 66, g := 133, b := 244 } }
-  ]
+    (fill := .between (rgb!"#4285f4") (rgb!"#ea4335") .east)
+    (stroke := { color := Color.black, width := 1 })
   let radialCircle := Diagram.circle 25
-    (fill := .gradient (Gradient.radialSymmetric 25 radialStops))
-    (stroke := { color := Color.black, width := (1 : Float) })
+    (fill := .radialBetween .white (rgb!"#4285f4"))
+    (stroke := { color := Color.black, width := 1 })
   Diagram.hsep 20 [linearRect, radialCircle]
 
 #diagram gradientRectDemo
@@ -861,49 +853,36 @@ def testVisual_gradients : IO Unit :=
 
 def pizzaDemo : Diagram SVG :=
   let r := 50.0
-  let crust : Stroke := { color := { r := 80, g := 40, b := 10 }, width := (1.5 : Float) }
+  let crust : Stroke := { color := rgb!"#50280a", width := 1.5 }
   -- The pulled-out slice
   let sliceStart := pi / 3
   let sliceEnd := pi / 3 + pi / 4
   let sliceMid := (sliceStart + sliceEnd) / 2
   let pullDist := 14.0
-  let sliceGrad := Gradient.radialSymmetric r #[
-    { offset := 0.0, color := { r := 255, g := 220, b := 80 } },
-    { offset := 1.0, color := { r := 220, g := 140, b := 20 } }
-  ]
-  let slice := Diagram.wedge sliceStart sliceEnd r
-    (fill := .gradient sliceGrad) (stroke := crust)
+  let sliceFill := Fill.radialBetween (rgb!"#ffdc50") (rgb!"#dc8c14")
+  let slice := Diagram.wedge sliceStart sliceEnd r (fill := sliceFill) (stroke := crust)
   let slice := Diagram.move (.dir sliceMid) pullDist slice
   -- The main body (everything except the pulled slice, with a small gap)
   let gap := 0.04
-  let bodyGrad := Gradient.radialSymmetric r #[
-    { offset := 0.0, color := { r := 250, g := 200, b := 60 } },
-    { offset := 1.0, color := { r := 210, g := 130, b := 15 } }
-  ]
+  let bodyFill := Fill.radialBetween (rgb!"#fac83c") (rgb!"#d2820f")
   let body := Diagram.wedge (sliceEnd + gap) (sliceStart + 2 * pi - gap) r
-    (fill := .gradient bodyGrad) (stroke := crust)
+    (fill := bodyFill) (stroke := crust)
   let pizza := Diagram.compose body slice
   -- Three ring wedges around the outside
   let ringR := r + 18
   let ringW := 10.0
-  let ringStroke : Stroke := { color := { r := 40, g := 40, b := 60 }, width := (0.8 : Float) }
+  let ringStroke : Stroke := { color := rgb!"#28283c", width := 0.8 }
   let ring1 := Diagram.ringWedge (0) (2 * pi / 3 - 0.06) ringR (ringR + ringW)
-    (fill := .gradient (.linear (-ringR) 0 ringR 0 #[
-      { offset := 0, color := { r := 100, g := 180, b := 255 } },
-      { offset := 1, color := { r := 30, g := 80, b := 200 } }
-    ]))
+    (fill := .between (rgb!"#64b4ff") (rgb!"#1e50c8") .east)
     (stroke := ringStroke)
   let ring2 := Diagram.ringWedge (2 * pi / 3 + 0.02) (4 * pi / 3 - 0.06) ringR (ringR + ringW)
-    (fill := .gradient (.linear 0 (-ringR) 0 ringR #[
-      { offset := 0, color := { r := 255, g := 120, b := 180 } },
-      { offset := 1, color := { r := 200, g := 40, b := 100 } }
-    ]))
+    (fill := .between (rgb!"#ff78b4") (rgb!"#c82864") .north)
     (stroke := ringStroke)
   let ring3 := Diagram.ringWedge (4 * pi / 3 + 0.02) (2 * pi - 0.06) ringR (ringR + ringW)
-    (fill := .gradient (.radialSymmetric (ringR + ringW) #[
-      { offset := 0.6, color := { r := 100, g := 220, b := 130 } },
-      { offset := 1, color := { r := 30, g := 150, b := 60 } }
-    ]))
+    (fill := .radialGradient #[
+      { offset := 0.6, color := rgb!"#64dc82" },
+      { offset := 1, color := rgb!"#1e963c" }
+    ])
     (stroke := ringStroke)
   [pizza, ring1, ring2, ring3].foldl Diagram.compose Diagram.empty
 

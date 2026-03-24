@@ -100,7 +100,7 @@ def testHitTest_gradientFill_interior : IO Unit := do
     { offset := 0, color := Color.red },
     { offset := 1, color := Color.blue }
   ]
-  let d : Diagram SVG := Diagram.rect 10 10 (fill := .gradient g)
+  let d : Diagram SVG := Diagram.rect 10 10 (fill := .resolved (.gradient g))
   let result := d.hitTest (Point.mk 0 0)
   assertTrue result.isHit "gradient fill interior should hit"
 
@@ -109,7 +109,7 @@ def testHitTest_gradientFill_outside : IO Unit := do
     { offset := 0, color := Color.red },
     { offset := 1, color := Color.blue }
   ]
-  let d : Diagram SVG := Diagram.rect 10 10 (fill := .gradient g)
+  let d : Diagram SVG := Diagram.rect 10 10 (fill := .resolved (.gradient g))
   let result := d.hitTest (Point.mk 20 20)
   assertTrue (!result.isHit) "gradient fill outside should miss"
 
