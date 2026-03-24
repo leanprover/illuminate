@@ -39,7 +39,66 @@ def lightGray : Color := { r := 211, g := 211, b := 211 }
 /-- Fully transparent black. -/
 def transparent : Color := { r := 0, g := 0, b := 0, a := 0.0 }
 
+/-- Creates an opaque color from red, green, and blue channel values (0–255). -/
+def rgb (r g b : UInt8) : Color := { r, g, b }
+
+/-- Creates a color from red, green, blue, and alpha values. Channels are 0–255, alpha is 0.0–1.0. -/
+def rgba (r g b : UInt8) (a : Float) : Color := { r, g, b, a }
+
 end Color
+
+private def hexVal (c : Char) : Option Nat :=
+  if '0' ≤ c ∧ c ≤ '9' then some (c.toNat - '0'.toNat)
+  else if 'a' ≤ c ∧ c ≤ 'f' then some (c.toNat - 'a'.toNat + 10)
+  else if 'A' ≤ c ∧ c ≤ 'F' then some (c.toNat - 'A'.toNat + 10)
+  else none
+
+private def parseHexPair (s : String.Slice) : Option UInt8 := do
+  let p := s.startPos
+  if h : p = s.endPos then none
+  else
+    let c1 := p.get h
+    let p := p.next h
+    if h : p = s.endPos then none
+    else
+      let c2 := p.get h
+      let h ← hexVal c1
+      let l ← hexVal c2
+      return (h * 16 + l).toUInt8
+
+/--
+Parses a hex color literal like `rgb!"#ffcc93"` or `rgb!"#ffcc9380"` (with alpha). -/
+scoped syntax "rgb!" str : term
+
+macro_rules
+  | `(rgb! $s:str) => do
+    let str := s.getString
+    let len := if str.startsWith "#" then str.length - 1 else str.length
+    let chars := str.dropPrefix "#"
+    unless len == 6 || len == 8 do
+      Lean.Macro.throwError s!"expected 6 or 8 hex digits, got '{str}'"
+    let r := chars.take 2
+    let g := chars.drop 2 |>.take 2
+    let b := chars.drop 4 |>.take 2
+    let a := chars.drop 6 |>.take 2
+    let some r := parseHexPair r
+      | Lean.Macro.throwError s!"invalid hex digit in red channel"
+    let some g := parseHexPair g
+      | Lean.Macro.throwError s!"invalid hex digit in green channel"
+    let some b := parseHexPair b
+      | Lean.Macro.throwError s!"invalid hex digit in blue channel"
+    let rLit := Lean.Syntax.mkNumLit (toString r.toNat)
+    let gLit := Lean.Syntax.mkNumLit (toString g.toNat)
+    let bLit := Lean.Syntax.mkNumLit (toString b.toNat)
+    if len == 8 then
+      let some a := parseHexPair a
+        | Lean.Macro.throwError s!"invalid hex digit in alpha channel"
+      let aFloat := a.toFloat / 255.0
+      let aStr := toString (Float.round (aFloat * 10000) / 10000)
+      let aLit := Lean.Syntax.mkScientificLit aStr
+      `({ r := $rLit, g := $gLit, b := $bLit, a := $aLit : Color })
+    else
+      `({ r := $rLit, g := $gLit, b := $bLit : Color })
 
 /-- Specifies the color of a solid fill. -/
 structure FillSpec where
@@ -154,6 +213,8 @@ deriving Repr, BEq, Hashable
 instance : Inhabited Fill := ⟨.solid default⟩
 
 instance : Coe FillSpec Fill := ⟨.solid⟩
+
+instance : Coe Color Fill := ⟨fun c => .solid c⟩
 
 namespace Fill
 
