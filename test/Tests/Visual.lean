@@ -582,8 +582,7 @@ def cellophaneClipDiagram : Diagram SVG :=
   -- Row 2: clip
   let checker := Diagram.atop
     (Diagram.rect 60 60 (fill := blue))
-    (Diagram.transform (Matrix.translate 10 10)
-      (Diagram.rect 40 40 (fill := green)))
+    (Diagram.translate 10 10 (Diagram.rect 40 40 (fill := green)))
   let clipped := Diagram.clipCircle 25 checker
   let clipRow := Diagram.hsep 30 [
     Diagram.vsep 5 [label "unclipped", checker],
@@ -658,7 +657,7 @@ def testVisual_traceRect : IO Unit :=
 /-- Two overlapping shapes (circle + rect) with a ray hitting both. -/
 def traceComposedDiagram : Diagram SVG :=
   let c := Diagram.circle 15 (fill := .solid { color := { r := 200, g := 200, b := 255, a := 0.5 } })
-  let r := Diagram.transform (Matrix.translate 10 0)
+  let r := Diagram.translate 10 0
     (Diagram.rect 30 20 (fill := .solid { color := { r := 255, g := 200, b := 200, a := 0.5 } }))
   let d := Diagram.compose c r
   d.showTraces [
@@ -731,9 +730,9 @@ def traceConnectDiagram : Diagram SVG :=
     (stroke := { color := Color.black, width := (1 : Float) })
     (name := some `ell)
   -- Arrange in a triangle layout
-  let top := Diagram.transform (Matrix.translate 0 50) circ
-  let botLeft := Diagram.transform (Matrix.translate (-50) (-20)) box
-  let botRight := Diagram.transform (Matrix.translate 50 (-20)) ell
+  let top := Diagram.translate 0 50 circ
+  let botLeft := Diagram.translate (-50) (-20) box
+  let botRight := Diagram.translate 50 (-20) ell
   let d := Diagram.compose (Diagram.compose top botLeft) botRight
   d
     |>.connectEdge `circ (stop := { point := `box, arrowhead := some { type := .stealth } })
@@ -759,9 +758,9 @@ def traceConnectAngledDiagram (angle3 : Slider "Angle 3" 0 (2 * pi) pi) : Diagra
     (stroke := { color := Color.black, width := (1 : Float) })
     (name := some `ell)
   -- Arrange in a triangle layout
-  let top := Diagram.transform (Matrix.translate 0 50) circ
-  let botLeft := Diagram.transform (Matrix.translate (-50) (-20)) box
-  let botRight := Diagram.transform (Matrix.translate 50 (-20)) ell
+  let top := Diagram.translate 0 50 circ
+  let botLeft := Diagram.translate (-50) (-20) box
+  let botRight := Diagram.translate 50 (-20) ell
   let d := Diagram.compose (Diagram.compose top botLeft) botRight
   d
     |>.connectEdge {point := `circ, angle := some (1.5 * pi)} { point := `box, arrowhead := some { type := .stealth }, angle := some pi, pull := 3 }
@@ -856,6 +855,67 @@ def testVisual_gradients : IO Unit :=
       ("url(#grad", "references gradient by ID")
     ])
 
+/-!
+# Pizza wedge demo
+-/
+
+def pizzaDemo : Diagram SVG :=
+  let r := 50.0
+  let crust : Stroke := { color := { r := 80, g := 40, b := 10 }, width := (1.5 : Float) }
+  -- The pulled-out slice
+  let sliceStart := pi / 3
+  let sliceEnd := pi / 3 + pi / 4
+  let sliceMid := (sliceStart + sliceEnd) / 2
+  let pullDist := 14.0
+  let sliceGrad := Gradient.radialSymmetric r #[
+    { offset := 0.0, color := { r := 255, g := 220, b := 80 } },
+    { offset := 1.0, color := { r := 220, g := 140, b := 20 } }
+  ]
+  let slice := Diagram.wedge sliceStart sliceEnd r
+    (fill := .gradient sliceGrad) (stroke := crust)
+  let slice := Diagram.move (.dir sliceMid) pullDist slice
+  -- The main body (everything except the pulled slice, with a small gap)
+  let gap := 0.04
+  let bodyGrad := Gradient.radialSymmetric r #[
+    { offset := 0.0, color := { r := 250, g := 200, b := 60 } },
+    { offset := 1.0, color := { r := 210, g := 130, b := 15 } }
+  ]
+  let body := Diagram.wedge (sliceEnd + gap) (sliceStart + 2 * pi - gap) r
+    (fill := .gradient bodyGrad) (stroke := crust)
+  let pizza := Diagram.compose body slice
+  -- Three ring wedges around the outside
+  let ringR := r + 18
+  let ringW := 10.0
+  let ringStroke : Stroke := { color := { r := 40, g := 40, b := 60 }, width := (0.8 : Float) }
+  let ring1 := Diagram.ringWedge (0) (2 * pi / 3 - 0.06) ringR (ringR + ringW)
+    (fill := .gradient (.linear (-ringR) 0 ringR 0 #[
+      { offset := 0, color := { r := 100, g := 180, b := 255 } },
+      { offset := 1, color := { r := 30, g := 80, b := 200 } }
+    ]))
+    (stroke := ringStroke)
+  let ring2 := Diagram.ringWedge (2 * pi / 3 + 0.02) (4 * pi / 3 - 0.06) ringR (ringR + ringW)
+    (fill := .gradient (.linear 0 (-ringR) 0 ringR #[
+      { offset := 0, color := { r := 255, g := 120, b := 180 } },
+      { offset := 1, color := { r := 200, g := 40, b := 100 } }
+    ]))
+    (stroke := ringStroke)
+  let ring3 := Diagram.ringWedge (4 * pi / 3 + 0.02) (2 * pi - 0.06) ringR (ringR + ringW)
+    (fill := .gradient (.radialSymmetric (ringR + ringW) #[
+      { offset := 0.6, color := { r := 100, g := 220, b := 130 } },
+      { offset := 1, color := { r := 30, g := 150, b := 60 } }
+    ]))
+    (stroke := ringStroke)
+  [pizza, ring1, ring2, ring3].foldl Diagram.compose Diagram.empty
+
+#diagram pizzaDemo
+
+def testVisual_pizza : IO Unit :=
+  testVisualWrite "pizza.svg" pizzaDemo
+    (checks := [
+      ("url(#grad", "has gradient references"),
+      ("<path", "has path elements")
+    ])
+
 def visualTests : List (String × IO Unit) := [
   ("Visual/roundedRects", testVisual_roundedRects),
   ("Visual/roundedRects_2_5", testVisual_roundedRects_2_5),
@@ -879,5 +939,6 @@ def visualTests : List (String × IO Unit) := [
   ("Visual/tracePath", testVisual_tracePath),
   ("Visual/traceConnect", testVisual_traceConnect),
   ("Visual/traceConnectAngled", testVisual_traceConnectAngled),
-  ("Visual/gradients", testVisual_gradients)
+  ("Visual/gradients", testVisual_gradients),
+  ("Visual/pizza", testVisual_pizza)
 ]

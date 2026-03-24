@@ -57,6 +57,9 @@ instance : Neg Vec2 := ⟨neg⟩
 instance : HMul Float Vec2 Vec2 := ⟨scale⟩
 instance : HSMul Float Vec2 Vec2 := ⟨scale⟩
 
+/-- Unit vector pointing at angle {name}`θ` radians from the +x axis. -/
+def dir (θ : Float) : Vec2 := ⟨θ.cos, θ.sin⟩
+
 /-- Unit vector in the +x direction. -/
 def east : Vec2 := ⟨1, 0⟩
 /-- Unit vector in the -x direction. -/

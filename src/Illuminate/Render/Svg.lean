@@ -75,6 +75,10 @@ def pathDataToD (pd : PathData) : String :=
       | .lineTo p => s!"L{fmtNum p.x} {fmtNum p.y}"
       | .curveTo c1 c2 ep =>
         s!"C{fmtNum c1.x} {fmtNum c1.y} {fmtNum c2.x} {fmtNum c2.y} {fmtNum ep.x} {fmtNum ep.y}"
+      | .arcTo rx ry rot largeArc sweep ep =>
+        let la := if largeArc then "1" else "0"
+        let sw := if sweep then "1" else "0"
+        s!"A{fmtNum rx} {fmtNum ry} {fmtNum rot} {la} {sw} {fmtNum ep.x} {fmtNum ep.y}"
       | .closePath => "Z"
     if acc.isEmpty then seg else acc ++ " " ++ seg
 

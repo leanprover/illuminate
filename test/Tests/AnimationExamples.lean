@@ -81,7 +81,7 @@ Hover over {lit}`#animate` to see playback in the InfoView, with play/pause butt
     let t := Easing.easeOut progress[0]
     let color := Interpolate.interpolate Color.blue Color.red t
     let pos := Interpolate.interpolate (0 : Float) 80 t
-    Diagram.transform (Matrix.translate pos 0)
+    Diagram.translate pos 0
       (Diagram.circle 15 (fill := .solid { color })))
 
 -- Scale bounce: circle grows with overshoot easing
@@ -123,8 +123,8 @@ Hover over {lit}`#animate` to see playback in the InfoView, with play/pause butt
       (fill := .solid { color := { r := 0, g := 0, b := 0, a := 0.15 * (1 - arc * 0.7) * opacity } })
 
     Diagram.compose
-       (Diagram.transform (Matrix.translate x 1.5) shadow)
-      (fadeIn (Diagram.transform (Matrix.translate x (15 * sy + y)) ball) opacity))
+       (Diagram.translate x 1.5 shadow)
+      (fadeIn (Diagram.translate x (15 * sy + y) ball) opacity))
 
 -- Cross-fade between two shapes
 #animate

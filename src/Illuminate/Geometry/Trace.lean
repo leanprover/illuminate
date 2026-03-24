@@ -274,6 +274,63 @@ private def rayCubicBezier (p : Point) (v : Vec2) (p0 c1 c2 ep : Vec2) :
   return result
 
 /--
+Computes ray intersections with an elliptical arc segment.
+
+Converts the arc from endpoint to center parameterization, solves the ray-ellipse
+intersection (shifted to the arc center), and filters to the arc's angular range.
+-/
+private def rayArc (p : Point) (v : Vec2) (start : Vec2)
+    (rx ry xRotation : Float) (largeArc sweep : Bool) (endpoint : Vec2) :
+    Array RawHit := Id.run do
+  let ac := endpointToCenter start.x start.y rx ry xRotation largeArc sweep endpoint.x endpoint.y
+  let cosPhi := Float.cos xRotation
+  let sinPhi := Float.sin xRotation
+  -- Transform ray into the arc's local (axis-aligned, centered) coordinate system
+  let px := cosPhi * (p.x - ac.cx) + sinPhi * (p.y - ac.cy)
+  let py := -sinPhi * (p.x - ac.cx) + cosPhi * (p.y - ac.cy)
+  let vx := cosPhi * v.x + sinPhi * v.y
+  let vy := -sinPhi * v.x + cosPhi * v.y
+  -- Solve ray-ellipse intersection in local coords: (px + t*vx)²/rx² + (py + t*vy)²/ry² = 1
+  let arx := if nearZero rx then 1e-12 else rx
+  let ary := if nearZero ry then 1e-12 else ry
+  let nvx := vx / arx; let nvy := vy / ary
+  let npx := px / arx; let npy := py / ary
+  let a := nvx * nvx + nvy * nvy
+  let b := 2 * (npx * nvx + npy * nvy)
+  let c := npx * npx + npy * npy - 1
+  let disc := b * b - 4 * a * c
+  if disc < 0 || nearZero a then return #[]
+  let twoPi := 2 * pi
+  let normalize (ang : Float) : Float :=
+    let r := ang - twoPi * (ang / twoPi).floor
+    if r < 0 then r + twoPi else r
+  let inArc (theta : Float) : Bool :=
+    if ac.dtheta > 0 then
+      let t := normalize (theta - ac.theta1)
+      t <= ac.dtheta + 1e-9
+    else
+      let t := normalize (ac.theta1 - theta)
+      t <= (-ac.dtheta) + 1e-9
+  let mut result : Array RawHit := #[]
+  let sqrtDisc := disc.sqrt
+  for tVal in [(-b - sqrtDisc) / (2 * a), (-b + sqrtDisc) / (2 * a)] do
+    if tVal >= 0 then
+      -- Hit point in local coords
+      let lx := px + tVal * vx
+      let ly := py + tVal * vy
+      -- Check angular range
+      let theta := Float.atan2 (ly / ary) (lx / arx)
+      if inArc theta then
+        -- Normal in local coords (ellipse gradient)
+        let nx := lx / (arx * arx)
+        let ny := ly / (ary * ary)
+        -- Transform normal back to world coords
+        let wnx := cosPhi * nx - sinPhi * ny
+        let wny := sinPhi * nx + cosPhi * ny
+        result := sortedInsertRaw result { t := tVal, normal := Vec2.normalize ⟨wnx, wny⟩ }
+  return result
+
+/--
 Computes ray intersections with a path defined by {name}`PathCmd` commands.
 Line segments are tested exactly. Cubic Béziers are solved algebraically
 via cubic polynomial root-finding.
@@ -294,6 +351,10 @@ private def pathDataHits (commands : Array PathCmd) (p : Point) (v : Vec2) :
       current := pt
     | .curveTo c1 c2 ep =>
       for hit in rayCubicBezier p v current c1 c2 ep do
+        result := sortedInsertRaw result hit
+      current := ep
+    | .arcTo rx ry rot largeArc sweep ep =>
+      for hit in rayArc p v current rx ry rot largeArc sweep ep do
         result := sortedInsertRaw result hit
       current := ep
     | .closePath =>
