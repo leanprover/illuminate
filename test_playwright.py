@@ -376,6 +376,11 @@ def test_trace_connect_angled_visual():
     _run_visual_test("trace-connect-angled.svg", "trace-connect-angled")
 
 
+def test_pizza_visual():
+    """Compare pizza wedge rendering against expected baseline."""
+    _run_visual_test("pizza.svg", "pizza")
+
+
 # ---------------------------------------------------------------------------
 # Standalone animation player tests
 # ---------------------------------------------------------------------------
@@ -518,6 +523,7 @@ def main():
         test_ghost_refocus_visual,
         test_cellophane_clip_visual,
         test_trace_connect_angled_visual,
+        test_pizza_visual,
     ]
 
     passed = 0

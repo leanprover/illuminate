@@ -547,9 +547,9 @@ def testPathData_rect : IO Unit := do
 
 def testPathData_circle : IO Unit := do
   let pd := PathData.circle 5
-  assertTrue (pd.commands.size == 6) "circle has 6 commands (moveTo + 4 curves + close)"
+  assertTrue (pd.commands.size == 4) "circle has 4 commands (moveTo + 2 arcs + close)"
   assertTrue (pd.commands[0]! == .moveTo ⟨5, 0⟩) "circle starts at (r,0)"
-  assertTrue (pd.commands[5]! == .closePath) "circle ends with closePath"
+  assertTrue (pd.commands[3]! == .closePath) "circle ends with closePath"
 
 def testPathData_builder : IO Unit := do
   let pd := PathData.empty |>.moveTo ⟨0, 0⟩ |>.lineTo ⟨1, 0⟩ |>.lineTo ⟨1, 1⟩ |>.close

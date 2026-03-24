@@ -268,9 +268,7 @@ def compilationTests : List (String × IO Unit) :=
         (fun progress =>
           let t := progress[0]
           let angle := t * 2 * pi
-          let x := 40.0 * Float.cos angle
-          let y := 40.0 * Float.sin angle
-          Diagram.transform (Matrix.translate x y)
+          Diagram.move (.dir angle) 40
             (Diagram.circle 10 (fill := .solid { color := Color.blue })))
         (fps := 60)
       let html := compiled.renderHTML

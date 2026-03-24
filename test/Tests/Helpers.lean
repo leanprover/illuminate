@@ -77,7 +77,7 @@ def assertEnvelopeConvex (env : Envelope) (label : String) (n : Nat := 64) : IO 
     -- Sample directions and extents
     let dirs := (List.range n).map fun i =>
       let θ := i.toFloat * step
-      let dir : Vec2 := ⟨Float.cos θ, Float.sin θ⟩
+      let dir := Vec2.dir θ
       (dir, f dir)
     -- Compute boundary vertices as tangent-line intersections
     let vertices := (List.range n).map fun i =>

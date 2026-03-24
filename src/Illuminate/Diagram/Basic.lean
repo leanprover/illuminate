@@ -208,6 +208,57 @@ def ellipse (rx ry : Float) (fill : Fill := default) (stroke : Stroke := {})
       (`east, ⟨rx, 0⟩), (`west, ⟨-rx, 0⟩)
     ]
 
+/--
+A wedge (circular sector) centered at the origin, sweeping counterclockwise
+from {name}`startAngle` to {name}`endAngle` (in radians) at the given {name}`radius`.
+-/
+def wedge (startAngle endAngle radius : Float)
+    (fill : Fill := default) (stroke : Stroke := {})
+    (name : Option Lean.Name := none) : Diagram β :=
+  let d : Diagram β := fromPath (PathData.wedge startAngle endAngle radius) fill stroke
+  match name with
+  | none => d
+  | some n =>
+    let sw := stroke.width / 2
+    let r := radius + sw
+    let midAngle := (startAngle + endAngle) / 2
+    let p1 := Vec2.mk (r * Float.cos startAngle) (r * Float.sin startAngle)
+    let p2 := Vec2.mk (r * Float.cos endAngle) (r * Float.sin endAngle)
+    let pm := Vec2.mk (r * Float.cos midAngle) (r * Float.sin midAngle)
+    withNameAndAnchors d n [
+      (`tip, ⟨0, 0⟩),
+      (`arcStart, p1),
+      (`arcEnd, p2),
+      (`arcMid, pm)
+    ]
+
+/--
+A ring wedge (annular sector) centered at the origin, sweeping counterclockwise
+from {name}`startAngle` to {name}`endAngle` (in radians) between {name}`innerRadius`
+and {name}`outerRadius`.
+-/
+def ringWedge (startAngle endAngle innerRadius outerRadius : Float)
+    (fill : Fill := default) (stroke : Stroke := {})
+    (name : Option Lean.Name := none) : Diagram β :=
+  let d : Diagram β :=
+    fromPath (PathData.ringWedge startAngle endAngle innerRadius outerRadius) fill stroke
+  match name with
+  | none => d
+  | some n =>
+    let sw := stroke.width / 2
+    let ro := outerRadius + sw
+    let ri := innerRadius - sw
+    let midAngle := (startAngle + endAngle) / 2
+    let midR := (ro + ri) / 2
+    let outerMid := Vec2.mk (ro * Float.cos midAngle) (ro * Float.sin midAngle)
+    let innerMid := Vec2.mk (ri * Float.cos midAngle) (ri * Float.sin midAngle)
+    let center := Vec2.mk (midR * Float.cos midAngle) (midR * Float.sin midAngle)
+    withNameAndAnchors d n [
+      (`outerMid, outerMid),
+      (`innerMid, innerMid),
+      (`center, center)
+    ]
+
 /-- A regular polygon centered at the origin with the given number of sides and circumradius.
     If {name}`sides` is less than 3, uses 3 and attaches a validation warning. -/
 def polygon (sides : Nat) (radius : Float)

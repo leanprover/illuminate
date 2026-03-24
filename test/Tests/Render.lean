@@ -92,7 +92,7 @@ def testSvg_circleRender : IO Unit := do
   let cmds := d.compile
   let svg := Svg.render cmds { minX := -10, minY := -10, width := 20, height := 20 }
   assertContains svg "<path" "svg has path for circle"
-  assertContains svg "C" "svg circle has curves"
+  assertContains svg "A" "svg circle has arcs"
 
 def testSvg_transformNested : IO Unit := do
   let d : Diagram SVG := .transform (Matrix.translate 10 0) (Diagram.rect 4 4)
@@ -225,11 +225,11 @@ def smileyFace : Diagram SVG :=
   -- Left eye: small black circle at (-18, 15)
   let leftEye := Diagram.circle 5 (fill := .solid { color := Color.black })
     (stroke := { color := Color.black, width := (0 : Float) })
-  let leftEye := Diagram.transform (Matrix.translate (-18) 15) leftEye
+  let leftEye := Diagram.translate (-18) 15 leftEye
   -- Right eye: small black circle at (18, 15)
   let rightEye := Diagram.circle 5 (fill := .solid { color := Color.black })
     (stroke := { color := Color.black, width := (0 : Float) })
-  let rightEye := Diagram.transform (Matrix.translate 18 15) rightEye
+  let rightEye := Diagram.translate 18 15 rightEye
   -- Smile: a curved path (arc from left to right)
   let smile := Diagram.fromStroke
     (PathData.empty

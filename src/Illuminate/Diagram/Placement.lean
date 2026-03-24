@@ -72,6 +72,9 @@ def bounds (pd : PathData) : Vec2 × Vec2 :=
     | .curveTo c1 c2 ep =>
       let pts := bezierExtrema cur c1 c2 ep
       (pts.foldl extendBounds acc, ep)
+    | .arcTo rx ry rot largeArc sweep ep =>
+      let pts := arcExtrema cur rx ry rot largeArc sweep ep
+      (pts.foldl extendBounds acc, ep)
     | .closePath => (acc, cur)
   acc.1.getD (⟨0, 0⟩, ⟨0, 0⟩)
 
@@ -96,6 +99,7 @@ def toEnvelope (cp : CorePrimitive) : Envelope :=
       | .moveTo p => (p :: acc, p)
       | .lineTo p => (p :: acc, p)
       | .curveTo c1 c2 ep => (PathData.bezierExtrema cur c1 c2 ep ++ acc, ep)
+      | .arcTo rx ry rot largeArc sweep ep => (arcExtrema cur rx ry rot largeArc sweep ep ++ acc, ep)
       | .closePath => (acc, cur)
     Envelope.ofVertices pts.1
   | .text s style =>
@@ -888,6 +892,15 @@ def hAppendAlign (guide : AlignGuide) (a b : Diagram β) : Diagram β :=
 /-!
 # Convenience transforms
 -/
+
+/-- Translates a diagram by the given x and y offsets. -/
+def translate (dx dy : Float) (d : Diagram β) : Diagram β :=
+  .transform (Matrix.translate dx dy) d
+
+/-- Moves a diagram by {name}`dist` units along the direction {name}`v`. -/
+def move (v : Vec2) (dist : Float) (d : Diagram β) : Diagram β :=
+  let n := Vec2.normalize v
+  .transform (Matrix.translate (dist * n.x) (dist * n.y)) d
 
 /-- Scales a diagram uniformly by the given factor. -/
 def scale (s : Float) (d : Diagram β) : Diagram β :=
