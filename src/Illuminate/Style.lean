@@ -5,6 +5,7 @@ Author: David Thrane Christiansen
 -/
 
 import Illuminate.Style.Color
+import Illuminate.Style.ColorWidget
 import Illuminate.Style.Text
 import Illuminate.Style.Stroke
 import Illuminate.Style.Arrow
