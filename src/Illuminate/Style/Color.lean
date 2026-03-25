@@ -4,6 +4,7 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Author: David Thrane Christiansen
 -/
 
+import Lean.Elab.Term
 import Illuminate.Geometry.Basic
 import Illuminate.Geometry.Vec2
 import Illuminate.Geometry.Envelope
@@ -66,39 +67,50 @@ private def parseHexPair (s : String.Slice) : Option UInt8 := do
       let l ← hexVal c2
       return (h * 16 + l).toUInt8
 
-/--
-Parses a hex color literal like `rgb!"#ffcc93"` or `rgb!"#ffcc9380"` (with alpha). -/
-scoped syntax "rgb!" str : term
+/-- Parses a hex color string like {lit}`"#ffcc93"` or {lit}`"#ffcc9380"` into RGBA channel values. -/
+def parseRgbHex (s : String) : Except String (UInt8 × UInt8 × UInt8 × Option UInt8) := do
+  let len := if s.startsWith "#" then s.length - 1 else s.length
+  let chars := s.dropPrefix "#"
+  unless len == 6 || len == 8 do
+    throw s!"expected 6 or 8 hex digits, got '{s}'"
+  let r := chars.take 2
+  let g := chars.drop 2 |>.take 2
+  let b := chars.drop 4 |>.take 2
+  let some r := parseHexPair r | throw "invalid hex digit in red channel"
+  let some g := parseHexPair g | throw "invalid hex digit in green channel"
+  let some b := parseHexPair b | throw "invalid hex digit in blue channel"
+  if len == 8 then
+    let a := chars.drop 6 |>.take 2
+    let some a := parseHexPair a | throw "invalid hex digit in alpha channel"
+    return (r, g, b, some a)
+  else
+    return (r, g, b, none)
 
-macro_rules
+/-- Builds a {name}`Color` syntax literal from parsed RGBA channels. -/
+def rgbHexToSyntax (r g b : UInt8) (a? : Option UInt8) : Lean.MacroM Lean.Syntax := do
+  let rLit := Lean.Syntax.mkNumLit (toString r.toNat)
+  let gLit := Lean.Syntax.mkNumLit (toString g.toNat)
+  let bLit := Lean.Syntax.mkNumLit (toString b.toNat)
+  if let some a := a? then
+    let aFloat := a.toFloat / 255.0
+    let aStr := toString (Float.round (aFloat * 10000) / 10000)
+    let aLit := Lean.Syntax.mkScientificLit aStr
+    `({ r := $rLit, g := $gLit, b := $bLit, a := $aLit : Color })
+  else
+    `({ r := $rLit, g := $gLit, b := $bLit : Color })
+
+/-- Parses a hex color literal like `rgb!"#ffcc93"` or `rgb!"#ffcc9380"` (with alpha). -/
+scoped syntax (name := rgbLit) "rgb!" str : term
+
+open Lean Elab Term in
+elab_rules : term
   | `(rgb! $s:str) => do
     let str := s.getString
-    let len := if str.startsWith "#" then str.length - 1 else str.length
-    let chars := str.dropPrefix "#"
-    unless len == 6 || len == 8 do
-      Lean.Macro.throwError s!"expected 6 or 8 hex digits, got '{str}'"
-    let r := chars.take 2
-    let g := chars.drop 2 |>.take 2
-    let b := chars.drop 4 |>.take 2
-    let a := chars.drop 6 |>.take 2
-    let some r := parseHexPair r
-      | Lean.Macro.throwError s!"invalid hex digit in red channel"
-    let some g := parseHexPair g
-      | Lean.Macro.throwError s!"invalid hex digit in green channel"
-    let some b := parseHexPair b
-      | Lean.Macro.throwError s!"invalid hex digit in blue channel"
-    let rLit := Lean.Syntax.mkNumLit (toString r.toNat)
-    let gLit := Lean.Syntax.mkNumLit (toString g.toNat)
-    let bLit := Lean.Syntax.mkNumLit (toString b.toNat)
-    if len == 8 then
-      let some a := parseHexPair a
-        | Lean.Macro.throwError s!"invalid hex digit in alpha channel"
-      let aFloat := a.toFloat / 255.0
-      let aStr := toString (Float.round (aFloat * 10000) / 10000)
-      let aLit := Lean.Syntax.mkScientificLit aStr
-      `({ r := $rLit, g := $gLit, b := $bLit, a := $aLit : Color })
-    else
-      `({ r := $rLit, g := $gLit, b := $bLit : Color })
+    let (r, g, b, a?) ← match parseRgbHex str with
+      | .ok v => pure v
+      | .error msg => throwErrorAt s msg
+    let result ← liftMacroM <| rgbHexToSyntax r g b a?
+    elabTerm result none
 
 /-- Specifies the color of a solid fill. -/
 structure FillSpec where
