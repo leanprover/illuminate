@@ -206,7 +206,7 @@ def compileAnimation (steps : List Step)
         let segFrames := frameDrawLists.extract segStart i
         let (pmap, params) := extractParams segFrames
         let syncSvg := match frameDrawLists[segStart]? with
-          | some cmds => Svg.render cmds unifiedViewBox clipPfx
+          | some cmds => Svg.render cmds unifiedViewBox clipPfx true
           | none => ""
         segs := segs.push {
           startFrame := segStart
@@ -221,7 +221,7 @@ def compileAnimation (steps : List Step)
       let segFrames := frameDrawLists.extract segStart totalFrames
       let (pmap, params) := extractParams segFrames
       let syncSvg := match frameDrawLists[segStart]? with
-        | some cmds => Svg.render cmds unifiedViewBox clipPfx
+        | some cmds => Svg.render cmds unifiedViewBox clipPfx true
         | none => ""
       segs := segs.push {
         startFrame := segStart

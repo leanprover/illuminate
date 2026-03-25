@@ -139,6 +139,45 @@ Hover over {lit}`#animate` to see playback in the InfoView, with play/pause butt
       (stroke := { color := Color.black, width := 1 })
     crossFade sq circ t)
 
+-- Animated clip shape: the clip rectangle grows to reveal more of the circle.
+#animate (fps := 30)
+  [{ duration := 2.0 }]
+  (fun progress =>
+    let t := Easing.easeInOut progress[0]
+    let clipSize := Interpolate.interpolate 20.0 60.0 t
+    Diagram.clipRect clipSize clipSize
+      (Diagram.circle 30 (fill := .solid { color := Color.red })))
+
+/-!
+# Filmstrip previews
+
+Hover over {lit}`#diagram` to see the 4×5 grid of animation frames.
+-/
+
+-- Growing circle filmstrip
+#diagram filmstrip (fun t =>
+    let t := Easing.easeInOut t
+    let radius := Interpolate.interpolate 10.0 50.0 t
+    let color := Interpolate.interpolate Color.blue Color.red t
+    Diagram.circle radius (fill := .solid { color })
+      (stroke := { color := Color.black, width := 1 }))
+
+-- Rotating square filmstrip
+#diagram filmstrip (fun t =>
+    let t := Easing.easeInOut t
+    animRotate
+      (Diagram.rect 40 40
+        (fill := .solid { color := { r := 100, g := 149, b := 237 } })
+        (stroke := { color := Color.black, width := 1.5 }))
+      0 (2 * pi) t)
+
+-- Animated clip shape filmstrip
+#diagram filmstrip (fun t =>
+    let t := Easing.easeInOut t
+    let clipSize := Interpolate.interpolate 20.0 60.0 t
+    Diagram.clipRect clipSize clipSize
+      (Diagram.circle 30 (fill := .solid { color := Color.red })))
+
 -- Gradient spotlight: radial gradient focal point orbits inside a drifting ellipse
 #animate
   [{ duration := 3.0, loop := true }]

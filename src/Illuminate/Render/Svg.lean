@@ -237,22 +237,28 @@ private def findAttr (attrs : Array (String × String)) (name : String) : String
 /--
 Renders a single {name}`DrawCmd` to an SVG fragment. The {name}`clipPrefix` distinguishes
 clip-path IDs across independently compiled diagrams on the same page.
+
+When {name}`elemTag` is provided, the patchable element gets a {lit}`data-e` attribute
+with that value so the animation player can locate it by explicit ID.
 -/
 def renderCmd {β : Type} [BackendRender β] (cmd : DrawCmd β)
-    (clipPrefix : String := "") : String :=
+    (clipPrefix : String := "") (elemTag : Option Nat := none) : String :=
   let info := drawCmdAttrs cmd clipPrefix
+  let eAttr := match elemTag with
+    | some idx => s!" data-e=\"{idx}\""
+    | none => ""
   match cmd with
   | .fillPath _ .none _ => ""
   | .fillPath _ (.solid _) _ | .fillPath _ (.gradient _) _ =>
-    s!"<path{renderAttrs info.attrs}/>"
+    s!"<path{eAttr}{renderAttrs info.attrs}/>"
   | .strokePath .. =>
-    s!"<path{renderAttrs info.attrs}/>"
+    s!"<path{eAttr}{renderAttrs info.attrs}/>"
   | .drawTextRun s style pos =>
     let textAttrs := info.attrs.filter (·.1 != "textContent")
     let attrStr := renderAttrs textAttrs
     let lines := s.splitOn "\n"
     if lines.length <= 1 then
-      s!"<text{attrStr}>{escapeXml s}</text>"
+      s!"<text{eAttr}{attrStr}>{escapeXml s}</text>"
     else
       let lineHeight := style.fontSize * 1.2
       let totalH := lineHeight * (lines.length - 1).toFloat
@@ -261,13 +267,15 @@ def renderCmd {β : Type} [BackendRender β] (cmd : DrawCmd β)
         let dy := if i == 0 then startY else lineHeight
         let span := s!"<tspan x=\"{fmtNum pos.x}\" dy=\"{fmtNum dy}\">{escapeXml line}</tspan>"
         (i + 1, acc ++ span)) (0, "")
-      s!"<text{attrStr}>{tspans}</text>"
+      s!"<text{eAttr}{attrStr}>{tspans}</text>"
   | .pushTransform .. | .pushAnnotation .. | .pushOpacity .. =>
-    s!"<g{renderAttrs info.attrs}>"
+    s!"<g{eAttr}{renderAttrs info.attrs}>"
   | .pushClip .. =>
     let d := findAttr info.attrs "d"
     let cid := findAttr info.attrs "id"
-    s!"<defs><clipPath id=\"{cid}\"><path d=\"{d}\"/></clipPath></defs><g clip-path=\"url(#{cid})\">"
+    -- The data-e tag goes on the inner <path>, which is the patchable element
+    -- whose `d` attribute the animation player needs to update.
+    s!"<defs><clipPath id=\"{cid}\"><path{eAttr} d=\"{d}\"/></clipPath></defs><g clip-path=\"url(#{cid})\">"
   | .pushForeign tag => BackendRender.renderOpen tag
   | .popForeign tag => BackendRender.renderClose tag
   | .defGradient _ g =>
@@ -275,19 +283,26 @@ def renderCmd {β : Type} [BackendRender β] (cmd : DrawCmd β)
       | .linear _ _ _ _ stops _ | .radial _ _ _ _ _ _ stops _ => stopsToSvg stops
     match g with
     | .linear .. =>
-      s!"<defs><linearGradient{renderAttrs info.attrs}>{stopsStr}</linearGradient></defs>"
+      s!"<defs><linearGradient{eAttr}{renderAttrs info.attrs}>{stopsStr}</linearGradient></defs>"
     | .radial .. =>
-      s!"<defs><radialGradient{renderAttrs info.attrs}>{stopsStr}</radialGradient></defs>"
+      s!"<defs><radialGradient{eAttr}{renderAttrs info.attrs}>{stopsStr}</radialGradient></defs>"
   | .popTransform | .popAnnotation | .popOpacity | .popClip => "</g>"
 
 /--
 Renders an array of draw commands to a complete SVG document string.
 The {name}`clipPrefix` distinguishes clip-path IDs when multiple SVGs share a page.
+
+When {name}`emitElemIdx` is true, each element that {name (full := CmdAttrInfo.producesElement)}`producesElement`
+gets a {lit}`data-e` attribute with its element index. The animation player uses
+these to locate patchable elements by explicit ID rather than fragile DOM-walk order.
 -/
 def render {β : Type} [BackendRender β] (cmds : Array (DrawCmd β)) (viewBox : ViewBox)
-    (clipPrefix : String := "") : String :=
+    (clipPrefix : String := "") (emitElemIdx : Bool := false) : String :=
   let header := s!"<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"{fmtNum viewBox.minX} {fmtNum viewBox.minY} {fmtNum viewBox.width} {fmtNum viewBox.height}\">"
-  let body := cmds.foldl (init := "") fun acc cmd =>
-    acc ++ "\n" ++ renderCmd cmd clipPrefix
+  let (body, _) := cmds.foldl (init := ("", 0)) fun (acc, ei) cmd =>
+    let produces := (drawCmdAttrs cmd clipPrefix).producesElement
+    let tag := if emitElemIdx && produces then some ei else none
+    let fragment := renderCmd cmd clipPrefix tag
+    (acc ++ "\n" ++ fragment, if produces then ei + 1 else ei)
   -- Flip y-axis: SVG y points down, diagram y points up
   header ++ "\n<g transform=\"scale(1,-1)\">" ++ body ++ "\n</g>\n</svg>"

@@ -895,6 +895,46 @@ def testVisual_pizza : IO Unit :=
       ("<path", "has path elements")
     ])
 
+/-!
+# Animation filmstrips
+-/
+
+/-- Growing circle: blue→red with easeInOut. -/
+def filmstripGrowingCircle : Diagram SVG :=
+  filmstrip (fun t =>
+    let t := Easing.easeInOut t
+    let radius := Interpolate.interpolate 10.0 50.0 t
+    let color := Interpolate.interpolate Color.blue Color.red t
+    Diagram.circle radius (fill := .solid { color })
+      (stroke := { color := Color.black, width := 1 }))
+
+def testVisual_filmstripGrowingCircle : IO Unit :=
+  testVisualWrite "filmstrip-growing-circle.svg" filmstripGrowingCircle
+
+/-- Rotating square with easeInOut. -/
+def filmstripRotatingSquare : Diagram SVG :=
+  filmstrip (fun t =>
+    let t := Easing.easeInOut t
+    animRotate
+      (Diagram.rect 40 40
+        (fill := .solid { color := { r := 100, g := 149, b := 237 } })
+        (stroke := { color := Color.black, width := 1.5 }))
+      0 (2 * pi) t)
+
+def testVisual_filmstripRotatingSquare : IO Unit :=
+  testVisualWrite "filmstrip-rotating-square.svg" filmstripRotatingSquare
+
+/-- Animated clip shape: clip rectangle grows to reveal more of the red circle. -/
+def filmstripAnimatedClip : Diagram SVG :=
+  filmstrip (fun t =>
+    let t := Easing.easeInOut t
+    let clipSize := Interpolate.interpolate 20.0 60.0 t
+    Diagram.clipRect clipSize clipSize
+      (Diagram.circle 30 (fill := .solid { color := Color.red })))
+
+def testVisual_filmstripAnimatedClip : IO Unit :=
+  testVisualWrite "filmstrip-animated-clip.svg" filmstripAnimatedClip
+
 def visualTests : List (String × IO Unit) := [
   ("Visual/roundedRects", testVisual_roundedRects),
   ("Visual/roundedRects_2_5", testVisual_roundedRects_2_5),
@@ -919,5 +959,8 @@ def visualTests : List (String × IO Unit) := [
   ("Visual/traceConnect", testVisual_traceConnect),
   ("Visual/traceConnectAngled", testVisual_traceConnectAngled),
   ("Visual/gradients", testVisual_gradients),
-  ("Visual/pizza", testVisual_pizza)
+  ("Visual/pizza", testVisual_pizza),
+  ("Visual/filmstripGrowingCircle", testVisual_filmstripGrowingCircle),
+  ("Visual/filmstripRotatingSquare", testVisual_filmstripRotatingSquare),
+  ("Visual/filmstripAnimatedClip", testVisual_filmstripAnimatedClip)
 ]

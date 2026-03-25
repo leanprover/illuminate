@@ -16,12 +16,12 @@ variable {β : Type} [Backend β]
 
 /-- Compiles a diagram tree into a flat display list of drawing commands. -/
 def compile (d : Diagram β) : Array (DrawCmd β) :=
-  (go d #[] 0).1
+  (go d #[] 0 0).1
 where
-  go (d : Diagram β) (acc : Array (DrawCmd β)) (gi : Nat) :
-      Array (DrawCmd β) × Nat :=
+  go (d : Diagram β) (acc : Array (DrawCmd β)) (gi ci : Nat) :
+      Array (DrawCmd β) × Nat × Nat :=
     match d with
-    | .empty => (acc, gi)
+    | .empty => (acc, gi, ci)
     | .prim cp =>
       match cp with
       | .path pd fill stroke =>
@@ -37,34 +37,33 @@ where
             (acc.push (.fillPath pd resolved (some gi)), gi + 1)
           | .none => (acc, gi)
         if stroke.width > 0 && stroke.color.a > 0 then
-          (acc.push (.strokePath pd stroke), gi)
+          (acc.push (.strokePath pd stroke), gi, ci)
         else
-          (acc, gi)
+          (acc, gi, ci)
       | .text s style =>
-        (acc.push (.drawTextRun s style ⟨0, 0⟩), gi)
-      | .image _ => (acc, gi)
+        (acc.push (.drawTextRun s style ⟨0, 0⟩), gi, ci)
+      | .image _ => (acc, gi, ci)
     | .foreign val d =>
-      let (inner, gi) := go d #[] gi
-      (acc ++ Backend.compile val inner, gi)
+      let (inner, gi, ci) := go d #[] gi ci
+      (acc ++ Backend.compile val inner, gi, ci)
     | .tag n d =>
-      let (inner, gi) := go d #[] gi
-      ((acc.push (.pushAnnotation n) ++ inner).push .popAnnotation, gi)
-    | .named _ d => go d acc gi
+      let (inner, gi, ci) := go d #[] gi ci
+      ((acc.push (.pushAnnotation n) ++ inner).push .popAnnotation, gi, ci)
+    | .named _ d => go d acc gi ci
     | .transform m d =>
-      let (inner, gi) := go d #[] gi
-      ((acc.push (.pushTransform m) ++ inner).push .popTransform, gi)
+      let (inner, gi, ci) := go d #[] gi ci
+      ((acc.push (.pushTransform m) ++ inner).push .popTransform, gi, ci)
     | .compose a b =>
-      let (acc, gi) := go a acc gi
-      go b acc gi
-    | .withEnv _ d => go d acc gi
-    | .warning _ d => go d acc gi
+      let (acc, gi, ci) := go a acc gi ci
+      go b acc gi ci
+    | .withEnv _ d => go d acc gi ci
+    | .warning _ d => go d acc gi ci
     | .cellophane α d =>
-      let (inner, gi) := go d #[] gi
-      ((acc.push (.pushOpacity α) ++ inner).push .popOpacity, gi)
+      let (inner, gi, ci) := go d #[] gi ci
+      ((acc.push (.pushOpacity α) ++ inner).push .popOpacity, gi, ci)
     | .clip pd d =>
-      let clipId := acc.size
-      let (inner, gi) := go d #[] gi
-      ((acc.push (.pushClip pd clipId) ++ inner).push .popClip, gi)
+      let (inner, gi, ci) := go d #[] gi (ci + 1)
+      ((acc.push (.pushClip pd ci) ++ inner).push .popClip, gi, ci)
 
 /-- Renders a diagram to an SVG string. -/
 def renderDiagram [BackendRender β] [Hashable β] (d : Diagram β) (padding : Float := 2) : String :=
