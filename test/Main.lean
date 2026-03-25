@@ -14,11 +14,12 @@ import Tests.Trace
 import Tests.Visual
 import Tests.HitTest
 import Tests.Animation
+import Tests.Morph
 
 def main : IO Unit := do
   let tests := geometryTests ++ styleTests ++ diagramTests ++ renderTests
     ++ layoutTests ++ dslTests ++ traceTests ++ visualTests ++ hitTestTests
-    ++ animationTests
+    ++ animationTests ++ morphTests
   let mut passed := 0
   let mut failed := 0
   for (name, test) in tests do
