@@ -5,6 +5,7 @@ Author: David Thrane Christiansen
 -/
 
 import Illuminate.Animation.Morph.CubicSeg
+import Illuminate.Animation.Morph.Style
 import Illuminate.Geometry.PathData
 import Tests.Helpers
 
@@ -120,8 +121,157 @@ def cubicSegTests : List (String × IO Unit) :=
   ]
 
 /-!
+# Style interpolation tests
+-/
+
+open Illuminate.Morph in
+def styleTests' : List (String × IO Unit) :=
+  [ ("normalizeStops: merges offsets", do
+      let a : Array GradientStop := #[⟨0, Color.black⟩, ⟨1, Color.white⟩]
+      let b : Array GradientStop := #[⟨0, Color.red⟩, ⟨0.5, Color.green⟩, ⟨1, Color.blue⟩]
+      let (na, nb) := normalizeStops a b
+      assertTrue (na.size == nb.size) s!"expected equal, got {na.size} and {nb.size}"
+      assertTrue (na.size == 3) s!"expected 3 stops, got {na.size}")
+  , ("normalizeStops: identical stays same", do
+      let stops : Array GradientStop := #[⟨0, Color.black⟩, ⟨1, Color.white⟩]
+      let (na, nb) := normalizeStops stops stops
+      assertTrue (na.size == 2 && nb.size == 2) "should stay size 2")
+  , ("lerpStroke: t=0 gives first", do
+      let a : Stroke := { color := Color.red, width := 2 }
+      let b : Stroke := { color := Color.blue, width := 4 }
+      let r := lerpStroke a b 0
+      assertApproxEq r.width 2 "width"
+      assertTrue (r.color.r == 255) s!"red channel: {r.color.r}")
+  , ("lerpStroke: t=1 gives second", do
+      let a : Stroke := { color := Color.red, width := 2 }
+      let b : Stroke := { color := Color.blue, width := 4 }
+      let r := lerpStroke a b 1
+      assertApproxEq r.width 4 "width"
+      assertTrue (r.color.b == 255) s!"blue channel: {r.color.b}")
+  , ("lerpStroke: t=0.5 midpoint", do
+      let a : Stroke := { color := Color.black, width := 0 }
+      let b : Stroke := { color := Color.white, width := 10 }
+      let r := lerpStroke a b 0.5
+      assertApproxEq r.width 5 "width")
+  , ("lerpTextStyle: fontSize lerps", do
+      let a : TextStyle := { fontSize := 10 }
+      let b : TextStyle := { fontSize := 30 }
+      let r := lerpTextStyle a b 0.5
+      assertApproxEq r.fontSize 20 "fontSize")
+  , ("lerpTextStyle: fontFamily switches at 0.5", do
+      let a : TextStyle := { fontFamily := "sans-serif" }
+      let b : TextStyle := { fontFamily := "monospace" }
+      let r1 := lerpTextStyle a b 0.3
+      let r2 := lerpTextStyle a b 0.7
+      assertTrue (r1.fontFamily == "sans-serif") "before 0.5"
+      assertTrue (r2.fontFamily == "monospace") "after 0.5")
+  , ("prepareFills: solid/solid returns some", do
+      let a : ResolvedFill := .solid { color := Color.red }
+      let b : ResolvedFill := .solid { color := Color.blue }
+      assertTrue (prepareFills a b).isSome "solid/solid")
+  , ("prepareFills: linear/linear normalizes stops", do
+      let a : ResolvedFill := .gradient (.linear 0 0 10 0 #[⟨0, Color.red⟩, ⟨1, Color.blue⟩])
+      let b : ResolvedFill := .gradient (.linear 0 0 10 0 #[⟨0, Color.red⟩, ⟨0.5, Color.green⟩, ⟨1, Color.blue⟩])
+      match prepareFills a b with
+      | some (.gradient (.linear _ _ _ _ sa _), .gradient (.linear _ _ _ _ sb _)) =>
+        assertTrue (sa.size == sb.size) s!"expected equal stops, got {sa.size} and {sb.size}"
+      | _ => throw <| IO.userError "expected linear/linear")
+  , ("prepareFills: linear/radial returns none", do
+      let a : ResolvedFill := .gradient (.linear 0 0 10 0 #[⟨0, Color.red⟩, ⟨1, Color.blue⟩])
+      let b : ResolvedFill := .gradient (.radial 0 0 10 0 0 0 #[⟨0, Color.red⟩, ⟨1, Color.blue⟩])
+      assertTrue (prepareFills a b).isNone "linear/radial should be none")
+  , ("lerpResolvedFill: solid midpoint", do
+      let a : ResolvedFill := .solid { color := Color.black }
+      let b : ResolvedFill := .solid { color := Color.white }
+      match lerpResolvedFill a b 0.5 with
+      | some (.solid fs) =>
+        assertTrue (fs.color.r >= 127 && fs.color.r <= 128) s!"mid gray r={fs.color.r}"
+      | _ => throw <| IO.userError "expected solid")
+  ]
+
+/-!
+# Morph plan structure tests
+-/
+
+private def countCrossFades {β : Type} : MorphNode β → Nat
+  | .crossFade _ _ => 1
+  | .compose l r => countCrossFades l + countCrossFades r
+  | .transform _ _ c => countCrossFades c
+  | .cellophane _ _ c => countCrossFades c
+  | .clip _ _ _ c => countCrossFades c
+  | .matched _ _ _ c => countCrossFades c
+  | .arrow _ _ _ _ _ _ c => countCrossFades c
+  | _ => 0
+
+private def countMatched {β : Type} : MorphNode β → Nat
+  | .matched _ _ _ c => 1 + countMatched c
+  | .compose l r => countMatched l + countMatched r
+  | .transform _ _ c => countMatched c
+  | .cellophane _ _ c => countMatched c
+  | .clip _ _ _ c => countMatched c
+  | .arrow _ _ _ _ _ _ c => countMatched c
+  | _ => 0
+
+private def countPaths {β : Type} : MorphNode β → Nat
+  | .path .. => 1
+  | .compose l r => countPaths l + countPaths r
+  | .transform _ _ c => countPaths c
+  | .cellophane _ _ c => countPaths c
+  | .clip _ _ _ c => countPaths c
+  | .matched _ _ _ c => countPaths c
+  | .arrow _ _ _ _ _ _ c => countPaths c
+  | _ => 0
+
+private def countArrows {β : Type} : MorphNode β → Nat
+  | .arrow _ _ _ _ _ _ c => 1 + countArrows c
+  | .compose l r => countArrows l + countArrows r
+  | .transform _ _ c => countArrows c
+  | .cellophane _ _ c => countArrows c
+  | .clip _ _ _ c => countArrows c
+  | .matched _ _ _ c => countArrows c
+  | _ => 0
+
+def morphPlanTests : List (String × IO Unit) :=
+  [ ("morph plan: named shapes are matched not cross-faded", do
+      let tri := Diagram.fromPath
+        (PathData.empty |>.moveTo ⟨0, 12⟩ |>.lineTo ⟨-10, -6⟩ |>.lineTo ⟨10, -6⟩ |>.close)
+        (fill := Color.red) (stroke := { color := .black, width := 1 })
+      let sq := Diagram.rect 18 18 (fill := Color.green) (stroke := { color := .black, width := 1 })
+      let start : Diagram SVG := Diagram.hsep 40 [tri.named `A, sq.named `B]
+      let stop : Diagram SVG := Diagram.hsep 40 [sq.named `B, tri.named `A]
+      let m := start.morph stop
+      let matched := countMatched m.node
+      let crossFades := countCrossFades m.node
+      IO.println s!"    matched={matched} crossFades={crossFades} paths={countPaths m.node}"
+      assertTrue (matched >= 2) s!"expected ≥2 matched, got {matched}"
+      assertTrue (crossFades == 0) s!"expected 0 cross-fades, got {crossFades}")
+  , ("morph plan: nested named shapes with arrows", do
+      let tri := Diagram.fromPath
+        (PathData.empty |>.moveTo ⟨0, 12⟩ |>.lineTo ⟨-10, -6⟩ |>.lineTo ⟨10, -6⟩ |>.close)
+        (fill := Color.red) (stroke := { color := .black, width := 1 })
+      let sq := Diagram.rect 18 18 (fill := Color.green) (stroke := { color := .black, width := 1 })
+      let rr := Diagram.roundedRect 22 18 4 (fill := Color.red) (stroke := { color := .black, width := 1 })
+      let aStart := Diagram.hsep 30 [tri.named `X, sq.named `Y]
+        |>.connect `X { point := `Y, arrowhead := some {} } |>.named `A
+      let aEnd := Diagram.hsep 30 [sq.named `Y, rr.named `X]
+        |>.connect `Y { point := `X, arrowhead := some {} } |>.named `A
+      let bStart := (Diagram.circle 15 (fill := Color.blue) (stroke := { color := .black, width := 1 })).named `B
+      let bEnd := (Diagram.star 4 18 8 (fill := Color.blue) (stroke := { color := .black, width := 1 })).named `B
+      let start : Diagram SVG := Diagram.hsep 40 [aStart, bStart]
+      let stop : Diagram SVG := Diagram.hsep 40 [bEnd, aEnd]
+      let m := start.morph stop
+      let matched := countMatched m.node
+      let crossFades := countCrossFades m.node
+      let paths := countPaths m.node
+      let arrows := countArrows m.node
+      IO.println s!"    matched={matched} crossFades={crossFades} paths={paths} arrows={arrows}"
+      assertTrue (arrows >= 1) s!"expected ≥1 arrow morph, got {arrows}"
+      assertTrue (crossFades == 0) s!"expected 0 cross-fades, got {crossFades}")
+  ]
+
+/-!
 # All morph tests
 -/
 
 def morphTests : List (String × IO Unit) :=
-  cubicSegTests
+  cubicSegTests ++ styleTests' ++ morphPlanTests

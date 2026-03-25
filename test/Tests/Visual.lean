@@ -5,6 +5,7 @@ Author: David Thrane Christiansen
 -/
 
 import Tests.Helpers
+import Tests.AnimationExamples
 
 set_option linter.missingDocs false
 
@@ -935,6 +936,29 @@ def filmstripAnimatedClip : Diagram SVG :=
 def testVisual_filmstripAnimatedClip : IO Unit :=
   testVisualWrite "filmstrip-animated-clip.svg" filmstripAnimatedClip
 
+/-!
+# Morph filmstrips
+-/
+
+/-- Simple morph: rectangle to circle. -/
+def filmstripMorphRectCircle : Diagram SVG :=
+  let a := Diagram.rect 40 40 (fill := Color.blue) (stroke := { color := Color.black, width := 1 })
+  let b := Diagram.circle 25 (fill := Color.red) (stroke := { color := Color.black, width := 1 })
+  let m := a.morph b
+  filmstrip (fun t => m.evaluate t)
+
+def testVisual_filmstripMorphRectCircle : IO Unit :=
+  testVisualWrite "filmstrip-morph-rect-circle.svg" filmstripMorphRectCircle
+
+/-- Nested named diagram morph exercising recursive name matching and arrow morphing. -/
+def filmstripMorphNested : Diagram SVG :=
+  let (start, stop) := nestedMorphDiagrams
+  let m := start.morph stop
+  filmstrip (fun t => m.evaluate (Easing.easeInOut t))
+
+def testVisual_filmstripMorphNested : IO Unit :=
+  testVisualWrite "filmstrip-morph-nested.svg" filmstripMorphNested
+
 def visualTests : List (String × IO Unit) := [
   ("Visual/roundedRects", testVisual_roundedRects),
   ("Visual/roundedRects_2_5", testVisual_roundedRects_2_5),
@@ -962,5 +986,7 @@ def visualTests : List (String × IO Unit) := [
   ("Visual/pizza", testVisual_pizza),
   ("Visual/filmstripGrowingCircle", testVisual_filmstripGrowingCircle),
   ("Visual/filmstripRotatingSquare", testVisual_filmstripRotatingSquare),
-  ("Visual/filmstripAnimatedClip", testVisual_filmstripAnimatedClip)
+  ("Visual/filmstripAnimatedClip", testVisual_filmstripAnimatedClip),
+  ("Visual/filmstripMorphRectCircle", testVisual_filmstripMorphRectCircle),
+  ("Visual/filmstripMorphNested", testVisual_filmstripMorphNested)
 ]

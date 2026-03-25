@@ -4,6 +4,9 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Author: David Thrane Christiansen
 -/
 
+import Illuminate.Geometry.Basic
+
+
 namespace Illuminate
 
 
@@ -17,7 +20,7 @@ inductive ArrowType where
   | triangle
   /-- A filled circle at the tip. -/
   | circle
-deriving Repr, BEq, Inhabited
+deriving Repr, BEq, Inhabited, Hashable
 
 /-- Configuration for an arrowhead. -/
 structure Arrowhead where
@@ -27,4 +30,4 @@ structure Arrowhead where
   length : Float := 1
   /-- Scaling factor for head width (1 = default). -/
   width : Float := 1
-deriving Repr, BEq, Inhabited
+deriving Repr, BEq, Inhabited, Hashable

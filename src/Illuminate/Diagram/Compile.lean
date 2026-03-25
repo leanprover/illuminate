@@ -5,6 +5,7 @@ Author: David Thrane Christiansen
 -/
 
 import Illuminate.Diagram.Placement
+import Illuminate.Diagram.Arrow
 import Illuminate.Render.DrawCmd
 import Illuminate.Render.Svg
 
@@ -15,7 +16,7 @@ namespace Diagram
 variable {β : Type} [Backend β]
 
 /-- Compiles a diagram tree into a flat display list of drawing commands. -/
-def compile (d : Diagram β) : Array (DrawCmd β) :=
+partial def compile (d : Diagram β) : Array (DrawCmd β) :=
   (go d #[] 0 0).1
 where
   go (d : Diagram β) (acc : Array (DrawCmd β)) (gi ci : Nat) :
@@ -64,6 +65,15 @@ where
     | .clip pd d =>
       let (inner, gi, ci) := go d #[] gi (ci + 1)
       ((acc.push (.pushClip pd ci) ++ inner).push .popClip, gi, ci)
+    | .arrow start stop stroke d =>
+      let srcPoint := (d.find start.point).origin
+      let tgtPoint := (d.find stop.point).origin
+      let src := srcPoint.toVec2 + start.shift
+      let tgt := tgtPoint.toVec2 + stop.shift
+      let arrowDiagram := ArrowDraw.drawLine src tgt start { stop with arrowhead := stop.arrowhead } stroke
+      let (innerCmds, gi, ci) := go d acc gi ci
+      let (arrowCmds, gi, ci) := go arrowDiagram #[] gi ci
+      (innerCmds ++ arrowCmds, gi, ci)
 
 /-- Renders a diagram to an SVG string. -/
 def renderDiagram [BackendRender β] [Hashable β] (d : Diagram β) (padding : Float := 2) : String :=

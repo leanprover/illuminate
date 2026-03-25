@@ -13,3 +13,4 @@ import Illuminate.Animation.Compile
 import Illuminate.Animation.Render
 import Illuminate.Animation.Widget
 import Illuminate.Animation.Filmstrip
+import Illuminate.Animation.Morph

@@ -32,6 +32,23 @@ inductive CorePrimitive where
   | image : ImageRef → CorePrimitive
 deriving Repr, BEq, Inhabited, Hashable
 
+/-- One endpoint of an arrow, specifying where and how the line departs or arrives. -/
+structure LineEnd where
+  /-- Named anchor point in the diagram to connect. -/
+  point : Lean.Name
+  /-- Additional offset applied to the resolved anchor position. -/
+  shift : Vec2 := 0
+  /-- Departure/arrival angle in radians. Defaults to the straight-line angle. -/
+  angle : Option Float := none
+  /-- Controls how far the Bézier control point extends from this endpoint. -/
+  pull : Float := 0.25
+  /-- Optional arrowhead drawn at this endpoint. -/
+  arrowhead : Option Arrowhead := none
+deriving Repr, BEq, Hashable
+
+instance : Coe Lean.Name LineEnd where
+  coe point := { point }
+
 /--
 The core diagram type, parameterized by a backend-specific foreign type {name}`β`.
 Backends can embed their own rendering objects alongside built-in primitives
@@ -60,6 +77,8 @@ inductive Diagram (β : Type) where
   | cellophane : Float → Diagram β → Diagram β
   /-- Clips a sub-diagram to a path boundary. -/
   | clip : PathData → Diagram β → Diagram β
+  /-- Draws an arrow between two named anchors in a sub-diagram. -/
+  | arrow : LineEnd → LineEnd → Stroke → Diagram β → Diagram β
 deriving Hashable
 
 /--

@@ -201,6 +201,21 @@ end CorePrimitive
 
 namespace Diagram
 
+/-- Collects named positions from a diagram for arrow envelope computation. -/
+private def arrowCollectNames {β : Type} [Backend β] (d : Diagram β) (xform : Matrix)
+    (pfx : Lean.Name) (acc : List (Lean.Name × Vec2)) : List (Lean.Name × Vec2) :=
+  match d with
+  | .empty | .prim _ => acc
+  | .foreign _ d | .tag _ d | .warning _ d | .cellophane _ d | .clip _ d | .arrow _ _ _ d =>
+    arrowCollectNames d xform pfx acc
+  | .named name d =>
+    let pos := Matrix.apply xform ⟨0, 0⟩
+    let qualName := match pfx with | .anonymous => name | _ => pfx ++ name
+    arrowCollectNames d xform qualName ((qualName, pos) :: acc)
+  | .transform m d => arrowCollectNames d (Matrix.mul xform m) pfx acc
+  | .compose a b => arrowCollectNames b xform pfx (arrowCollectNames a xform pfx acc)
+  | .withEnv _ d => arrowCollectNames d xform pfx acc
+
 variable {β : Type} [Backend β]
 
 /-!
@@ -221,6 +236,30 @@ def getEnvelope (d : Diagram β) : Envelope :=
   | .warning _ d => d.getEnvelope
   | .cellophane _ d => d.getEnvelope
   | .clip _ d => d.getEnvelope
+  | .arrow start stop stroke d =>
+    let childEnv := d.getEnvelope
+    let names := arrowCollectNames d Matrix.identity .anonymous []
+    let resolve (n : Lean.Name) : Vec2 :=
+      match names.find? (·.1 == n) with
+      | some (_, pos) => pos
+      | none => ⟨0, 0⟩
+    let src := resolve start.point + start.shift
+    let tgt := resolve stop.point + stop.shift
+    let straightAngle := Float.atan2 (tgt.y - src.y) (tgt.x - src.x)
+    let srcAngle := start.angle.getD straightAngle
+    let tgtAngle := stop.angle.getD straightAngle
+    let dist := (tgt - src).length
+    let srcDir : Vec2 := ⟨Float.cos srcAngle, Float.sin srcAngle⟩
+    let tgtDir : Vec2 := ⟨Float.cos tgtAngle, Float.sin tgtAngle⟩
+    let c1 := src + (start.pull * dist) • srcDir
+    let c2 := tgt - (stop.pull * dist) • tgtDir
+    let curvePoints := PathData.bezierExtrema src c1 c2 tgt
+    let sw := stroke.width / 2
+    let arrowEnv := Envelope.ofVertices curvePoints
+    let paddedEnv := match arrowEnv with
+      | .empty => .empty
+      | .nonempty f => .nonempty fun v => f v + sw
+    Envelope.union childEnv paddedEnv
 
 /-!
 # Trace extraction
@@ -240,6 +279,7 @@ def getTrace (d : Diagram β) : Trace :=
   | .warning _ d => d.getTrace
   | .cellophane _ d => d.getTrace
   | .clip _ d => d.getTrace
+  | .arrow _ _ _ d => d.getTrace
 
 /-!
 # StrokeTrace extraction
@@ -259,6 +299,7 @@ def getStrokeTrace (d : Diagram β) : StrokeTrace :=
   | .warning _ d => d.getStrokeTrace
   | .cellophane _ d => d.getStrokeTrace
   | .clip _ d => d.getStrokeTrace
+  | .arrow _ _ _ d => d.getStrokeTrace
 
 /-!
 # Name resolution
@@ -288,6 +329,7 @@ def collectNames (d : Diagram β) (xform : Matrix) (pfx : Lean.Name)
   | .warning _ d => collectNames d xform pfx acc
   | .cellophane _ d => collectNames d xform pfx acc
   | .clip _ d => collectNames d xform pfx acc
+  | .arrow _ _ _ d => collectNames d xform pfx acc
 
 /--
 Extracts the named subdiagram from a diagram, wrapped in its accumulated transform.
@@ -321,6 +363,7 @@ where
     | .warning _ d => go target pfx xform d
     | .cellophane _ d => go target pfx xform d
     | .clip _ d => go target pfx xform d
+    | .arrow _ _ _ d => go target pfx xform d
 
 /-- Computes the origin of a diagram (where {lit}`(0,0)` maps to under accumulated transforms). -/
 def origin (d : Diagram β) : Point :=

@@ -23,32 +23,39 @@ def filmstrip (render : Float → Diagram SVG)
     (cols : Nat := 4) (rows : Nat := 5)
     (cellPadding : Float := 8) (dividerWidth : Float := 0.5) : Diagram SVG :=
   let n := cols * rows
-  -- Sample frames at evenly spaced progress values and pad each cell
+  -- Sample frames at evenly spaced progress values
   let frames := (List.range n).map fun i =>
     let t := if n <= 1 then 0.0 else i.toFloat / (n - 1).toFloat
-    Diagram.pad cellPadding (render t)
-  -- Build the grid rows (top-to-bottom, so row 0 is t=0)
-  let gridRows : Array (Array (Option (Diagram SVG))) :=
-    Array.range rows |>.map fun r =>
-      Array.range cols |>.map fun c =>
-        frames[r * cols + c]?
-  let content := Diagram.grid gridRows
-  -- Overlay divider lines using the grid's envelope for sizing
-  let env := content.getEnvelope
-  let totalW := env[Vec2.east] + env[Vec2.west]
-  let totalH := env[Vec2.north] + env[Vec2.south]
+    (render t).named (.mkSimple s!"frame{i}")
+  -- Compute uniform cell size from max envelope across all frames
+  let (maxHW, maxHH) := frames.foldl (init := (0.0, 0.0)) fun (mw, mh) d =>
+    match d.getEnvelope with
+    | .empty => (mw, mh)
+    | .nonempty env =>
+      let hw := (env Vec2.east + env Vec2.west) / 2
+      let hh := (env Vec2.north + env Vec2.south) / 2
+      (max mw hw, max mh hh)
+  let cellW := 2 * (maxHW + cellPadding)
+  let cellH := 2 * (maxHH + cellPadding)
+  let totalW := cols.toFloat * cellW
+  let totalH := rows.toFloat * cellH
+  -- Place each frame at its cell center
+  let content := (List.range n).foldl (init := (Diagram.empty : Diagram SVG)) fun acc idx =>
+    let d := (frames[idx]?.getD .empty)
+    let col := idx % cols
+    let row := idx / cols
+    let cx := (col.toFloat + 0.5) * cellW - totalW / 2
+    let cy := ((rows - 1 - row).toFloat + 0.5) * cellH - totalH / 2
+    Diagram.compose acc (Diagram.translate cx cy d)
+  -- Divider lines
   let dividerStroke : Stroke := { color := Color.lightGray, width := dividerWidth }
   let vDividers := (List.range (cols - 1)).foldl (init := Diagram.empty) fun acc i =>
-    let x := (i + 1).toFloat * totalW / cols.toFloat - totalW / 2
-    let line := Diagram.fromStroke
-      (PathData.empty.moveTo ⟨x, -totalH / 2⟩ |>.lineTo ⟨x, totalH / 2⟩)
-      dividerStroke
-    Diagram.compose acc line
+    let x := (i + 1).toFloat * cellW - totalW / 2
+    Diagram.compose acc (Diagram.fromStroke
+      (PathData.empty.moveTo ⟨x, -totalH / 2⟩ |>.lineTo ⟨x, totalH / 2⟩) dividerStroke)
   let hDividers := (List.range (rows - 1)).foldl (init := Diagram.empty) fun acc i =>
-    let y := totalH / 2 - (i + 1).toFloat * totalH / rows.toFloat
-    let line := Diagram.fromStroke
-      (PathData.empty.moveTo ⟨-totalW / 2, y⟩ |>.lineTo ⟨totalW / 2, y⟩)
-      dividerStroke
-    Diagram.compose acc line
+    let y := totalH / 2 - (i + 1).toFloat * cellH
+    Diagram.compose acc (Diagram.fromStroke
+      (PathData.empty.moveTo ⟨-totalW / 2, y⟩ |>.lineTo ⟨totalW / 2, y⟩) dividerStroke)
   let border := Diagram.fromStroke (PathData.rect totalW totalH) dividerStroke
   [content, vDividers, hDividers, border].foldl Diagram.compose Diagram.empty

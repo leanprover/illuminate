@@ -26,26 +26,6 @@ structure Label (β : Type) where
 instance {β : Type} : Coe (Diagram β) (Label β) where
   coe label := { label }
 
-/-- One endpoint of a line/arrow, specifying where and how the line departs or arrives. -/
-structure LineEnd where
-  /-- Named anchor point in the diagram to connect. -/
-  point : Lean.Name
-  /-- Additional offset applied to the resolved anchor position. -/
-  shift : Vec2 := 0
-  /-- Departure/arrival angle in radians. If {lean}`none`, defaults to the straight-line angle. -/
-  angle : Option Float := none
-  /--
-  Controls how far the Bézier control point extends from this endpoint,
-  as a fraction of the distance between endpoints. Increasing the pull
-  causes the arrow to be straighter closer to the arrowhead.
-  -/
-  pull : Float := 0.25
-  /-- Optional arrowhead drawn at this endpoint. -/
-  arrowhead : Option Arrowhead := none
-deriving Repr, BEq
-
-instance : Coe Lean.Name LineEnd where
-  coe point := { point }
 
 /-!
 # Arrowhead rendering
@@ -323,7 +303,10 @@ def Diagram.connect' {β : Type} [Backend β] (srcPoint tgtPoint : Point) (start
 
 /--
 Draws a line or arrow between two named anchor points in a diagram.
-Resolves names eagerly using {name}`Diagram.find` and {name}`Diagram.origin`.
+
+Without a label, stores the arrow specification as a deferred {name}`Diagram.arrow`
+node so that the morph system can match arrows by their logical endpoints.
+With a label, resolves eagerly since label placement needs full curve geometry.
 -/
 def Diagram.connect {β : Type} [Backend β] (start stop : LineEnd)
     (stroke : Stroke := .defaultArrow)
@@ -331,11 +314,15 @@ def Diagram.connect {β : Type} [Backend β] (start stop : LineEnd)
     (label : Option (Label β) := none)
     (d : Diagram β) : Diagram β :=
   let stop' := { stop with arrowhead := stop.arrowhead <|> arrowhead }
-  let srcPoint := (d.find start.point).origin
-  let tgtPoint := (d.find stop.point).origin
-  let src := srcPoint.toVec2 + start.shift
-  let tgt := tgtPoint.toVec2 + stop.shift
-  .compose d (buildArrow src tgt start stop' stroke label)
+  match label with
+  | none => .arrow start stop' stroke d
+  | some _ =>
+    -- Eager resolution for labeled arrows (label placement needs curve geometry)
+    let srcPoint := (d.find start.point).origin
+    let tgtPoint := (d.find stop.point).origin
+    let src := srcPoint.toVec2 + start.shift
+    let tgt := tgtPoint.toVec2 + stop'.shift
+    .compose d (buildArrow src tgt start stop' stroke label)
 
 /-- Direction for the bend in an L-shaped connection. -/
 inductive BendDirection where

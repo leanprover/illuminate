@@ -396,6 +396,16 @@ def test_filmstrip_animated_clip_visual():
     _run_visual_test("filmstrip-animated-clip.svg", "filmstrip-animated-clip")
 
 
+def test_filmstrip_morph_rect_circle_visual():
+    """Compare filmstrip morph rect-to-circle rendering against expected baseline."""
+    _run_visual_test("filmstrip-morph-rect-circle.svg", "filmstrip-morph-rect-circle")
+
+
+def test_filmstrip_morph_nested_visual():
+    """Compare filmstrip morph nested named diagrams rendering against expected baseline."""
+    _run_visual_test("filmstrip-morph-nested.svg", "filmstrip-morph-nested")
+
+
 # ---------------------------------------------------------------------------
 # Standalone animation player tests
 # ---------------------------------------------------------------------------
@@ -542,6 +552,8 @@ def main():
         test_filmstrip_growing_circle_visual,
         test_filmstrip_rotating_square_visual,
         test_filmstrip_animated_clip_visual,
+        test_filmstrip_morph_rect_circle_visual,
+        test_filmstrip_morph_nested_visual,
     ]
 
     passed = 0
