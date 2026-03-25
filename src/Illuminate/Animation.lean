@@ -12,3 +12,4 @@ import Illuminate.Animation.Effects
 import Illuminate.Animation.Compile
 import Illuminate.Animation.Render
 import Illuminate.Animation.Widget
+import Illuminate.Animation.Filmstrip

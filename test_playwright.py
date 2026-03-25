@@ -381,6 +381,21 @@ def test_pizza_visual():
     _run_visual_test("pizza.svg", "pizza")
 
 
+def test_filmstrip_growing_circle_visual():
+    """Compare filmstrip growing-circle rendering against expected baseline."""
+    _run_visual_test("filmstrip-growing-circle.svg", "filmstrip-growing-circle")
+
+
+def test_filmstrip_rotating_square_visual():
+    """Compare filmstrip rotating-square rendering against expected baseline."""
+    _run_visual_test("filmstrip-rotating-square.svg", "filmstrip-rotating-square")
+
+
+def test_filmstrip_animated_clip_visual():
+    """Compare filmstrip animated-clip rendering against expected baseline."""
+    _run_visual_test("filmstrip-animated-clip.svg", "filmstrip-animated-clip")
+
+
 # ---------------------------------------------------------------------------
 # Standalone animation player tests
 # ---------------------------------------------------------------------------
@@ -524,6 +539,9 @@ def main():
         test_cellophane_clip_visual,
         test_trace_connect_angled_visual,
         test_pizza_visual,
+        test_filmstrip_growing_circle_visual,
+        test_filmstrip_rotating_square_visual,
+        test_filmstrip_animated_clip_visual,
     ]
 
     passed = 0

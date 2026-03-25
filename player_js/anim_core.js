@@ -104,44 +104,24 @@ var animCheckPauseSteps = function (steps, currentStep, frame) {
 };
 
 /**
- * Indexes SVG elements depth-first, starting from the content group
- * inside `<svg><g transform="scale(1,-1)">...</g></svg>`.
- * This matches the DrawCmd element ordering used by paramMap.
+ * Indexes patchable SVG elements by their `data-e` attribute.
  *
- * `<defs>` elements are transparent containers: they are not indexed
- * themselves, but their children (gradient definitions, clip paths)
- * are indexed and patchable. `<stop>` elements inside gradients and
- * `<clipPath>` wrappers inside clip defs are skipped since they are
- * not individually patchable via drawCmdAttrs.
+ * The Lean SVG renderer tags each element that produces a DOM node with
+ * `data-e="N"` where N is the element index used by paramMap. This
+ * function collects those elements into a sparse array keyed by N,
+ * decoupling the JS side from any particular DOM walk order.
  * @param {HTMLElement} container
  * @returns {Element[]}
  */
 var animIndexElements = function (container) {
     /** @type {Element[]} */
     var elems = [];
-    var svg = container.querySelector("svg");
-    if (!svg) return elems;
-    var contentGroup = svg.querySelector("g");
-    if (!contentGroup) return elems;
-    /** @param {Element} node */
-    function walk(node) {
-        for (var i = 0; i < node.childNodes.length; i++) {
-            var child = node.childNodes[i];
-            if (child.nodeType !== 1) continue;
-            var el = /** @type {Element} */ (child);
-            var tag = el.tagName.toLowerCase();
-            if (tag === "defs") {
-                // Transparent: walk children but don't index <defs> itself
-                walk(el);
-            } else if (tag === "stop" || tag === "clippath") {
-                // Skip non-patchable internals
-            } else {
-                elems.push(el);
-                walk(el);
-            }
-        }
+    var tagged = container.querySelectorAll("[data-e]");
+    for (var i = 0; i < tagged.length; i++) {
+        var el = tagged[i];
+        var idx = parseInt(el.getAttribute("data-e") || "0", 10);
+        elems[idx] = el;
     }
-    walk(contentGroup);
     return elems;
 };
 

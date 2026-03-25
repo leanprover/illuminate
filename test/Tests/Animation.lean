@@ -250,6 +250,49 @@ def compilationTests : List (String × IO Unit) :=
         (fps := 10)
       let pauseSteps := compiled.steps.filter (·.pause)
       assertTrue (pauseSteps.size == 1) s!"expected 1 pause step, got {pauseSteps.size}")
+  , ("compile: static clip-path indexing is correct", do
+      -- Static clip + animated content: indices align because the JS walker
+      -- skips <clipPath> children and treats <defs> as transparent.
+      IO.FS.createDirAll "test_output"
+      let steps : List Step := [step 2.0]
+      let compiled := compileAnimation steps
+        (fun progress =>
+          let t := progress[0]
+          let clipped := Diagram.clipRect 40 40
+            (Diagram.circle (Interpolate.interpolate 5.0 30.0 t)
+              (fill := .solid { color := Color.red }))
+          let unclipped := fadeIn
+            (Diagram.circle 20 (fill := .solid { color := Color.blue }))
+            t
+          Diagram.hsep 20 [clipped, unclipped])
+        (fps := 30)
+      let totalParams := compiled.segments.foldl (fun acc s => acc + s.paramMap.size) 0
+      assertTrue (totalParams > 0)
+        s!"expected paramMap bindings, got {totalParams}"
+      let html := compiled.renderHTML
+      IO.FS.writeFile "test_output/anim-clippath-test.html" html
+      IO.println s!"  → wrote test_output/anim-clippath-test.html ({html.length} bytes)")
+  , ("compile: animated clip shape", do
+      -- The clip boundary grows over time; the data-e attribute on the
+      -- inner <path> inside <clipPath> lets the animation player patch
+      -- the correct element.
+      IO.FS.createDirAll "test_output"
+      let steps : List Step := [step 2.0]
+      let compiled := compileAnimation steps
+        (fun progress =>
+          let t := progress[0]
+          let clipW := Interpolate.interpolate 20.0 60.0 t
+          let clipH := Interpolate.interpolate 20.0 60.0 t
+          Diagram.clipRect clipW clipH
+            (Diagram.circle 30 (fill := .solid { color := Color.red })))
+        (fps := 30)
+      let clipDBindings := compiled.segments.foldl (fun acc s =>
+        acc ++ (s.paramMap.filter fun b => b.attr == "d").toList) []
+      assertTrue (clipDBindings.length > 0)
+        "clip shape d attr should be in paramMap"
+      let html := compiled.renderHTML
+      IO.FS.writeFile "test_output/anim-clipshape-test.html" html
+      IO.println s!"  → wrote test_output/anim-clipshape-test.html ({html.length} bytes)")
   , ("compile: write standalone HTML for seek test", do
       IO.FS.createDirAll "test_output"
       let steps : List Step := [step 3.0]
