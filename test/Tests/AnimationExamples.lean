@@ -155,28 +155,107 @@ Hover over {lit}`#diagram` to see the 4×5 grid of animation frames.
 -/
 
 -- Growing circle filmstrip
-#diagram filmstrip (fun t =>
+#diagram filmstrip fun t =>
     let t := Easing.easeInOut t
     let radius := Interpolate.interpolate 10.0 50.0 t
     let color := Interpolate.interpolate Color.blue Color.red t
     Diagram.circle radius (fill := .solid { color })
-      (stroke := { color := Color.black, width := 1 }))
+      (stroke := { color := Color.black, width := 1 })
 
 -- Rotating square filmstrip
-#diagram filmstrip (fun t =>
+#diagram filmstrip fun t =>
     let t := Easing.easeInOut t
     animRotate
       (Diagram.rect 40 40
         (fill := .solid { color := { r := 100, g := 149, b := 237 } })
         (stroke := { color := Color.black, width := 1.5 }))
-      0 (2 * pi) t)
+      0 (2 * pi) t
 
 -- Animated clip shape filmstrip
-#diagram filmstrip (fun t =>
+#diagram filmstrip fun t =>
     let t := Easing.easeInOut t
     let clipSize := Interpolate.interpolate 20.0 60.0 t
     Diagram.clipRect clipSize clipSize
-      (Diagram.circle 30 (fill := .solid { color := Color.red })))
+      (Diagram.circle 30 (fill := .solid { color := Color.red }))
+
+/-!
+# Morph filmstrip previews
+-/
+
+-- Rectangle to circle morph
+#diagram
+  let a := Diagram.rect 40 40 (fill := Color.blue) (stroke := { color := Color.black, width := 1 })
+  let b := Diagram.circle 25 (fill := Color.red) (stroke := { color := Color.black, width := 1 })
+  let m := a.morph b
+  filmstrip (fun t => m.evaluate t)
+
+/-- Builds the start and end diagrams for the nested morph test case. -/
+def nestedMorphDiagrams : Diagram SVG × Diagram SVG :=
+  let tri := Diagram.fromPath
+    (PathData.empty |>.moveTo ⟨0, 12⟩ |>.lineTo ⟨-10, -6⟩ |>.lineTo ⟨10, -6⟩ |>.close)
+    (fill := Color.red) (stroke := { color := .black, width := 1 })
+  let sq := Diagram.rect 18 18 (fill := Color.green) (stroke := { color := .black, width := 1 })
+  let rr := Diagram.roundedRect 22 18 4 (fill := Color.red) (stroke := { color := .black, width := 1 })
+  let aStart := Diagram.hsep 30 [tri.named `X, sq.named `Y]
+    |>.connectEdge `X { point := `Y, arrowhead := some { type := .latex }, angle := some (pi / 2), pull := 2 }
+    |>.named `A
+  let aEnd := Diagram.hsep 30 [sq.named `Y, rr.named `X]
+    |>.connectEdge { point := `X, angle := some (3 * pi / 2), pull := 1 }
+      { point := `Y, arrowhead := some { type := .stealth } }
+    |>.named `A
+  let bStart := (Diagram.circle 15 (fill := Color.blue)
+    (stroke := { color := .black, width := 1 })).named `B
+  let bEnd := (Diagram.star 4 18 8 (fill := Color.blue)
+    (stroke := { color := .black, width := 1 })).named `B
+  (Diagram.vsep 0 [aStart, bStart], Diagram.vsep 40 [bEnd, aEnd])
+
+-- Nested named diagram morph filmstrip
+#diagram
+  let (start, stop) := nestedMorphDiagrams
+  let m := start.morph stop
+  filmstrip (fun t => m.evaluate (Easing.easeInOut t))
+
+-- Nested named diagram morph as animation (hover to scrub)
+#animate
+  [{ duration := 2.0 }]
+  (fun progress =>
+    let (start, stop) := nestedMorphDiagrams
+    let m := start.morph stop
+    m.evaluate (Easing.easeInOut progress[0]))
+
+open Diagram in
+def morphArrowTests : Diagram SVG × Diagram SVG :=
+  let x := circle 10 |>.namedWithAnchors `A
+  let x' := circle 20 |>.namedWithAnchors `A
+  let y := rect 30 10 |>.namedWithAnchors `B
+  let y' := circle 15 |>.namedWithAnchors `B
+  let pre := hsep 20 [vcat [vgap 30, x], vcat [y, vgap 20]]
+    |>.connect `A.east `B.south
+    |>.connectL `A.north `B.west
+    |>.connectEdge { point := `A, angle := some (3*pi/2) } `B
+  let post := hsep 20 [vcat [y', vgap 30], vcat [vgap 20, x']]
+    |>.connect `A.west `B.east
+    |>.connectL `A.north `B.north
+    |>.connectEdge { point := `A, angle := some (3*pi/2) } { point := `B, angle := some (3 * pi / 2) }
+  (pre, post)
+
+#diagram morphArrowTests.1
+
+-- Morph arrow tests filmstrip (exercises connect, connectL, connectEdge morphing)
+#diagram
+  let (start, stop) := morphArrowTests
+  let m := start.morph stop
+  filmstrip (fun t => m.evaluate (Easing.easeInOut t))
+
+#animate [{ duration := 3 }, {duration := 2, loop := true}] fun progress =>
+    let (start, stop) := morphArrowTests
+    let m := start.morph stop
+    let size := 1.5 - (0.25 * (-0.5 + progress[1]).abs)
+    m.evaluate (Easing.easeInOut progress[0]) |>.scale size
+
+open Diagram in
+#diagram
+  hsep 30 [circle 20 |>.namedWithAnchors `A, vcat [vgap 30, circle 30 |>.namedWithAnchors `B]] |>.connect `A.east `B.west
 
 -- Gradient spotlight: radial gradient focal point orbits inside a drifting ellipse
 #animate
