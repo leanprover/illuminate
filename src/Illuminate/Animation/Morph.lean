@@ -22,4 +22,4 @@ name matching, gradient stop normalization) happens here. The returned
 {name}`Morph.evaluate`.
 -/
 def Diagram.morph {β : Type} [Backend β] (a b : Diagram β) : Morph β :=
-  { node := prepareMorph a b }
+  { node := prepareMorph a b, source := a, target := b }

@@ -65,12 +65,41 @@ where
     | .clip pd d =>
       let (inner, gi, ci) := go d #[] gi (ci + 1)
       ((acc.push (.pushClip pd ci) ++ inner).push .popClip, gi, ci)
-    | .arrow start stop stroke d =>
-      let srcPoint := (d.find start.point).origin
-      let tgtPoint := (d.find stop.point).origin
-      let src := srcPoint.toVec2 + start.shift
-      let tgt := tgtPoint.toVec2 + stop.shift
-      let arrowDiagram := ArrowDraw.drawLine src tgt start { stop with arrowhead := stop.arrowhead } stroke
+    | .arrow start stop stroke useTrace d =>
+      let (src, tgt, stop') :=
+        if useTrace then
+          -- Trace-based boundary detection (connectEdge style)
+          let srcSub := d.find start.point
+          let tgtSub := d.find stop.point
+          let srcCenter := srcSub.origin.toVec2
+          let tgtCenter := tgtSub.origin.toVec2
+          let defaultDir := (tgtCenter - srcCenter).normalize
+          let srcDir := match start.angle with
+            | some a => Vec2.mk (Float.cos a) (Float.sin a)
+            | none => defaultDir
+          let tgtDir := match stop.angle with
+            | some a => Vec2.mk (Float.cos a) (Float.sin a)
+            | none => -defaultDir
+          let srcTrace := srcSub.getStrokeTrace
+          let tgtTrace := tgtSub.getStrokeTrace
+          let src := match srcTrace.closest (Point.ofVec2 srcCenter) srcDir with
+            | some hit => srcCenter + (hit.edge + hit.width) • srcDir + start.shift
+            | none => srcCenter + start.shift
+          let tgt := match tgtTrace.closest (Point.ofVec2 tgtCenter) tgtDir with
+            | some hit => tgtCenter + (hit.edge + hit.width) • tgtDir + stop.shift
+            | none => tgtCenter + stop.shift
+          -- Flip stop angle for arrival tangent (outward → inward)
+          let stop' := match stop.angle with
+            | some a => { stop with angle := some (a + pi) }
+            | none => stop
+          (src, tgt, stop')
+        else
+          -- Anchor-based resolution (connect style)
+          let srcPoint := (d.find start.point).origin
+          let tgtPoint := (d.find stop.point).origin
+          (srcPoint.toVec2 + start.shift, tgtPoint.toVec2 + stop.shift, stop)
+      let arrowDiagram := ArrowDraw.drawLine src tgt start
+        { stop' with arrowhead := stop'.arrowhead } stroke
       let (innerCmds, gi, ci) := go d acc gi ci
       let (arrowCmds, gi, ci) := go arrowDiagram #[] gi ci
       (innerCmds ++ arrowCmds, gi, ci)

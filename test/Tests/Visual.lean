@@ -959,6 +959,15 @@ def filmstripMorphNested : Diagram SVG :=
 def testVisual_filmstripMorphNested : IO Unit :=
   testVisualWrite "filmstrip-morph-nested.svg" filmstripMorphNested
 
+/-- Filmstrip of the morph arrow tests (connect, connectL, connectEdge morphing). -/
+def filmstripMorphArrows : Diagram SVG :=
+  let (start, stop) := morphArrowTests
+  let m := start.morph stop
+  filmstrip (fun t => m.evaluate (Easing.easeInOut t))
+
+def testVisual_filmstripMorphArrows : IO Unit :=
+  testVisualWrite "filmstrip-morph-arrows.svg" filmstripMorphArrows
+
 def visualTests : List (String × IO Unit) := [
   ("Visual/roundedRects", testVisual_roundedRects),
   ("Visual/roundedRects_2_5", testVisual_roundedRects_2_5),
@@ -988,5 +997,6 @@ def visualTests : List (String × IO Unit) := [
   ("Visual/filmstripRotatingSquare", testVisual_filmstripRotatingSquare),
   ("Visual/filmstripAnimatedClip", testVisual_filmstripAnimatedClip),
   ("Visual/filmstripMorphRectCircle", testVisual_filmstripMorphRectCircle),
-  ("Visual/filmstripMorphNested", testVisual_filmstripMorphNested)
+  ("Visual/filmstripMorphNested", testVisual_filmstripMorphNested),
+  ("Visual/filmstripMorphArrows", testVisual_filmstripMorphArrows)
 ]

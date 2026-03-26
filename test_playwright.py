@@ -406,6 +406,11 @@ def test_filmstrip_morph_nested_visual():
     _run_visual_test("filmstrip-morph-nested.svg", "filmstrip-morph-nested")
 
 
+def test_filmstrip_morph_arrows_visual():
+    """Compare filmstrip morph arrow tests rendering against expected baseline."""
+    _run_visual_test("filmstrip-morph-arrows.svg", "filmstrip-morph-arrows")
+
+
 # ---------------------------------------------------------------------------
 # Standalone animation player tests
 # ---------------------------------------------------------------------------
@@ -554,6 +559,7 @@ def main():
         test_filmstrip_animated_clip_visual,
         test_filmstrip_morph_rect_circle_visual,
         test_filmstrip_morph_nested_visual,
+        test_filmstrip_morph_arrows_visual,
     ]
 
     passed = 0

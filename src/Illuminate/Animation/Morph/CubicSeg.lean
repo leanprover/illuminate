@@ -182,43 +182,129 @@ def pathToCubics (pd : PathData) : NormalizedPath := Id.run do
   { subpaths }
 
 /-!
-# Segment equalization
+# Arc-length computation and resampling
 -/
 
 /--
-Equalizes segment counts between two arrays by subdividing the shorter one.
+Approximates the arc length of a cubic Bézier segment.
 
-Repeatedly splits the longest segment (by chord length) at its midpoint until
-both arrays have the same count.
+Uses the average of the chord length and the control polygon length,
+which is a reasonable O(1) estimate for smooth curves.
+-/
+def CubicSeg.arcLength (seg : CubicSeg) : Float :=
+  let chord := ((seg.p3 - seg.p0).length)
+  let poly := (seg.c1 - seg.p0).length + (seg.c2 - seg.c1).length + (seg.p3 - seg.c2).length
+  (chord + poly) / 2
+
+/-- Computes cumulative arc lengths for a segment array. Entry {lit}`i` is the total length up to and including segment {lit}`i`. -/
+private def cumulativeLengths (segs : Array CubicSeg) : Array Float := Id.run do
+  let mut acc := 0.0
+  let mut result : Array Float := #[]
+  for seg in segs do
+    acc := acc + seg.arcLength
+    result := result.push acc
+  result
+
+/--
+Finds the segment index and local parameter for a given arc-length distance.
+
+Given cumulative lengths and a target distance, returns the segment index
+and the parametric value within that segment.
+-/
+private def findParam (cumLens : Array Float)
+    (targetLen : Float) : Nat × Float :=
+  if cumLens.size == 0 then (0, 0)
+  else Id.run do
+    for i in List.range cumLens.size do
+      let cumEnd := cumLens[i]?.getD 0
+      let cumStart := if i == 0 then 0.0 else cumLens[i - 1]?.getD 0
+      let segLen := cumEnd - cumStart
+      if targetLen <= cumEnd || i == cumLens.size - 1 then
+        let localDist := targetLen - cumStart
+        let t := if segLen > 0 then Min.min (localDist / segLen) 1.0 |> Max.max 0.0 else 0.0
+        return (i, t)
+    (cumLens.size - 1, 1.0)
+
+/--
+Resamples a segment array to {name}`count` segments at equal arc-length intervals.
+
+This ensures vertices are evenly distributed around the path perimeter,
+which produces much better morph results than naive segment subdivision.
+-/
+def resampleToCount (segs : Array CubicSeg) (count : Nat) : Array CubicSeg :=
+  if segs.size == 0 || count == 0 then #[]
+  else if count == segs.size then segs
+  else Id.run do
+    -- Flatten all segments into a single cubic by collecting split points
+    let cumLens := cumulativeLengths segs
+    let totalLen := cumLens[cumLens.size - 1]?.getD 1.0
+    let step := totalLen / count.toFloat
+    let mut result : Array CubicSeg := #[]
+    -- Walk through original segments, splitting at arc-length boundaries
+    let mut segIdx : Nat := 0
+    let mut seg : CubicSeg := segs[0]?.getD default
+    let mut segCumStart : Float := 0.0
+    let mut segLen : Float := seg.arcLength
+    -- tConsumed: how much of the current seg has been output (parametric [0,1])
+    let mut tConsumed : Float := 0.0
+    for i in List.range count do
+      let cutLen := (i + 1).toFloat * step
+      -- Advance past any fully consumed segments
+      while segIdx < segs.size && cutLen > segCumStart + segLen + 1e-9 && tConsumed > 1.0 - 1e-9 do
+        segIdx := segIdx + 1
+        if segIdx < segs.size then
+          seg := segs[segIdx]?.getD default
+          segCumStart := cumLens[segIdx - 1]?.getD 0
+          segLen := seg.arcLength
+          tConsumed := 0.0
+      -- How far into the current segment does this cut fall?
+      let distIntoSeg := cutLen - segCumStart
+      let tCut := if segLen > 1e-12 then
+        Min.min (distIntoSeg / segLen) 1.0 |> Max.max 0.0
+      else 1.0
+      -- Extract the piece from tConsumed to tCut within the current segment
+      if tCut <= tConsumed + 1e-9 then
+        -- Degenerate: zero-length piece at a point
+        let pt := if tConsumed > 1e-9 then (seg.splitAt tConsumed).2.p0 else seg.p0
+        result := result.push { p0 := pt, c1 := pt, c2 := pt, p3 := pt }
+      else if tConsumed < 1e-9 then
+        if tCut > 1.0 - 1e-9 then
+          -- Take the whole segment
+          result := result.push seg
+        else
+          -- Take the first portion
+          result := result.push (seg.splitAt tCut).1
+      else
+        -- Take a middle slice: split at tConsumed to get the tail,
+        -- then split that tail at the right proportion for tCut
+        let tail := (seg.splitAt tConsumed).2
+        let tInTail := (tCut - tConsumed) / (1.0 - tConsumed)
+        let tInTail := Min.min (Max.max tInTail 0.0) 1.0
+        if tInTail > 1.0 - 1e-9 then
+          result := result.push tail
+        else
+          result := result.push (tail.splitAt tInTail).1
+      -- Update consumed position
+      tConsumed := tCut
+      -- If we've consumed the whole segment, advance
+      if tConsumed > 1.0 - 1e-9 then
+        segIdx := segIdx + 1
+        if segIdx < segs.size then
+          seg := segs[segIdx]?.getD default
+          segCumStart := cumLens[segIdx - 1]?.getD 0
+          segLen := seg.arcLength
+          tConsumed := 0.0
+    result
+
+/--
+Equalizes segment counts between two arrays using arc-length resampling.
+
+Both arrays are resampled to the larger count with vertices at equal
+arc-length intervals, ensuring even vertex distribution for smooth morphing.
 -/
 def equalizeCubics (a b : Array CubicSeg) : Array CubicSeg × Array CubicSeg :=
-  if a.size == b.size then (a, b)
-  else if a.size < b.size then
-    let a' := subdivideToCount a b.size
-    (a', b)
-  else
-    let b' := subdivideToCount b a.size
-    (a, b')
-where
-  /-- Finds the index of the segment with the largest squared chord length. -/
-  longestIdx (segs : Array CubicSeg) : Nat := Id.run do
-    let mut best := 0
-    let mut bestLen := 0.0
-    for i in List.range segs.size do
-      let len := (segs[i]?.getD default).chordLenSq
-      if len > bestLen then
-        best := i
-        bestLen := len
-    best
-  /-- Subdivides segments until the array reaches the target count. -/
-  subdivideToCount (segs : Array CubicSeg) (target : Nat) : Array CubicSeg := Id.run do
-    let mut s := segs
-    while s.size < target do
-      let idx := longestIdx s
-      let seg := s[idx]?.getD default
-      let (left, right) := seg.splitAt 0.5
-      s := (s.extract 0 idx).push left |>.push right |> (· ++ s.extract (idx + 1) s.size)
-    s
+  let target := max a.size b.size |> max 8  -- at least 8 segments for smooth morphing
+  (resampleToCount a target, resampleToCount b target)
 
 /-!
 # Closed-path rotation alignment
@@ -253,17 +339,60 @@ def rotateArray (arr : Array CubicSeg) (offset : Nat) : Array CubicSeg :=
     let off := offset % n
     arr.extract off n ++ arr.extract 0 off
 
+/-- Reverses a segment array, flipping each segment's direction. -/
+def reverseSegments (arr : Array CubicSeg) : Array CubicSeg :=
+  arr.reverse.map fun seg => { p0 := seg.p3, c1 := seg.c2, c2 := seg.c1, p3 := seg.p0 }
+
+/-- Computes the total squared distance between corresponding start points. -/
+private def alignCost (a b : Array CubicSeg) (offset : Nat) : Float := Id.run do
+  let n := a.size
+  let mut cost := 0.0
+  for i in List.range n do
+    let ai := (a[i]?.getD default).p0
+    let bi := (b[(i + offset) % n]?.getD default).p0
+    let d := ai - bi
+    cost := cost + d.x * d.x + d.y * d.y
+  cost
+
+/--
+Finds the best rotation offset and winding direction for alignment.
+
+Tries all cyclic rotations of {name}`b` in both forward and reversed winding,
+returning the offset, whether to reverse, and the cost.
+-/
+private def bestAlignment (a b : Array CubicSeg) : Nat × Bool := Id.run do
+  let n := a.size
+  if n == 0 then return (0, false)
+  let bRev := reverseSegments b
+  let mut bestOffset := 0
+  let mut bestReverse := false
+  let mut bestCost := 1.0 / 0.0
+  for offset in List.range n do
+    let cost := alignCost a b offset
+    if cost < bestCost then
+      bestCost := cost
+      bestOffset := offset
+      bestReverse := false
+    let costRev := alignCost a bRev offset
+    if costRev < bestCost then
+      bestCost := costRev
+      bestOffset := offset
+      bestReverse := true
+  (bestOffset, bestReverse)
+
 /--
 Equalizes and aligns two segment arrays for interpolation.
 
-Equalizes segment counts, then (for closed paths) finds the optimal rotation alignment.
+Equalizes segment counts via arc-length resampling, then (for closed paths) finds the
+optimal rotation and winding direction to minimize vertex displacement.
 -/
 def prepareSegments (a b : Array CubicSeg) (closed : Bool) :
     Array CubicSeg × Array CubicSeg :=
   let (ea, eb) := equalizeCubics a b
   if closed && ea.size > 0 then
-    let offset := alignRotation ea eb
-    (ea, rotateArray eb offset)
+    let (offset, rev) := bestAlignment ea eb
+    let eb' := if rev then reverseSegments eb else eb
+    (ea, rotateArray eb' offset)
   else
     (ea, eb)
 

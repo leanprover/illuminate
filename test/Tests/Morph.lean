@@ -74,13 +74,13 @@ def cubicSegTests : List (String × IO Unit) :=
       let (ea, eb) := equalizeCubics a b
       assertTrue (ea.size == eb.size)
         s!"expected equal sizes, got {ea.size} and {eb.size}"
-      assertTrue (ea.size == 4) s!"expected 4, got {ea.size}")
-  , ("equalizeCubics: same size unchanged", do
+      assertTrue (ea.size >= 4) s!"expected ≥4, got {ea.size}")
+  , ("equalizeCubics: both resampled to equal count", do
       let a := #[lineToCubic ⟨0, 0⟩ ⟨10, 0⟩]
       let b := #[lineToCubic ⟨0, 0⟩ ⟨5, 5⟩]
       let (ea, eb) := equalizeCubics a b
-      assertTrue (ea.size == 1 && eb.size == 1)
-        s!"expected both size 1, got {ea.size} and {eb.size}")
+      assertTrue (ea.size == eb.size)
+        s!"expected equal sizes, got {ea.size} and {eb.size}")
   , ("alignRotation: identity for identical arrays", do
       let segs := #[lineToCubic ⟨0, 0⟩ ⟨10, 0⟩, lineToCubic ⟨10, 0⟩ ⟨10, 10⟩]
       let offset := alignRotation segs segs
@@ -200,7 +200,7 @@ private def countCrossFades {β : Type} : MorphNode β → Nat
   | .cellophane _ _ c => countCrossFades c
   | .clip _ _ _ c => countCrossFades c
   | .matched _ _ _ c => countCrossFades c
-  | .arrow _ _ _ _ _ _ c => countCrossFades c
+  | .arrow _ _ _ _ _ _ _ _ c => countCrossFades c
   | _ => 0
 
 private def countMatched {β : Type} : MorphNode β → Nat
@@ -209,7 +209,7 @@ private def countMatched {β : Type} : MorphNode β → Nat
   | .transform _ _ c => countMatched c
   | .cellophane _ _ c => countMatched c
   | .clip _ _ _ c => countMatched c
-  | .arrow _ _ _ _ _ _ c => countMatched c
+  | .arrow _ _ _ _ _ _ _ _ c => countMatched c
   | _ => 0
 
 private def countPaths {β : Type} : MorphNode β → Nat
@@ -219,11 +219,11 @@ private def countPaths {β : Type} : MorphNode β → Nat
   | .cellophane _ _ c => countPaths c
   | .clip _ _ _ c => countPaths c
   | .matched _ _ _ c => countPaths c
-  | .arrow _ _ _ _ _ _ c => countPaths c
+  | .arrow _ _ _ _ _ _ _ _ c => countPaths c
   | _ => 0
 
 private def countArrows {β : Type} : MorphNode β → Nat
-  | .arrow _ _ _ _ _ _ c => 1 + countArrows c
+  | .arrow _ _ _ _ _ _ _ _ c => 1 + countArrows c
   | .compose l r => countArrows l + countArrows r
   | .transform _ _ c => countArrows c
   | .cellophane _ _ c => countArrows c

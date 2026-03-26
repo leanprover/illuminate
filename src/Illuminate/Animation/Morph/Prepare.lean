@@ -37,7 +37,7 @@ inductive Skeleton (β : Type) where
   /-- Clip region wrapper. -/
   | clip : PathData → Skeleton β → Skeleton β
   /-- A deferred arrow between named anchors. -/
-  | arrow : LineEnd → LineEnd → Stroke → Skeleton β → Skeleton β
+  | arrow : LineEnd → LineEnd → Stroke → Bool → Skeleton β → Skeleton β
   /-- A named sub-skeleton (for names that were NOT extracted). -/
   | named : Lean.Name → Skeleton β → Skeleton β
   /-- Envelope override. -/
@@ -62,7 +62,10 @@ where
     | .named name inner, acc => go inner (name :: acc)
     | .transform _ d, acc | .cellophane _ d, acc | .clip _ d, acc
     | .withEnv _ d, acc | .warning _ d, acc | .tag _ d, acc
-    | .foreign _ d, acc | .arrow _ _ _ d, acc => go d acc
+    | .foreign _ d, acc => go d acc
+    -- Do not recurse into arrow children; their names are handled by
+    -- the recursive prepareMorph in matchSkeletons.
+    | .arrow _ _ _ _ _, acc => acc
     | .compose a b, acc => go b (go a acc)
     | _, acc => acc
 
@@ -78,7 +81,9 @@ where
     | .transform m d => go (Matrix.mul xform m) d
     | .compose a b => (go xform a).orElse fun _ => go xform b
     | .withEnv _ d | .warning _ d | .cellophane _ d | .clip _ d
-    | .tag _ d | .foreign _ d | .arrow _ _ _ d => go xform d
+    | .tag _ d | .foreign _ d => go xform d
+    -- Do not recurse into arrow children (names handled by matchSkeletons).
+    | .arrow _ _ _ _ _ => none
     | _ => none
 
 /--
@@ -98,7 +103,7 @@ private def toSkeleton {β : Type} (d : Diagram β) (matched : Std.HashSet Lean.
   | .compose a b => .compose (toSkeleton a matched) (toSkeleton b matched)
   | .cellophane α inner => .cellophane α (toSkeleton inner matched)
   | .clip pd inner => .clip pd (toSkeleton inner matched)
-  | .arrow s t st inner => .arrow s t st (toSkeleton inner matched)
+  | .arrow s t st ut inner => .arrow s t st ut (.other inner)
   | .withEnv e inner => .withEnv e (toSkeleton inner matched)
   | .warning _ inner => toSkeleton inner matched
   | .foreign _ inner => toSkeleton inner matched
@@ -140,10 +145,35 @@ def skelToDiagram {β : Type} : Skeleton β → Diagram β
   | .compose a b => .compose (skelToDiagram a) (skelToDiagram b)
   | .cellophane α d => .cellophane α (skelToDiagram d)
   | .clip pd d => .clip pd (skelToDiagram d)
-  | .arrow s t st d => .arrow s t st (skelToDiagram d)
+  | .arrow s t st ut d => .arrow s t st ut (skelToDiagram d)
   | .named n d => .named n (skelToDiagram d)
   | .withEnv e d => .withEnv e (skelToDiagram d)
   | .other d => d
+
+/--
+A matched name pair with transforms and content, queued for recursive processing.
+-/
+private structure MatchedPair (β : Type) where
+  /-- The shared name. -/
+  name : Lean.Name
+  /-- World transform in the source diagram. -/
+  xformA : Matrix
+  /-- World transform in the target diagram. -/
+  xformB : Matrix
+  /-- Content of the named subdiagram in the source. -/
+  contentA : Diagram β
+  /-- Content of the named subdiagram in the target. -/
+  contentB : Diagram β
+
+/-!
+# Morph preparation (mutually recursive)
+
+The functions matchSkeletons, matchOneLevel, and prepareMorph are mutually
+recursive: skeleton matching may invoke full morph preparation for arrow children
+(which need their own name extraction and structural matching).
+-/
+
+mutual
 
 /-- Structurally matches two skeletons, producing a {name}`MorphNode`. -/
 partial def matchSkeletons {β : Type} [Backend β]
@@ -176,8 +206,11 @@ partial def matchSkeletons {β : Type} [Backend β]
     let closed := subA.closed || subB.closed
     let (segsA, segsB) := prepareSegments subA.segments subB.segments closed
     .clip segsA segsB closed (go dA dB)
-  | .arrow startA stopA strokeA dA, .arrow startB stopB strokeB dB =>
-    .arrow startA startB stopA stopB strokeA strokeB (go dA dB)
+  | .arrow startA stopA strokeA utA dA, .arrow startB stopB strokeB utB dB =>
+    -- Recursively prepare the arrow children with full name matching,
+    -- keeping geometry inside the arrow for trace resolution and z-order.
+    let childPlan := prepareMorph (skelToDiagram dA) (skelToDiagram dB)
+    .arrow startA startB stopA stopB strokeA strokeB utA utB childPlan
   | .named nA dA, .named nB dB =>
     if nA == nB then .matched nA Matrix.identity Matrix.identity (go dA dB)
     else .crossFade (skelToDiagram (.named nA dA)) (skelToDiagram (.named nB dB))
@@ -192,35 +225,11 @@ partial def matchSkeletons {β : Type} [Backend β]
   -- Fallback
   | x, y => .crossFade (skelToDiagram x) (skelToDiagram y)
 
-/-!
-# Top-level morph preparation
-
-Implements the three-step algorithm:
-1. Compute names in both diagrams, extract matching pairs.
-2. Structurally match the skeleton residuals.
-3. Recursively process each matched pair the same way.
--/
-
-/--
-A matched name pair with transforms and content, queued for recursive processing.
--/
-private structure MatchedPair (β : Type) where
-  /-- The shared name. -/
-  name : Lean.Name
-  /-- World transform in the source diagram. -/
-  xformA : Matrix
-  /-- World transform in the target diagram. -/
-  xformB : Matrix
-  /-- Content of the named subdiagram in the source. -/
-  contentA : Diagram β
-  /-- Content of the named subdiagram in the target. -/
-  contentB : Diagram β
-
 /--
 Processes one level of name matching: extracts shared names, builds skeletons,
 structurally matches, and returns the residual morph node plus queued pairs.
 -/
-private def matchOneLevel {β : Type} [Backend β] (a b : Diagram β) :
+partial def matchOneLevel {β : Type} [Backend β] (a b : Diagram β) :
     MorphNode β × Array (MatchedPair β) := Id.run do
   let namesA := collectNames a
   let namesB := collectNames b
@@ -263,3 +272,5 @@ partial def prepareMorph {β : Type} [Backend β] (a b : Diagram β) : MorphNode
   -- content and the other has .empty/.ref)
   -- Compose matched nodes with the residual
   matchedNodes.foldl (fun acc n => .compose acc n) residual
+
+end

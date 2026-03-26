@@ -206,7 +206,7 @@ private def arrowCollectNames {β : Type} [Backend β] (d : Diagram β) (xform :
     (pfx : Lean.Name) (acc : List (Lean.Name × Vec2)) : List (Lean.Name × Vec2) :=
   match d with
   | .empty | .prim _ => acc
-  | .foreign _ d | .tag _ d | .warning _ d | .cellophane _ d | .clip _ d | .arrow _ _ _ d =>
+  | .foreign _ d | .tag _ d | .warning _ d | .cellophane _ d | .clip _ d | .arrow _ _ _ _ d =>
     arrowCollectNames d xform pfx acc
   | .named name d =>
     let pos := Matrix.apply xform ⟨0, 0⟩
@@ -217,49 +217,6 @@ private def arrowCollectNames {β : Type} [Backend β] (d : Diagram β) (xform :
   | .withEnv _ d => arrowCollectNames d xform pfx acc
 
 variable {β : Type} [Backend β]
-
-/-!
-# Envelope extraction
--/
-
-/-- Computes the envelope of a diagram by recursive traversal. -/
-def getEnvelope (d : Diagram β) : Envelope :=
-  match d with
-  | .empty => Envelope.empty
-  | .prim cp => cp.toEnvelope
-  | .foreign val d => Backend.envelope val d.getEnvelope
-  | .tag _ d => d.getEnvelope
-  | .named _ d => d.getEnvelope
-  | .transform m d => Envelope.transform m d.getEnvelope
-  | .compose a b => Envelope.union a.getEnvelope b.getEnvelope
-  | .withEnv env _ => env
-  | .warning _ d => d.getEnvelope
-  | .cellophane _ d => d.getEnvelope
-  | .clip _ d => d.getEnvelope
-  | .arrow start stop stroke d =>
-    let childEnv := d.getEnvelope
-    let names := arrowCollectNames d Matrix.identity .anonymous []
-    let resolve (n : Lean.Name) : Vec2 :=
-      match names.find? (·.1 == n) with
-      | some (_, pos) => pos
-      | none => ⟨0, 0⟩
-    let src := resolve start.point + start.shift
-    let tgt := resolve stop.point + stop.shift
-    let straightAngle := Float.atan2 (tgt.y - src.y) (tgt.x - src.x)
-    let srcAngle := start.angle.getD straightAngle
-    let tgtAngle := stop.angle.getD straightAngle
-    let dist := (tgt - src).length
-    let srcDir : Vec2 := ⟨Float.cos srcAngle, Float.sin srcAngle⟩
-    let tgtDir : Vec2 := ⟨Float.cos tgtAngle, Float.sin tgtAngle⟩
-    let c1 := src + (start.pull * dist) • srcDir
-    let c2 := tgt - (stop.pull * dist) • tgtDir
-    let curvePoints := PathData.bezierExtrema src c1 c2 tgt
-    let sw := stroke.width / 2
-    let arrowEnv := Envelope.ofVertices curvePoints
-    let paddedEnv := match arrowEnv with
-      | .empty => .empty
-      | .nonempty f => .nonempty fun v => f v + sw
-    Envelope.union childEnv paddedEnv
 
 /-!
 # Trace extraction
@@ -279,7 +236,7 @@ def getTrace (d : Diagram β) : Trace :=
   | .warning _ d => d.getTrace
   | .cellophane _ d => d.getTrace
   | .clip _ d => d.getTrace
-  | .arrow _ _ _ d => d.getTrace
+  | .arrow _ _ _ _ d => d.getTrace
 
 /-!
 # StrokeTrace extraction
@@ -299,7 +256,7 @@ def getStrokeTrace (d : Diagram β) : StrokeTrace :=
   | .warning _ d => d.getStrokeTrace
   | .cellophane _ d => d.getStrokeTrace
   | .clip _ d => d.getStrokeTrace
-  | .arrow _ _ _ d => d.getStrokeTrace
+  | .arrow _ _ _ _ d => d.getStrokeTrace
 
 /-!
 # Name resolution
@@ -329,7 +286,7 @@ def collectNames (d : Diagram β) (xform : Matrix) (pfx : Lean.Name)
   | .warning _ d => collectNames d xform pfx acc
   | .cellophane _ d => collectNames d xform pfx acc
   | .clip _ d => collectNames d xform pfx acc
-  | .arrow _ _ _ d => collectNames d xform pfx acc
+  | .arrow _ _ _ _ d => collectNames d xform pfx acc
 
 /--
 Extracts the named subdiagram from a diagram, wrapped in its accumulated transform.
@@ -363,7 +320,7 @@ where
     | .warning _ d => go target pfx xform d
     | .cellophane _ d => go target pfx xform d
     | .clip _ d => go target pfx xform d
-    | .arrow _ _ _ d => go target pfx xform d
+    | .arrow _ _ _ _ d => go target pfx xform d
 
 /-- Computes the origin of a diagram (where {lit}`(0,0)` maps to under accumulated transforms). -/
 def origin (d : Diagram β) : Point :=
@@ -372,6 +329,87 @@ where
   go (xform : Matrix) : Diagram β → Point
     | .transform m d => go (Matrix.mul xform m) d
     | _ => Matrix.applyPoint xform Point.origin
+
+/-!
+# Envelope extraction
+-/
+
+/-- Computes the envelope of a diagram by recursive traversal. -/
+def getEnvelope (d : Diagram β) : Envelope :=
+  match d with
+  | .empty => Envelope.empty
+  | .prim cp => cp.toEnvelope
+  | .foreign val d => Backend.envelope val d.getEnvelope
+  | .tag _ d => d.getEnvelope
+  | .named _ d => d.getEnvelope
+  | .transform m d => Envelope.transform m d.getEnvelope
+  | .compose a b => Envelope.union a.getEnvelope b.getEnvelope
+  | .withEnv env _ => env
+  | .warning _ d => d.getEnvelope
+  | .cellophane _ d => d.getEnvelope
+  | .clip _ d => d.getEnvelope
+  | .arrow start stop stroke useTrace d =>
+    let childEnv := d.getEnvelope
+    let (src, tgt, srcAngle, tgtAngle) :=
+      if useTrace then
+        -- Use the same trace-based edge positions as compile
+        let srcSub := d.find start.point
+        let tgtSub := d.find stop.point
+        let srcCenter := srcSub.origin.toVec2
+        let tgtCenter := tgtSub.origin.toVec2
+        let defaultDir := (tgtCenter - srcCenter).normalize
+        let srcDir := match start.angle with
+          | some a => Vec2.mk (Float.cos a) (Float.sin a)
+          | none => defaultDir
+        let tgtDir := match stop.angle with
+          | some a => Vec2.mk (Float.cos a) (Float.sin a)
+          | none => -defaultDir
+        let srcTrace := srcSub.getStrokeTrace
+        let tgtTrace := tgtSub.getStrokeTrace
+        let src := match srcTrace.closest (Point.ofVec2 srcCenter) srcDir with
+          | some hit => srcCenter + (hit.edge + hit.width) • srcDir + start.shift
+          | none => srcCenter + start.shift
+        let tgt := match tgtTrace.closest (Point.ofVec2 tgtCenter) tgtDir with
+          | some hit => tgtCenter + (hit.edge + hit.width) • tgtDir + stop.shift
+          | none => tgtCenter + stop.shift
+        let straightAngle := Float.atan2 (tgt.y - src.y) (tgt.x - src.x)
+        let srcAngle := start.angle.getD straightAngle
+        let tgtAngle := match stop.angle with
+          | some a => a + pi
+          | none => straightAngle + pi
+        (src, tgt, srcAngle, tgtAngle)
+      else
+        let names := arrowCollectNames d Matrix.identity .anonymous []
+        let resolve (n : Lean.Name) : Vec2 :=
+          match names.find? (·.1 == n) with
+          | some (_, pos) => pos
+          | none => ⟨0, 0⟩
+        let src := resolve start.point + start.shift
+        let tgt := resolve stop.point + stop.shift
+        let straightAngle := Float.atan2 (tgt.y - src.y) (tgt.x - src.x)
+        (src, tgt, start.angle.getD straightAngle, stop.angle.getD straightAngle)
+    let dist := (tgt - src).length
+    let srcDir : Vec2 := ⟨Float.cos srcAngle, Float.sin srcAngle⟩
+    let tgtDir : Vec2 := ⟨Float.cos tgtAngle, Float.sin tgtAngle⟩
+    let c1 := src + (start.pull * dist) • srcDir
+    let c2 := tgt - (stop.pull * dist) • tgtDir
+    -- Sample the Bézier curve to capture extent in all directions.
+    let sampleBezier (n : Nat) : List Vec2 := Id.run do
+      let mut pts : List Vec2 := [src, tgt]
+      for i in List.range (n - 1) do
+        let u := (i + 1).toFloat / n.toFloat
+        let u2 := u * u; let u3 := u2 * u
+        let v := 1 - u; let v2 := v * v; let v3 := v2 * v
+        pts := ⟨v3*src.x + 3*v2*u*c1.x + 3*v*u2*c2.x + u3*tgt.x,
+                v3*src.y + 3*v2*u*c1.y + 3*v*u2*c2.y + u3*tgt.y⟩ :: pts
+      pts
+    let curvePoints := sampleBezier 16
+    let sw := stroke.width / 2
+    let arrowEnv := Envelope.ofVertices curvePoints
+    let paddedEnv := match arrowEnv with
+      | .empty => .empty
+      | .nonempty f => .nonempty fun v => f v + sw
+    Envelope.union childEnv paddedEnv
 
 /-- Names a diagram and adds cardinal anchors derived from its envelope. -/
 def namedWithAnchors (n : Lean.Name) (d : Diagram β) : Diagram β :=
@@ -679,11 +717,11 @@ def setEnvelopeBottom (extent : Float) (d : Diagram β) : Diagram β :=
 -/
 
 /-- A horizontal spacer with the given width. -/
-def hGap (width : Float) : Diagram β :=
+def hgap (width : Float) : Diagram β :=
   strut (Envelope.ofRect (width / 2) 0)
 
 /-- A vertical spacer with the given height. -/
-def vGap (height : Float) : Diagram β :=
+def vgap (height : Float) : Diagram β :=
   strut (Envelope.ofRect 0 (height / 2))
 
 /-!

@@ -50,7 +50,7 @@ inductive MorphNode (β : Type) where
   | fadeOut (d : Diagram β)
   /-- Interpolates an arrow by re-resolving endpoints from the morphed child at each t. -/
   | arrow (startA startB : LineEnd) (stopA stopB : LineEnd)
-      (strokeA strokeB : Stroke) (child : MorphNode β)
+      (strokeA strokeB : Stroke) (useTraceA useTraceB : Bool) (child : MorphNode β)
   /-- A positioned name placeholder for arrow endpoint resolution. -/
   | nameRef (name : Lean.Name)
   /-- Cross-fades two structurally incompatible subtrees. -/
@@ -62,3 +62,7 @@ instance {β : Type} : Inhabited (MorphNode β) := ⟨.empty⟩
 structure Morph (β : Type) where
   /-- The root of the morph plan tree. -/
   node : MorphNode β
+  /-- The source diagram, returned at {lit}`t = 0` for pixel-perfect keyframes. -/
+  source : Diagram β
+  /-- The target diagram, returned at {lit}`t = 1` for pixel-perfect keyframes. -/
+  target : Diagram β

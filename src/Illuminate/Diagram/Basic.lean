@@ -77,8 +77,8 @@ inductive Diagram (β : Type) where
   | cellophane : Float → Diagram β → Diagram β
   /-- Clips a sub-diagram to a path boundary. -/
   | clip : PathData → Diagram β → Diagram β
-  /-- Draws an arrow between two named anchors in a sub-diagram. -/
-  | arrow : LineEnd → LineEnd → Stroke → Diagram β → Diagram β
+  /-- Draws an arrow between two named anchors in a sub-diagram. When {name}`useTrace` is true, endpoints are resolved via trace-based boundary detection instead of named anchor positions. -/
+  | arrow (start stop : LineEnd) (stroke : Stroke) (useTrace : Bool) (child : Diagram β) : Diagram β
 deriving Hashable
 
 /--

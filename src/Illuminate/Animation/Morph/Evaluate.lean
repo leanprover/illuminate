@@ -31,7 +31,7 @@ Evaluates a morph plan node at parameter {name}`t`, producing a diagram.
 This is the cheap per-frame operation. All expensive work (normalization,
 matching, alignment) was done during the prepare phase.
 -/
-def evalMorphNode {β : Type} (node : MorphNode β) (t : Float) : Diagram β :=
+def evalMorphNode {β : Type} [Backend β] (node : MorphNode β) (t : Float) : Diagram β :=
   match node with
   | .empty => .empty
   | .path segsA segsB closed fillA fillB strokeA strokeB =>
@@ -59,27 +59,35 @@ def evalMorphNode {β : Type} (node : MorphNode β) (t : Float) : Diagram β :=
   | .clip segsA segsB closed child =>
     let segs := lerpSegs segsA segsB t
     .clip (cubicsToPathData segs closed) (evalMorphNode child t)
-  | .matched _name xformA xformB child =>
-    -- Name is emitted by the corresponding nameRef in the skeleton residual.
-    .transform (Interpolate.interpolate xformA xformB t) (evalMorphNode child t)
-  | .nameRef name => .named name .empty
-  | .arrow startA startB stopA stopB strokeA strokeB child =>
+  | .matched name xformA xformB child =>
+    .transform (Interpolate.interpolate xformA xformB t) (.named name (evalMorphNode child t))
+  | .nameRef _name =>
+    -- The corresponding matched node provides the name and content;
+    -- the ref is just a structural placeholder in the residual.
+    .empty
+  | .arrow startA startB stopA stopB strokeA strokeB useTraceA useTraceB child =>
+    let useTrace := useTraceA || useTraceB
+    let evalChild := evalMorphNode child t
+    let lerpAngle (a b : Option Float) : Option Float :=
+      match a, b with
+      | some aa, some ab => some (aa + t * (ab - aa))
+      | some aa, none => if t < 0.5 then some aa else none
+      | none, some ab => if t < 0.5 then none else some ab
+      | none, none => none
     let lerpLE (a b : LineEnd) : LineEnd :=
       { point := if t < 0.5 then a.point else b.point
         shift := Interpolate.interpolate a.shift b.shift t
-        angle := match a.angle, b.angle with
-          | some aa, some ab => some (aa + t * (ab - aa))
-          | some aa, none => some aa
-          | none, some ab => some ab
-          | none, none => none
+        angle := lerpAngle a.angle b.angle
         pull := a.pull + t * (b.pull - a.pull)
         arrowhead := if t < 0.5 then a.arrowhead else b.arrowhead }
     .arrow (lerpLE startA startB) (lerpLE stopA stopB)
-      (Morph.lerpStroke strokeA strokeB t) (evalMorphNode child t)
+      (Morph.lerpStroke strokeA strokeB t) useTrace evalChild
   | .fadeIn d => .cellophane t d
   | .fadeOut d => .cellophane (1 - t) d
   | .crossFade a b => .compose (.cellophane (1 - t) a) (.cellophane t b)
 
-/-- Evaluates a morph plan at parameter {name}`t`, producing a diagram. -/
-def Morph.evaluate {β : Type} (m : Morph β) (t : Float) : Diagram β :=
-  evalMorphNode m.node t
+/-- Evaluates a morph plan at parameter {name}`t`, producing a diagram. At {lit}`t = 0` and {lit}`t = 1`, returns the original source and target diagrams for pixel-perfect keyframes. -/
+def Morph.evaluate {β : Type} [Backend β] (m : Morph β) (t : Float) : Diagram β :=
+  if t <= 0.0 then m.source
+  else if t >= 1.0 then m.target
+  else evalMorphNode m.node t

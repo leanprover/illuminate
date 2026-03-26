@@ -315,7 +315,7 @@ def Diagram.connect {β : Type} [Backend β] (start stop : LineEnd)
     (d : Diagram β) : Diagram β :=
   let stop' := { stop with arrowhead := stop.arrowhead <|> arrowhead }
   match label with
-  | none => .arrow start stop' stroke d
+  | none => .arrow start stop' stroke false d
   | some _ =>
     -- Eager resolution for labeled arrows (label placement needs curve geometry)
     let srcPoint := (d.find start.point).origin
@@ -347,8 +347,11 @@ def Diagram.connectL' {β : Type} [Backend β] (srcPoint tgtPoint : Point) (star
   let mid : Vec2 := match bend with
     | .vertical => ⟨src.x, tgt.y⟩
     | .horizontal => ⟨tgt.x, src.y⟩
-  let seg1 := Diagram.fromStroke (PathData.line src mid) stroke
-  let seg2 := Diagram.fromStroke (PathData.line mid tgt) stroke
+  let lPath := PathData.empty
+    |>.moveTo src
+    |>.lineTo mid
+    |>.lineTo tgt
+  let shaft := Diagram.fromStroke lPath stroke
   let heads := match startAh with
     | some ah =>
       let dir := (src - mid).normalize
@@ -359,7 +362,7 @@ def Diagram.connectL' {β : Type} [Backend β] (srcPoint tgtPoint : Point) (star
       let dir := (tgt - mid).normalize
       Diagram.compose heads (ArrowDraw.drawArrowhead ah tgt dir stroke).1
     | none => heads
-  .compose d ([seg1, seg2, heads].foldl Diagram.compose .empty)
+  .compose d ([shaft, heads].foldl Diagram.compose .empty)
 
 /--
 Draws an L-shaped (right-angle) line or arrow between two named anchor points.
@@ -390,32 +393,30 @@ def Diagram.connectEdge {β : Type} [Backend β] (start stop : LineEnd)
     (label : Option (Label β) := none)
     (d : Diagram β) : Diagram β :=
   let stop' := { stop with arrowhead := stop.arrowhead <|> arrowhead }
-  let srcSub := d.find start.point
-  let tgtSub := d.find stop'.point
-  let srcCenter := srcSub.origin.toVec2
-  let tgtCenter := tgtSub.origin.toVec2
-  let defaultDir := (tgtCenter - srcCenter).normalize
-  -- Trace direction from each shape's center to its boundary connection point.
-  -- An explicit angle is absolute: 0 = right, pi = left, pi/2 = top, etc.
-  let srcDir := match start.angle with
-    | some a => Vec2.mk (Float.cos a) (Float.sin a)
-    | none => defaultDir
-  let tgtDir := match stop'.angle with
-    | some a => Vec2.mk (Float.cos a) (Float.sin a)
-    | none => -defaultDir
-  -- Find boundary points using stroke-aware traces so arrows clear the painted edge
-  let srcTrace := srcSub.getStrokeTrace
-  let tgtTrace := tgtSub.getStrokeTrace
-  let src := match srcTrace.closest (Point.ofVec2 srcCenter) srcDir with
-    | some hit => srcCenter + (hit.edge + hit.width) • srcDir + start.shift
-    | none => srcCenter + start.shift
-  let tgt := match tgtTrace.closest (Point.ofVec2 tgtCenter) tgtDir with
-    | some hit => tgtCenter + (hit.edge + hit.width) • tgtDir + stop'.shift
-    | none => tgtCenter + stop'.shift
-  -- For buildArrow, the stop angle is the arrow's arrival tangent direction.
-  -- The user-facing angle points outward (center → boundary), so flip it for
-  -- the arrival tangent (arrow travels inward).
-  let stop'' := match stop'.angle with
-    | some a => { stop' with angle := some (a + pi) }
-    | none => stop'
-  .compose d (buildArrow src tgt start stop'' stroke label)
+  match label with
+  | none => .arrow start stop' stroke true d
+  | some _ =>
+    -- Eager resolution for labeled arrows (label placement needs curve geometry)
+    let srcSub := d.find start.point
+    let tgtSub := d.find stop'.point
+    let srcCenter := srcSub.origin.toVec2
+    let tgtCenter := tgtSub.origin.toVec2
+    let defaultDir := (tgtCenter - srcCenter).normalize
+    let srcDir := match start.angle with
+      | some a => Vec2.mk (Float.cos a) (Float.sin a)
+      | none => defaultDir
+    let tgtDir := match stop'.angle with
+      | some a => Vec2.mk (Float.cos a) (Float.sin a)
+      | none => -defaultDir
+    let srcTrace := srcSub.getStrokeTrace
+    let tgtTrace := tgtSub.getStrokeTrace
+    let src := match srcTrace.closest (Point.ofVec2 srcCenter) srcDir with
+      | some hit => srcCenter + (hit.edge + hit.width) • srcDir + start.shift
+      | none => srcCenter + start.shift
+    let tgt := match tgtTrace.closest (Point.ofVec2 tgtCenter) tgtDir with
+      | some hit => tgtCenter + (hit.edge + hit.width) • tgtDir + stop'.shift
+      | none => tgtCenter + stop'.shift
+    let stop'' := match stop'.angle with
+      | some a => { stop' with angle := some (a + pi) }
+      | none => stop'
+    .compose d (buildArrow src tgt start stop'' stroke label)

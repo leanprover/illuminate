@@ -421,20 +421,20 @@ def testSetEnvelopeTop : IO Unit := do
   assertApproxEq env[Vec2.north] 20 "setEnvelopeTop north"
 
 def testHGap : IO Unit := do
-  let d : Diagram SVG := Diagram.hGap 8
+  let d : Diagram SVG := .hgap 8
   let env := d.getEnvelope
   assertApproxEq env[Vec2.east] 4 "hGap east = half width"
   assertApproxEq env[Vec2.north] 0 "hGap zero height"
 
 def testVGap : IO Unit := do
-  let d : Diagram SVG := Diagram.vGap 6
+  let d : Diagram SVG := .vgap 6
   let env := d.getEnvelope
   assertApproxEq env[Vec2.north] 3 "vGap north = half height"
   assertApproxEq env[Vec2.east] 0 "vGap zero width"
 
 def testHGap_inCompose : IO Unit := do
   let a : Diagram SVG := Diagram.rect 4 2
-  let gap : Diagram SVG := Diagram.hGap 6
+  let gap : Diagram SVG := .hgap 6
   let b : Diagram SVG := Diagram.rect 4 2
   let d := Diagram.hcat [a, gap, b]
   let env := d.getEnvelope
