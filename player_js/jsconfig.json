@@ -2,8 +2,8 @@
     "compilerOptions": {
         "lib": ["ES2024", "DOM", "DOM.Iterable"],
         "target": "ES2024",
-        "module": "ES2020",
-        "moduleResolution": "node",
+        "module": "Node16",
+        "moduleResolution": "Node16",
         "noEmit": true,
         "strict": true,
         "jsx": "react",
