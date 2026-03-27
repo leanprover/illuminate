@@ -5,6 +5,7 @@ Author: David Thrane Christiansen
 -/
 
 import Illuminate.Geometry.Basic
+import Illuminate.Geometry.Length
 
 
 namespace Illuminate
@@ -26,8 +27,8 @@ deriving Repr, BEq, Inhabited, Hashable
 structure Arrowhead where
   /-- Visual type of the arrowhead. -/
   type : ArrowType := .latex
-  /-- Scaling factor for head length (1 = default 8px). -/
-  length : Float := 1
+  /-- Scaling factor for head length (1 = default 8 diagram units). -/
+  length : Length := .ofDiag 1
   /-- Scaling factor for head width (1 = default). -/
   width : Float := 1
 deriving Repr, BEq, Inhabited, Hashable

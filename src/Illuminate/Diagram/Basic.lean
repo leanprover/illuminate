@@ -79,6 +79,8 @@ inductive Diagram (β : Type) where
   | clip : PathData → Diagram β → Diagram β
   /-- Draws an arrow between two named anchors in a sub-diagram. When {name}`useTrace` is true, endpoints are resolved via trace-based boundary detection instead of named anchor positions. -/
   | arrow (start stop : LineEnd) (stroke : Stroke) (useTrace : Bool) (child : Diagram β) : Diagram β
+  /-- Applies a pixel-valued translation offset, resolved at compile time using the diagram-units-per-pixel scale. -/
+  | pxTranslate : Vec2 → Diagram β → Diagram β
 deriving Hashable
 
 /--
@@ -171,7 +173,7 @@ def rect (width height : Float) (fill : Fill := default) (stroke : Stroke := {})
   match name with
   | none => d
   | some n =>
-    let sw := stroke.width / 2
+    let sw := stroke.width.diag / 2
     let hw := width / 2 + sw
     let hh := height / 2 + sw
     withNameAndAnchors d n [
@@ -189,7 +191,7 @@ def roundedRect (width height : Float) (cornerRadius : Float)
   match name with
   | none => d
   | some n =>
-    let sw := stroke.width / 2
+    let sw := stroke.width.diag / 2
     let hw := width / 2 + sw
     let hh := height / 2 + sw
     withNameAndAnchors d n [
@@ -202,12 +204,16 @@ def roundedRect (width height : Float) (cornerRadius : Float)
 /-- A filled circle centered at the origin. -/
 def circle (radius : Float) (fill : Fill := default) (stroke : Stroke := {})
     (name : Option Lean.Name := none) : Diagram β :=
-  let d : Diagram β := .withEnv (Envelope.ofCircle radius)
+  let halfStroke := stroke.width / (2.0 : Float)
+  let circleEnv : Envelope :=
+    if halfStroke.diag == 0 && halfStroke.px == 0 then Envelope.ofCircle radius
+    else .nonempty fun _ => ⟨radius + halfStroke.diag, halfStroke.px⟩
+  let d : Diagram β := .withEnv circleEnv
     (fromPath (PathData.circle radius) fill stroke)
   match name with
   | none => d
   | some n =>
-    let sw := stroke.width / 2
+    let sw := stroke.width.diag / 2
     let r := radius + sw
     withNameAndAnchors d n [
       (`north, ⟨0, r⟩), (`south, ⟨0, -r⟩),
@@ -217,7 +223,12 @@ def circle (radius : Float) (fill : Fill := default) (stroke : Stroke := {})
 /-- A filled ellipse centered at the origin with the given half-widths. -/
 def ellipse (rx ry : Float) (fill : Fill := default) (stroke : Stroke := {})
     (name : Option Lean.Name := none) : Diagram β :=
-  let d : Diagram β := .withEnv (Envelope.ofRect rx ry)
+  let halfStroke := stroke.width / (2.0 : Float)
+  let ellipseEnv : Envelope :=
+    if halfStroke.diag == 0 && halfStroke.px == 0 then Envelope.ofRect rx ry
+    else .nonempty fun v =>
+      ⟨v.x.abs * (rx + halfStroke.diag) + v.y.abs * (ry + halfStroke.diag), halfStroke.px⟩
+  let d : Diagram β := .withEnv ellipseEnv
     (fromPath (PathData.ellipse rx ry) fill stroke)
   match name with
   | none => d
@@ -238,7 +249,7 @@ def wedge (startAngle endAngle radius : Float)
   match name with
   | none => d
   | some n =>
-    let sw := stroke.width / 2
+    let sw := stroke.width.diag / 2
     let r := radius + sw
     let midAngle := (startAngle + endAngle) / 2
     let p1 := Vec2.mk (r * Float.cos startAngle) (r * Float.sin startAngle)
@@ -264,7 +275,7 @@ def ringWedge (startAngle endAngle innerRadius outerRadius : Float)
   match name with
   | none => d
   | some n =>
-    let sw := stroke.width / 2
+    let sw := stroke.width.diag / 2
     let ro := outerRadius + sw
     let ri := innerRadius - sw
     let midAngle := (startAngle + endAngle) / 2
@@ -404,3 +415,9 @@ def curlyBrace (width : Float) (depth : Float := 0)
 /-- An image primitive. -/
 def fromImage (ref : ImageRef) : Diagram β :=
   .prim (.image ref)
+
+/-- Translates by a Length-valued offset: diag part is immediate, px part is deferred. -/
+def translateLength (dx dy : Length) (d : Diagram β) : Diagram β :=
+  let base := .transform (Matrix.translate dx.diag dy.diag) d
+  if dx.px != 0 || dy.px != 0 then .pxTranslate ⟨dx.px, dy.px⟩ base
+  else base

@@ -46,7 +46,7 @@ Computes the minimum half-angle so the arrowhead covers the shaft at its end poi
 For stealth, the shaft ends at the notch (headLen/2); for triangle, at the base.
 -/
 private def minHalfAngle (ah : Arrowhead) (strokeWidth : Float) : Float :=
-  let headLen := baseHeadLen * ah.length
+  let headLen := baseHeadLen * ah.length.diag
   match ah.type with
   | .stealth =>
     -- At notch (headLen*0.5 from tip), width = headLen * tan(a). Need >= strokeWidth.
@@ -62,7 +62,7 @@ Computes how much the shaft must be shortened for a given arrowhead type.
 Takes the stroke width to match the minimum angle enforcement in {name scope:="Illuminate.Diagram.Arrow"}`drawArrowhead`.
 -/
 def arrowheadShorten (ah : Arrowhead) (strokeWidth : Float) : Float :=
-  let headLen := baseHeadLen * ah.length
+  let headLen := baseHeadLen * ah.length.diag
   let halfAngle := max (headAngle * ah.width) (minHalfAngle ah strokeWidth)
   match ah.type with
   | .latex => 0
@@ -77,9 +77,9 @@ to avoid overlapping the head.
 -/
 def drawArrowhead (ah : Arrowhead) (tip dir : Vec2) (stroke : Stroke) :
     Diagram β × Float :=
-  let headLen := baseHeadLen * ah.length
+  let headLen := baseHeadLen * ah.length.diag
   -- For filled arrowheads, enforce minimum angle so the arrowhead covers the shaft
-  let halfAngle := max (headAngle * ah.width) (minHalfAngle ah stroke.width)
+  let halfAngle := max (headAngle * ah.width) (minHalfAngle ah stroke.width.diag)
   let n := dir.normalize
   match ah.type with
   | .latex =>
@@ -104,7 +104,8 @@ def drawArrowhead (ah : Arrowhead) (tip dir : Vec2) (stroke : Stroke) :
       |>.lineTo notch
       |>.lineTo (tip + headLen • rd)
       |>.close
-    (Diagram.fromPath path (fill := .solid stroke.color) (stroke := stroke), headLen * 0.5)
+    let noStroke : Stroke := { width := 0 }
+    (Diagram.fromPath path (fill := .solid stroke.color) (stroke := noStroke), headLen * 0.5)
   | .triangle =>
     let cosA := Float.cos halfAngle
     let sinA := Float.sin halfAngle
@@ -115,12 +116,14 @@ def drawArrowhead (ah : Arrowhead) (tip dir : Vec2) (stroke : Stroke) :
       |>.lineTo (tip + headLen • ld)
       |>.lineTo (tip + headLen • rd)
       |>.close
-    (Diagram.fromPath path (fill := .solid stroke.color) (stroke := stroke), headLen * cosA)
+    let noStroke : Stroke := { width := 0 }
+    (Diagram.fromPath path (fill := .solid stroke.color) (stroke := noStroke), headLen * cosA)
   | .circle =>
     let r := headLen * 0.4
     let center := tip - r • n
+    let noStroke : Stroke := { width := 0 }
     let d := Diagram.transform (Matrix.translate center.x center.y)
-      (Diagram.circle r (fill := .solid stroke.color) (stroke := stroke))
+      (Diagram.circle r (fill := .solid stroke.color) (stroke := noStroke))
     (d, r * 2)
 
 /-!
@@ -182,23 +185,23 @@ def drawLine (srcPos tgtPos : Vec2)
   let dist := (tgtPos - srcPos).length
   let srcVisualDir := match srcEnd.arrowhead with
     | some ah =>
-      let headLen := baseHeadLen * ah.length
+      let headLen := baseHeadLen * ah.length.diag
       let δ := min 0.15 (headLen / dist)
       (srcPos - bezierAt srcPos c1 c2 tgtPos δ).normalize
     | none => Vec2.zero
   let tgtVisualDir := match tgtEnd.arrowhead with
     | some ah =>
-      let headLen := baseHeadLen * ah.length
+      let headLen := baseHeadLen * ah.length.diag
       let δ := min 0.15 (headLen / dist)
       (tgtPos - bezierAt srcPos c1 c2 tgtPos (1 - δ)).normalize
     | none => Vec2.zero
   -- Shorten shaft along the visual arrowhead direction so it doesn't poke
   -- through filled heads. For unfilled heads (latex), the shaft meets the tip.
   let srcShorten := match srcEnd.arrowhead with
-    | some ah => arrowheadShorten ah stroke.width
+    | some ah => arrowheadShorten ah stroke.width.diag
     | none => 0.0
   let tgtShorten := match tgtEnd.arrowhead with
-    | some ah => arrowheadShorten ah stroke.width
+    | some ah => arrowheadShorten ah stroke.width.diag
     | none => 0.0
   let shaftSrc := srcPos - srcShorten • srcVisualDir
   let shaftTgt := tgtPos - tgtShorten • tgtVisualDir
@@ -262,11 +265,11 @@ private def buildArrow {β : Type} [Backend β] (srcPos tgtPos : Vec2)
       let isUpright := lbl.upright || labelUpright
       let pos :=
         if isUpright then
-          let extent := labelEnv (-perp)
-          mid + (extent + stroke.width + 6) • perp + lbl.shift
+          let extent := (labelEnv (-perp)).diag
+          mid + (extent + stroke.width.diag + 6) • perp + lbl.shift
         else
-          let labelH := (labelEnv Vec2.north + labelEnv Vec2.south) / 2
-          mid + (labelH + stroke.width + 4) • perp + lbl.shift
+          let labelH := ((labelEnv Vec2.north).diag + (labelEnv Vec2.south).diag) / 2
+          mid + (labelH + stroke.width.diag + 4) • perp + lbl.shift
       let labelXform :=
         if isUpright then
           Matrix.translate pos.x pos.y
@@ -410,11 +413,21 @@ def Diagram.connectEdge {β : Type} [Backend β] (start stop : LineEnd)
       | none => -defaultDir
     let srcTrace := srcSub.getStrokeTrace
     let tgtTrace := tgtSub.getStrokeTrace
+    let diagHalf := stroke.width.diag / 2
+    let tipOffset (ah? : Option Arrowhead) : Float := match ah? with
+      | some ah =>
+        match ah.type with
+        | .latex =>
+          let halfAngle := 0.4 * ah.width
+          if halfAngle > 0.01 then stroke.width.diag / (2 * Float.sin halfAngle)
+          else diagHalf
+        | _ => diagHalf
+      | none => 0
     let src := match srcTrace.closest (Point.ofVec2 srcCenter) srcDir with
-      | some hit => srcCenter + (hit.edge + hit.width) • srcDir + start.shift
+      | some hit => srcCenter + (hit.edge + hit.width + tipOffset start.arrowhead) • srcDir + start.shift
       | none => srcCenter + start.shift
     let tgt := match tgtTrace.closest (Point.ofVec2 tgtCenter) tgtDir with
-      | some hit => tgtCenter + (hit.edge + hit.width) • tgtDir + stop'.shift
+      | some hit => tgtCenter + (hit.edge + hit.width + tipOffset stop'.arrowhead) • tgtDir + stop'.shift
       | none => tgtCenter + stop'.shift
     let stop'' := match stop'.angle with
       | some a => { stop' with angle := some (a + pi) }

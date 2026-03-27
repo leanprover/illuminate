@@ -115,8 +115,8 @@ def hitTest (d : Diagram β) (p : Point) : Click :=
       let fillHit := match fill with
         | .none => false
         | _ => pd.contains p
-      let strokeHit := stroke.width > 0 && stroke.color.a > 0 &&
-        pointOnStroke pd stroke.width p
+      let strokeHit := (stroke.width.diag > 0 || stroke.width.px > 0) &&
+        stroke.color.a > 0 && pointOnStroke pd stroke.width.diag p
       if fillHit || strokeHit then .something else .nothing
     | .text s style =>
       if textContains s style p then .something else .nothing
@@ -142,3 +142,4 @@ def hitTest (d : Diagram β) (p : Point) : Click :=
   | .clip pd d =>
     if pd.contains p then hitTest d p else .nothing
   | .arrow _ _ _ _ d => hitTest d p
+  | .pxTranslate _ d => hitTest d p

@@ -93,7 +93,7 @@ Real text sizes require the monadic measurement pass and are not available here.
 -/
 def toEnvelope (cp : CorePrimitive) : Envelope :=
   match cp with
-  | .path pd _ _ =>
+  | .path pd _ stroke =>
     let pts := pd.commands.foldl (init := ([], Vec2.mk 0 0)) fun (acc, cur) cmd =>
       match cmd with
       | .moveTo p => (p :: acc, p)
@@ -101,7 +101,13 @@ def toEnvelope (cp : CorePrimitive) : Envelope :=
       | .curveTo c1 c2 ep => (PathData.bezierExtrema cur c1 c2 ep ++ acc, ep)
       | .arcTo rx ry rot largeArc sweep ep => (arcExtrema cur rx ry rot largeArc sweep ep ++ acc, ep)
       | .closePath => (acc, cur)
-    Envelope.ofVertices pts.1
+    let geom := Envelope.ofVertices pts.1
+    -- Expand envelope by half the stroke width (both diag and px components)
+    let halfPx := stroke.width.px / 2
+    let halfDiag := stroke.width.diag / 2
+    if halfDiag == 0 && halfPx == 0 then geom
+    else geom.modify fun env v =>
+      ⟨(env v).diag + halfDiag, (env v).px + halfPx⟩
   | .text s style =>
     let fontSize := style.fontSize
     let anchor := style.anchor
@@ -187,7 +193,7 @@ with zero stroke width.
 -/
 def toStrokeTrace (cp : CorePrimitive) : StrokeTrace :=
   match cp with
-  | .path pd _ stroke => StrokeTrace.ofPathData pd.commands stroke.width
+  | .path pd _ stroke => StrokeTrace.ofPathData pd.commands stroke.width.diag
   | .text s style =>
     let (hw, hh) := textTraceDims s style
     match style.anchor with
@@ -206,7 +212,8 @@ private def arrowCollectNames {β : Type} [Backend β] (d : Diagram β) (xform :
     (pfx : Lean.Name) (acc : List (Lean.Name × Vec2)) : List (Lean.Name × Vec2) :=
   match d with
   | .empty | .prim _ => acc
-  | .foreign _ d | .tag _ d | .warning _ d | .cellophane _ d | .clip _ d | .arrow _ _ _ _ d =>
+  | .foreign _ d | .tag _ d | .warning _ d | .cellophane _ d | .clip _ d | .arrow _ _ _ _ d
+  | .pxTranslate _ d =>
     arrowCollectNames d xform pfx acc
   | .named name d =>
     let pos := Matrix.apply xform ⟨0, 0⟩
@@ -237,6 +244,7 @@ def getTrace (d : Diagram β) : Trace :=
   | .cellophane _ d => d.getTrace
   | .clip _ d => d.getTrace
   | .arrow _ _ _ _ d => d.getTrace
+  | .pxTranslate _ d => d.getTrace
 
 /-!
 # StrokeTrace extraction
@@ -257,6 +265,7 @@ def getStrokeTrace (d : Diagram β) : StrokeTrace :=
   | .cellophane _ d => d.getStrokeTrace
   | .clip _ d => d.getStrokeTrace
   | .arrow _ _ _ _ d => d.getStrokeTrace
+  | .pxTranslate _ d => d.getStrokeTrace
 
 /-!
 # Name resolution
@@ -287,6 +296,7 @@ def collectNames (d : Diagram β) (xform : Matrix) (pfx : Lean.Name)
   | .cellophane _ d => collectNames d xform pfx acc
   | .clip _ d => collectNames d xform pfx acc
   | .arrow _ _ _ _ d => collectNames d xform pfx acc
+  | .pxTranslate _ d => collectNames d xform pfx acc
 
 /--
 Extracts the named subdiagram from a diagram, wrapped in its accumulated transform.
@@ -321,6 +331,7 @@ where
     | .cellophane _ d => go target pfx xform d
     | .clip _ d => go target pfx xform d
     | .arrow _ _ _ _ d => go target pfx xform d
+    | .pxTranslate _ d => go target pfx xform d
 
 /-- Computes the origin of a diagram (where {lit}`(0,0)` maps to under accumulated transforms). -/
 def origin (d : Diagram β) : Point :=
@@ -366,11 +377,21 @@ def getEnvelope (d : Diagram β) : Envelope :=
           | none => -defaultDir
         let srcTrace := srcSub.getStrokeTrace
         let tgtTrace := tgtSub.getStrokeTrace
+        let diagHalf := stroke.width.diag / 2
+        let tipOffset (ah? : Option Arrowhead) : Float := match ah? with
+          | some ah =>
+            match ah.type with
+            | .latex =>
+              let halfAngle := 0.4 * ah.width
+              if halfAngle > 0.01 then stroke.width.diag / (2 * Float.sin halfAngle)
+              else diagHalf
+            | _ => diagHalf
+          | none => 0
         let src := match srcTrace.closest (Point.ofVec2 srcCenter) srcDir with
-          | some hit => srcCenter + (hit.edge + hit.width) • srcDir + start.shift
+          | some hit => srcCenter + (hit.edge + hit.width + tipOffset start.arrowhead) • srcDir + start.shift
           | none => srcCenter + start.shift
         let tgt := match tgtTrace.closest (Point.ofVec2 tgtCenter) tgtDir with
-          | some hit => tgtCenter + (hit.edge + hit.width) • tgtDir + stop.shift
+          | some hit => tgtCenter + (hit.edge + hit.width + tipOffset stop.arrowhead) • tgtDir + stop.shift
           | none => tgtCenter + stop.shift
         let straightAngle := Float.atan2 (tgt.y - src.y) (tgt.x - src.x)
         let srcAngle := start.angle.getD straightAngle
@@ -393,23 +414,81 @@ def getEnvelope (d : Diagram β) : Envelope :=
     let tgtDir : Vec2 := ⟨Float.cos tgtAngle, Float.sin tgtAngle⟩
     let c1 := src + (start.pull * dist) • srcDir
     let c2 := tgt - (stop.pull * dist) • tgtDir
-    -- Sample the Bézier curve to capture extent in all directions.
+    -- Mirror ArrowDraw.drawLine: the rendered shaft is shortened for arrowheads,
+    -- with recomputed control points. Sample the SAME curve the renderer draws.
+    let sampleAt (p0 cp1 cp2 p3 : Vec2) (t : Float) : Vec2 :=
+      let u := 1 - t
+      (u*u*u) • p0 + (3*u*u*t) • cp1 + (3*u*t*t) • cp2 + (t*t*t) • p3
+    let sw := stroke.width.diag
+    let srcVisualDir := match start.arrowhead with
+      | some ah =>
+        let headLen := 8.0 * ah.length.diag
+        let δ := if dist > 0.001 then min 0.15 (headLen / dist) else 0.1
+        (src - sampleAt src c1 c2 tgt δ).normalize
+      | none => Vec2.zero
+    let tgtVisualDir := match stop.arrowhead with
+      | some ah =>
+        let headLen := 8.0 * ah.length.diag
+        let δ := if dist > 0.001 then min 0.15 (headLen / dist) else 0.1
+        (tgt - sampleAt src c1 c2 tgt (1 - δ)).normalize
+      | none => Vec2.zero
+    -- Inline arrowheadShorten logic (can't import Arrow from Placement)
+    let ahShorten (ah : Arrowhead) : Float :=
+      let headLen := 8.0 * ah.length.diag
+      let headAngle := 0.4 * ah.width
+      match ah.type with
+      | .latex => 0
+      | .stealth => headLen * 0.5
+      | .triangle => headLen * Float.cos headAngle
+      | .circle => headLen * 0.4 * 2
+    let srcShorten := match start.arrowhead with
+      | some ah => ahShorten ah
+      | none => 0.0
+    let tgtShorten := match stop.arrowhead with
+      | some ah => ahShorten ah
+      | none => 0.0
+    let shaftSrc := src - srcShorten • srcVisualDir
+    let shaftTgt := tgt - tgtShorten • tgtVisualDir
+    let sDist := (shaftTgt - shaftSrc).length
+    let sc1 := shaftSrc + (start.pull * sDist) • srcDir
+    let sc2 := shaftTgt - (stop.pull * sDist) • tgtDir
+    -- Compute arrowhead corner vertices (the outer extremes of the arrowhead shape)
+    let ahCorners (ah : Arrowhead) (tip n : Vec2) : List Vec2 :=
+      let headLen := 8.0 * ah.length.diag
+      let halfAngle := 0.4 * ah.width
+      let cosA := Float.cos halfAngle
+      let sinA := Float.sin halfAngle
+      let ld : Vec2 := ⟨-(n.x * cosA - n.y * sinA), -(n.y * cosA + n.x * sinA)⟩
+      let rd : Vec2 := ⟨-(n.x * cosA + n.y * sinA), -(n.y * cosA - n.x * sinA)⟩
+      match ah.type with
+      | .circle =>
+        let r := headLen * 0.4
+        let center := tip - r • n
+        [center + ⟨r, 0⟩, center - ⟨r, 0⟩, center + ⟨0, r⟩, center - ⟨0, r⟩]
+      | _ => [tip + headLen • ld, tip + headLen • rd]
+    let srcAhPts := match start.arrowhead with
+      | some ah => ahCorners ah src srcVisualDir
+      | none => []
+    let tgtAhPts := match stop.arrowhead with
+      | some ah => ahCorners ah tgt tgtVisualDir
+      | none => []
+    -- Sample the shortened Bézier + arrowhead corner positions
     let sampleBezier (n : Nat) : List Vec2 := Id.run do
-      let mut pts : List Vec2 := [src, tgt]
+      let mut pts : List Vec2 := [src, tgt, shaftSrc, shaftTgt] ++ srcAhPts ++ tgtAhPts
       for i in List.range (n - 1) do
-        let u := (i + 1).toFloat / n.toFloat
-        let u2 := u * u; let u3 := u2 * u
-        let v := 1 - u; let v2 := v * v; let v3 := v2 * v
-        pts := ⟨v3*src.x + 3*v2*u*c1.x + 3*v*u2*c2.x + u3*tgt.x,
-                v3*src.y + 3*v2*u*c1.y + 3*v*u2*c2.y + u3*tgt.y⟩ :: pts
+        let t := (i + 1).toFloat / n.toFloat
+        pts := sampleAt shaftSrc sc1 sc2 shaftTgt t :: pts
       pts
     let curvePoints := sampleBezier 16
-    let sw := stroke.width / 2
+    let halfPx := stroke.width.px / 2
+    let halfDiag := sw / 2
     let arrowEnv := Envelope.ofVertices curvePoints
     let paddedEnv := match arrowEnv with
       | .empty => .empty
-      | .nonempty f => .nonempty fun v => f v + sw
+      | .nonempty f => .nonempty fun v =>
+        ⟨(f v).diag + halfDiag, (f v).px + halfPx⟩
     Envelope.union childEnv paddedEnv
+  | .pxTranslate _ d => d.getEnvelope
 
 /-- Names a diagram and adds cardinal anchors derived from its envelope. -/
 def namedWithAnchors (n : Lean.Name) (d : Diagram β) : Diagram β :=
@@ -418,10 +497,10 @@ def namedWithAnchors (n : Lean.Name) (d : Diagram β) : Diagram β :=
   | .nonempty env =>
     -- Envelope values are always positive extents from the origin.
     -- West and south anchors are negated to place them in negative x/y.
-    let e := env Vec2.east
-    let w := env Vec2.west
-    let no := env Vec2.north
-    let s := env Vec2.south
+    let e := (env Vec2.east).diag
+    let w := (env Vec2.west).diag
+    let no := (env Vec2.north).diag
+    let s := (env Vec2.south).diag
     withNameAndAnchors d n [
       (`north, ⟨0, no⟩), (`south, ⟨0, -s⟩),
       (`east, ⟨e, 0⟩), (`west, ⟨-w, 0⟩),
@@ -434,14 +513,14 @@ def width (d : Diagram β) : Float :=
   match d.getEnvelope with
   | .empty => 0
   | .nonempty env =>
-    env Vec2.east + env Vec2.west
+    (env Vec2.east).diag + (env Vec2.west).diag
 
 /-- Computes the total height of a diagram from its envelope. -/
 def height (d : Diagram β) : Float :=
   match d.getEnvelope with
   | .empty => 0
   | .nonempty env =>
-    env Vec2.north + env Vec2.south
+    (env Vec2.north).diag + (env Vec2.south).diag
 
 /-!
 # Alignment types
@@ -479,8 +558,8 @@ private def centerOrigin (d : Diagram β) : Diagram β :=
   match d.getEnvelope with
   | .empty => d
   | .nonempty env =>
-    let cx := (env Vec2.east - env Vec2.west) / 2
-    let cy := (env Vec2.north - env Vec2.south) / 2
+    let cx := ((env Vec2.east).diag - (env Vec2.west).diag) / 2
+    let cy := ((env Vec2.north).diag - (env Vec2.south).diag) / 2
     if cx.abs < 0.001 && cy.abs < 0.001 then d
     else .transform (Matrix.translate (-cx) (-cy)) d
 
@@ -495,9 +574,12 @@ The result is re-centered at the origin.
 def beside (v : Vec2) (gap : Float := 0) (a b : Diagram β) : Diagram β :=
   let envA := a.getEnvelope
   let envB := b.getEnvelope
-  let dist := envA[v] + envB[-v] + gap
-  let offset := dist • v
-  centerOrigin (.compose a (.transform (Matrix.translate offset.x offset.y) b))
+  let dist := envA[v] + envB[-v]
+  let diagDist := dist.diag + gap
+  let pxDist := dist.px
+  let diagOffset := diagDist • v
+  let moved := Diagram.translateLength (β := β) ⟨diagOffset.x, pxDist * v.x⟩ ⟨diagOffset.y, pxDist * v.y⟩ b
+  centerOrigin (.compose a moved)
 
 /--
 Places {name}`b` to the right of {name}`a` with a gap, aligning vertically according
@@ -507,15 +589,15 @@ private def besideH (gap : Float) (align : HorizontalAlignment)
     (a b : Diagram β) : Diagram β :=
   let envA := a.getEnvelope
   let envB := b.getEnvelope
-  let dx := envA[Vec2.east] + envB[Vec2.west] + gap
+  let dxLen := envA[Vec2.east] + envB[Vec2.west]
   let dy := match align with
-    | .top => envA[Vec2.north] - envB[Vec2.north]
+    | .top => envA[Vec2.north].diag - envB[Vec2.north].diag
     | .center =>
-      let centerA := (envA[Vec2.north] - envA[Vec2.south]) / 2
-      let centerB := (envB[Vec2.north] - envB[Vec2.south]) / 2
+      let centerA := (envA[Vec2.north].diag - envA[Vec2.south].diag) / 2
+      let centerB := (envB[Vec2.north].diag - envB[Vec2.south].diag) / 2
       centerA - centerB
-    | .bottom => envB[Vec2.south] - envA[Vec2.south]
-  .compose a (.transform (Matrix.translate dx dy) b)
+    | .bottom => envB[Vec2.south].diag - envA[Vec2.south].diag
+  .compose a (Diagram.translateLength (β := β) ⟨dxLen.diag + gap, dxLen.px⟩ ⟨dy, 0⟩ b)
 
 /--
 Places {name}`b` below {name}`a` with a gap, aligning horizontally according
@@ -525,15 +607,15 @@ private def besideV (gap : Float) (align : VerticalAlignment)
     (a b : Diagram β) : Diagram β :=
   let envA := a.getEnvelope
   let envB := b.getEnvelope
-  let dy := -(envA[Vec2.south] + envB[Vec2.north] + gap)
+  let dyLen := envA[Vec2.south] + envB[Vec2.north]
   let dx := match align with
-    | .left => envB[Vec2.west] - envA[Vec2.west]
+    | .left => envB[Vec2.west].diag - envA[Vec2.west].diag
     | .center =>
-      let centerA := (envA[Vec2.east] - envA[Vec2.west]) / 2
-      let centerB := (envB[Vec2.east] - envB[Vec2.west]) / 2
+      let centerA := (envA[Vec2.east].diag - envA[Vec2.west].diag) / 2
+      let centerB := (envB[Vec2.east].diag - envB[Vec2.west].diag) / 2
       centerA - centerB
-    | .right => envA[Vec2.east] - envB[Vec2.east]
-  .compose a (.transform (Matrix.translate dx dy) b)
+    | .right => envA[Vec2.east].diag - envB[Vec2.east].diag
+  .compose a (Diagram.translateLength (β := β) ⟨dx, 0⟩ ⟨-(dyLen.diag + gap), -dyLen.px⟩ b)
 
 /-- Places {name}`b` to the right of {name}`a` with zero gap. -/
 def hjoin (a b : Diagram β) : Diagram β :=
@@ -588,7 +670,7 @@ def grid (rows : Array (Array (Option (Diagram β))))
         match row[c]? with
         | some (some d) =>
           let env := d.getEnvelope
-          Max.max mx (env[Vec2.east] + env[Vec2.west])
+          Max.max mx (env[Vec2.east].diag + env[Vec2.west].diag)
         | _ => mx
     -- Per-row heights: max height of any cell in that row
     let rowHeights := rows.map fun row =>
@@ -596,7 +678,7 @@ def grid (rows : Array (Array (Option (Diagram β))))
         match cell with
         | some d =>
           let env := d.getEnvelope
-          Max.max mh (env[Vec2.north] + env[Vec2.south])
+          Max.max mh (env[Vec2.north].diag + env[Vec2.south].diag)
         | none => mh
     -- Build the grid row by row
     let diagramRows := rows.mapIdx fun r row =>
@@ -734,10 +816,10 @@ Draws a stroked rectangle around the envelope of a diagram. The border is drawn 
 def frame (d : Diagram β) (stroke : Stroke := {})
     (padding : Float := 0) (cornerRadius : Float := 0) : Diagram β :=
   if let .nonempty env := d.getEnvelope then
-    let e := env Vec2.east + padding
-    let w := env Vec2.west + padding
-    let n := env Vec2.north + padding
-    let s := env Vec2.south + padding
+    let e := (env Vec2.east).diag + padding
+    let w := (env Vec2.west).diag + padding
+    let n := (env Vec2.north).diag + padding
+    let s := (env Vec2.south).diag + padding
     let width := e + w
     let height := n + s
     let cx := (e - w) / 2
@@ -759,7 +841,7 @@ def frame (d : Diagram β) (stroke : Stroke := {})
             |>.lineTo bl
             |>.close)
           stroke
-    let halfStroke := stroke.width / 2
+    let halfStroke := stroke.width.diag / 2
     Diagram.pad halfStroke (Diagram.compose border d)
   else d
 
@@ -769,10 +851,10 @@ Draws a filled and stroked rectangle around the envelope of a diagram. The backd
 def filledFrame (d : Diagram β) (fill : Fill := default) (stroke : Stroke := {})
     (padding : Float := 0) (cornerRadius : Float := 0) : Diagram β :=
   if let .nonempty env := d.getEnvelope then
-    let e := env Vec2.east + padding
-    let w := env Vec2.west + padding
-    let n := env Vec2.north + padding
-    let s := env Vec2.south + padding
+    let e := (env Vec2.east).diag + padding
+    let w := (env Vec2.west).diag + padding
+    let n := (env Vec2.north).diag + padding
+    let s := (env Vec2.south).diag + padding
     let width := e + w
     let height := n + s
     let cx := (e - w) / 2
@@ -794,7 +876,7 @@ def filledFrame (d : Diagram β) (fill : Fill := default) (stroke : Stroke := {}
             |>.lineTo bl
             |>.close)
           fill stroke
-    let halfStroke := stroke.width / 2
+    let halfStroke := stroke.width.diag / 2
     Diagram.pad halfStroke (Diagram.compose border d)
   else d
 
@@ -817,7 +899,7 @@ def showEnvelope (d : Diagram β) (samples : Nat := 64)
     let dirs := List.range n |>.map fun i =>
       let θ := i.toFloat * step
       let dir : Vec2 := ⟨Float.cos θ, Float.sin θ⟩
-      (dir, env dir)
+      (dir, (env dir).diag)
     -- Compute boundary vertices as intersections of adjacent tangent lines.
     -- Each tangent line is { p | p · dᵢ = eᵢ }. The intersection of adjacent
     -- lines p · d₁ = e₁ and p · d₂ = e₂ gives a vertex of the convex shape.
@@ -943,32 +1025,32 @@ def hAppendAlign (guide : AlignGuide) (a b : Diagram β) : Diagram β :=
     let envA := a.getEnvelope
     let envB := b.getEnvelope
     -- Vertical extent
-    let aBot := envA[Vec2.south]
-    let aTop := envA[Vec2.north]
-    let bBot := envB[Vec2.south]
-    let bTop := envB[Vec2.north]
+    let aBot := envA[Vec2.south].diag
+    let aTop := envA[Vec2.north].diag
+    let bBot := envB[Vec2.south].diag
+    let bTop := envB[Vec2.north].diag
     -- The alignment point in each diagram's local coords
     -- fraction 0 = bottom, 1 = top
     let aY := -aBot + f * (aTop + aBot)  -- -aBot .. aTop
     let bY := -bBot + f * (bTop + bBot)
     let dy := aY - bY
     -- Horizontal placement: same as hAppend
-    let dist := envA[Vec2.east] + envB[Vec2.west]
-    .compose a (.transform (Matrix.translate dist dy) b)
+    let distLen := envA[Vec2.east] + envB[Vec2.west]
+    .compose a (Diagram.translateLength (β := β) ⟨distLen.diag, distLen.px⟩ ⟨dy, 0⟩ b)
   | .anchor _ =>
     -- Named anchor alignment requires the name table (Layer 5).
     -- For now, fall back to center alignment (same as fraction 0.5).
     let envA := a.getEnvelope
     let envB := b.getEnvelope
-    let aBot := envA[Vec2.south]
-    let aTop := envA[Vec2.north]
-    let bBot := envB[Vec2.south]
-    let bTop := envB[Vec2.north]
+    let aBot := envA[Vec2.south].diag
+    let aTop := envA[Vec2.north].diag
+    let bBot := envB[Vec2.south].diag
+    let bTop := envB[Vec2.north].diag
     let aY := -aBot + 0.5 * (aTop + aBot)
     let bY := -bBot + 0.5 * (bTop + bBot)
     let dy := aY - bY
-    let dist := envA[Vec2.east] + envB[Vec2.west]
-    .compose a (.transform (Matrix.translate dist dy) b)
+    let distLen := envA[Vec2.east] + envB[Vec2.west]
+    .compose a (Diagram.translateLength (β := β) ⟨distLen.diag, distLen.px⟩ ⟨dy, 0⟩ b)
 
 /-!
 # Convenience transforms

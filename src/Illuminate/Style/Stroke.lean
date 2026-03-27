@@ -5,6 +5,7 @@ Author: David Thrane Christiansen
 -/
 
 import Illuminate.Style.Color
+import Illuminate.Geometry.Length
 
 namespace Illuminate
 
@@ -45,8 +46,8 @@ deriving Repr, BEq, Inhabited, Hashable
 structure Stroke where
   /-- Stroke color. -/
   color : Color := Color.black
-  /-- Stroke width in diagram units. -/
-  width : Float := 1.0
+  /-- Stroke width as a {name}`Length` with diagram-unit and pixel components. -/
+  width : Length := .ofDiag 1.0
   /-- Style of line endpoints. -/
   lineCap : LineCap := .butt
   /-- Style of line joins. -/
@@ -57,9 +58,16 @@ deriving Repr, BEq, Inhabited, Hashable
 
 namespace Stroke
 
-/-- Black stroke at the given width with butt cap, miter join, and solid dash. -/
+/-- Black stroke at the given diagram-unit width with butt cap, miter join, and solid dash. -/
 def ofWidth (w : Float) : Stroke :=
-  { width := w }
+  { width := .ofDiag w }
 
-/-- Default arrow/line stroke (black, width 1.5). -/
+/-- Black stroke at the given pixel width with butt cap, miter join, and solid dash. -/
+def ofPxWidth (w : Float) : Stroke :=
+  { width := .ofPx w }
+
+/-- Default arrow/line stroke (black, width 1.5 diagram units). -/
 def defaultArrow : Stroke := ofWidth 1.5
+
+/-- Default arrow/line stroke with scale-invariant width (black, 1.5 screen pixels). -/
+def defaultArrowInvariant : Stroke := ofPxWidth 1.5

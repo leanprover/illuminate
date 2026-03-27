@@ -17,6 +17,23 @@ open Illuminate
 Hover to see SVG in the InfoView.
 -/
 
+-- Scale-invariant border: 1px stroke stays constant when the widget resizes
+#diagram
+  let c : Diagram SVG :=
+    Diagram.circle 6
+      (fill := rgb!"#e8f4e8")
+      (stroke := { color := .black, width := .ofPx 1 }) |>.named `c
+  c
+    |>.connectEdge
+      { point := `c, angle := some pi, pull := 2, arrowhead := some { type := .stealth } }
+      { point := `c, angle := some (3 * pi / 2), pull := 2, arrowhead := some {} }
+      (stroke := { color := .black, width := .ofPx 1 })
+    |>.connectEdge
+      { point := `c, angle := some 0, pull := 2, arrowhead := some { type := .stealth } }
+      { point := `c, angle := some (pi / 2), pull := 2, arrowhead := some {} }
+      (stroke := { color := .black, width := 1 })
+
+
 -- Rounded rectangle
 #diagram Diagram.roundedRect 80 40 8
   (fill := rgb!"#dcebff")
@@ -78,7 +95,7 @@ open Diagram in
 def arrowDemo (arrowhead : Arrowhead) : Diagram SVG :=
   vsep 10 <|
   List.range 7 |>.map fun l =>
-    let length := l.toFloat * 0.3
+    let length := Length.ofDiag (l.toFloat * 0.3)
     hsep 5 <|
     List.range 5 |>.map fun w =>
       let width := w.toFloat * 0.3
@@ -86,7 +103,7 @@ def arrowDemo (arrowhead : Arrowhead) : Diagram SVG :=
       let c2 := circle 0 (name := `c2)
       hsep 15 [c1, c2]
         |>.connect `c1 { point := `c2, arrowhead := some { arrowhead with length, width } }
-        |>.named (Lean.Name.mkSimple s!"{length}x{width}")
+        |>.named (Lean.Name.mkSimple s!"{length.diag}x{width}")
 
 #diagram arrowDemo {}
 
@@ -270,7 +287,7 @@ where
     let box := field name label w
     let brace := Diagram.curlyBrace (w - 8) (depth := braceDepth) (label := some braceLabel)
     let braceEnv := brace.getEnvelope
-    let excess := braceEnv[Vec2.east] - w / 2
+    let excess := braceEnv[Vec2.east].diag - w / 2
     let brace := if excess > 0 then brace |>.padLeft (-excess) |>.padRight (-excess) else brace
     Diagram.vsep braceGap [box, brace]
 

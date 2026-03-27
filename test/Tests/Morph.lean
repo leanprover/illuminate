@@ -140,19 +140,19 @@ def styleTests' : List (String × IO Unit) :=
       let a : Stroke := { color := Color.red, width := 2 }
       let b : Stroke := { color := Color.blue, width := 4 }
       let r := lerpStroke a b 0
-      assertApproxEq r.width 2 "width"
+      assertApproxEq r.width.diag 2 "width"
       assertTrue (r.color.r == 255) s!"red channel: {r.color.r}")
   , ("lerpStroke: t=1 gives second", do
       let a : Stroke := { color := Color.red, width := 2 }
       let b : Stroke := { color := Color.blue, width := 4 }
       let r := lerpStroke a b 1
-      assertApproxEq r.width 4 "width"
+      assertApproxEq r.width.diag 4 "width"
       assertTrue (r.color.b == 255) s!"blue channel: {r.color.b}")
   , ("lerpStroke: t=0.5 midpoint", do
       let a : Stroke := { color := Color.black, width := 0 }
       let b : Stroke := { color := Color.white, width := 10 }
       let r := lerpStroke a b 0.5
-      assertApproxEq r.width 5 "width")
+      assertApproxEq r.width.diag 5 "width")
   , ("lerpTextStyle: fontSize lerps", do
       let a : TextStyle := { fontSize := 10 }
       let b : TextStyle := { fontSize := 30 }

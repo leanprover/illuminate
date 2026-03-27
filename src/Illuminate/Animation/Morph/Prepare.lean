@@ -62,7 +62,7 @@ where
     | .named name inner, acc => go inner (name :: acc)
     | .transform _ d, acc | .cellophane _ d, acc | .clip _ d, acc
     | .withEnv _ d, acc | .warning _ d, acc | .tag _ d, acc
-    | .foreign _ d, acc => go d acc
+    | .foreign _ d, acc | .pxTranslate _ d, acc => go d acc
     -- Do not recurse into arrow children; their names are handled by
     -- the recursive prepareMorph in matchSkeletons.
     | .arrow _ _ _ _ _, acc => acc
@@ -81,7 +81,7 @@ where
     | .transform m d => go (Matrix.mul xform m) d
     | .compose a b => (go xform a).orElse fun _ => go xform b
     | .withEnv _ d | .warning _ d | .cellophane _ d | .clip _ d
-    | .tag _ d | .foreign _ d => go xform d
+    | .tag _ d | .foreign _ d | .pxTranslate _ d => go xform d
     -- Do not recurse into arrow children (names handled by matchSkeletons).
     | .arrow _ _ _ _ _ => none
     | _ => none
@@ -107,6 +107,7 @@ private def toSkeleton {β : Type} (d : Diagram β) (matched : Std.HashSet Lean.
   | .withEnv e inner => .withEnv e (toSkeleton inner matched)
   | .warning _ inner => toSkeleton inner matched
   | .foreign _ inner => toSkeleton inner matched
+  | .pxTranslate _ inner => toSkeleton inner matched
   | .tag _ inner => toSkeleton inner matched
 
 /-!
@@ -118,7 +119,8 @@ private def envelopeToBBox {β : Type} [Backend β] (d : Diagram β) : BBox :=
   match d.getEnvelope with
   | .empty => { hw := 0, hh := 0 }
   | .nonempty env =>
-    { hw := (env Vec2.east + env Vec2.west) / 2, hh := (env Vec2.north + env Vec2.south) / 2 }
+    { hw := ((env Vec2.east).diag + (env Vec2.west).diag) / 2,
+      hh := ((env Vec2.north).diag + (env Vec2.south).diag) / 2 }
 
 /-- Prepares a path morph node from two path primitives. -/
 private def preparePath {β : Type} (pdA : PathData) (fillA : Fill) (strokeA : Stroke)
