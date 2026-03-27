@@ -111,6 +111,13 @@ export default function (props) {
     var _svg = React.useState(props.initialSvg || "");
     var svg = _svg[0];
     var setSvg = _svg[1];
+    // Reset SVG when switching to a different diagram
+    React.useEffect(
+        function () {
+            setSvg(props.initialSvg || "");
+        },
+        [props.exprId],
+    );
     /** @type {React.MutableRefObject<ReturnType<typeof setTimeout> | null>} */
     var timer = React.useRef(null);
     var latestValues = React.useRef(initials);
@@ -122,16 +129,46 @@ export default function (props) {
     /** @type {React.MutableRefObject<ReturnType<typeof setTimeout> | null>} */
     var hitTimer = React.useRef(null);
 
-    // Re-evaluate diagram when parameters change
+    // Track container pixel width for scale-invariant stroke resolution
+    var _pw = React.useState(0);
+    var pixelWidth = _pw[0];
+    var setPixelWidth = _pw[1];
+    var latestPixelWidth = React.useRef(0);
+
+    // Measure container width immediately on mount and on subsequent resizes
+    React.useEffect(function () {
+        var container = svgRef.current;
+        if (!container) return;
+        var measure = function () {
+            var w = /** @type {HTMLDivElement} */ (container).clientWidth;
+            if (w > 0 && Math.abs(w - latestPixelWidth.current) > 1) {
+                latestPixelWidth.current = w;
+                setPixelWidth(w);
+            }
+        };
+        // Fire immediately to avoid flash of unresolved px strokes
+        measure();
+        if (typeof ResizeObserver === "undefined") return;
+        var ro = new ResizeObserver(function () {
+            measure();
+        });
+        ro.observe(container);
+        return function () {
+            ro.disconnect();
+        };
+    }, []);
+
+    // Re-evaluate diagram when parameters or pixel width change
     React.useEffect(
         function () {
-            if (!hasParams) return;
+            if (pixelWidth === 0 && !hasParams) return;
             latestValues.current = values;
             if (timer.current) clearTimeout(timer.current);
             timer.current = setTimeout(function () {
                 rs.call("Illuminate.evalParamDiagram", {
                     id: props.exprId,
                     values: latestValues.current,
+                    pixelWidth: latestPixelWidth.current,
                 })
                     .then(function (/** @type {{ svg: string }} */ resp) {
                         setSvg(resp.svg);
@@ -144,7 +181,7 @@ export default function (props) {
                 if (timer.current) clearTimeout(timer.current);
             };
         },
-        [values],
+        [values, pixelWidth],
     );
 
     // Mouse move handler for hit testing

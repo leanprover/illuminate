@@ -161,10 +161,10 @@ def compileAnimation (steps : List Step)
       let d := render vec
       drawLists := drawLists.push d.compile
       if let .nonempty env := d.getEnvelope then
-        let east := env Vec2.east
-        let west := env Vec2.west
-        let north := env Vec2.north
-        let south := env Vec2.south
+        let east := (env Vec2.east).diag
+        let west := (env Vec2.west).diag
+        let north := (env Vec2.north).diag
+        let south := (env Vec2.south).diag
         let fMinX := -(west + padding)
         let fMaxX := east + padding
         let fMinY := -(north + padding)

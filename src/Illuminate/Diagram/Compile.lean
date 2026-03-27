@@ -16,7 +16,7 @@ namespace Diagram
 variable {β : Type} [Backend β]
 
 /-- Compiles a diagram tree into a flat display list of drawing commands. -/
-partial def compile (d : Diagram β) : Array (DrawCmd β) :=
+partial def compile (d : Diagram β) (scale : Float := 0) : Array (DrawCmd β) :=
   (go d #[] 0 0).1
 where
   go (d : Diagram β) (acc : Array (DrawCmd β)) (gi ci : Nat) :
@@ -37,7 +37,7 @@ where
             let acc := acc.push (.defGradient gi g)
             (acc.push (.fillPath pd resolved (some gi)), gi + 1)
           | .none => (acc, gi)
-        if stroke.width > 0 && stroke.color.a > 0 then
+        if (stroke.width.diag > 0 || stroke.width.px > 0) && stroke.color.a > 0 then
           (acc.push (.strokePath pd stroke), gi, ci)
         else
           (acc, gi, ci)
@@ -65,6 +65,13 @@ where
     | .clip pd d =>
       let (inner, gi, ci) := go d #[] gi (ci + 1)
       ((acc.push (.pushClip pd ci) ++ inner).push .popClip, gi, ci)
+    | .pxTranslate pxOffset d =>
+      if scale == 0 then go d acc gi ci
+      else
+        let duOffset := scale • pxOffset
+        let m := Matrix.translate duOffset.x duOffset.y
+        let (inner, gi, ci) := go d #[] gi ci
+        ((acc.push (.pushTransform m) ++ inner).push .popTransform, gi, ci)
     | .arrow start stop stroke useTrace d =>
       let (src, tgt, stop') :=
         if useTrace then
@@ -82,11 +89,23 @@ where
             | none => -defaultDir
           let srcTrace := srcSub.getStrokeTrace
           let tgtTrace := tgtSub.getStrokeTrace
+          -- Offset arrowhead tips: latex (open) heads need miter protrusion offset;
+          -- filled heads (stealth/triangle/circle) have no stroke so need no offset.
+          let resolvedW := stroke.width.resolve scale
+          let tipOffset (ah? : Option Arrowhead) : Float := match ah? with
+            | some ah =>
+              match ah.type with
+              | .latex =>
+                let halfAngle := 0.4 * ah.width
+                if halfAngle > 0.01 then resolvedW / (2 * Float.sin halfAngle)
+                else resolvedW / 2
+              | _ => 0
+            | none => 0
           let src := match srcTrace.closest (Point.ofVec2 srcCenter) srcDir with
-            | some hit => srcCenter + (hit.edge + hit.width) • srcDir + start.shift
+            | some hit => srcCenter + (hit.edge + hit.width + tipOffset start.arrowhead) • srcDir + start.shift
             | none => srcCenter + start.shift
           let tgt := match tgtTrace.closest (Point.ofVec2 tgtCenter) tgtDir with
-            | some hit => tgtCenter + (hit.edge + hit.width) • tgtDir + stop.shift
+            | some hit => tgtCenter + (hit.edge + hit.width + tipOffset stop.arrowhead) • tgtDir + stop.shift
             | none => tgtCenter + stop.shift
           -- Flip stop angle for arrival tangent (outward → inward)
           let stop' := match stop.angle with
@@ -104,20 +123,40 @@ where
       let (arrowCmds, gi, ci) := go arrowDiagram #[] gi ci
       (innerCmds ++ arrowCmds, gi, ci)
 
-/-- Renders a diagram to an SVG string. -/
-def renderDiagram [BackendRender β] [Hashable β] (d : Diagram β) (padding : Float := 2) : String :=
+/--
+Renders a diagram to an SVG string.
+
+The {name}`viewBoxPixelWidth` parameter specifies the intended display width in pixels.
+This is used to compute the diagram-units-per-pixel scale for resolving pixel-valued
+lengths. When 0, pixel components are ignored (backward-compatible default).
+-/
+def renderDiagram [BackendRender β] [Hashable β] (d : Diagram β)
+    (padding : Float := 2) (viewBoxPixelWidth : Float := 0) : String :=
   let pfx := s!"{(hash d).toNat % 65536}_"
   if let .nonempty env := d.getEnvelope then
-    let east := env Vec2.east
-    let west := env Vec2.west
-    let north := env Vec2.north
-    let south := env Vec2.south
+    -- Compute diag and px extents separately
+    let eastL := env Vec2.east
+    let westL := env Vec2.west
+    let northL := env Vec2.north
+    let southL := env Vec2.south
+    let diagW := westL.diag + eastL.diag + 2 * padding
+    let pxW := westL.px + eastL.px
+    -- Closed-form scale: scale = D_diag / (vpw - D_px)
+    let scale :=
+      if viewBoxPixelWidth > 0 && viewBoxPixelWidth > pxW then
+        diagW / (viewBoxPixelWidth - pxW)
+      else 0
+    -- Resolve envelope extents to diagram units using scale
+    let east := eastL.resolve scale
+    let west := westL.resolve scale
+    let north := northL.resolve scale
+    let south := southL.resolve scale
     let minX := -(west + padding)
     let minY := -(north + padding)
     let width := west + east + 2 * padding
     let height := north + south + 2 * padding
-    let cmds := d.compile
-    Svg.render cmds { minX, minY, width, height } pfx
+    let cmds := d.compile scale
+    Svg.render cmds { minX, minY, width, height } pfx false scale
   else
     let cmds := d.warning "Diagram has no envelope, defaulting to 640x480" |>.compile
     Svg.render cmds ViewBox.fallback pfx

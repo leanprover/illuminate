@@ -42,8 +42,8 @@ def paper (label : Option (Diagram β) := none)
       match label with
       | some lbl =>
         let env := lbl.getEnvelope
-        let lw := env[Vec2.east] + env[Vec2.west] + 2 * padding
-        let lh := env[Vec2.north] + env[Vec2.south] + 2 * padding
+        let lw := (env[Vec2.east]).diag + (env[Vec2.west]).diag + 2 * padding
+        let lh := (env[Vec2.north]).diag + (env[Vec2.south]).diag + 2 * padding
         if lh / lw < a4Ratio then (lw, lw * a4Ratio)
         else (lh / a4Ratio, lh)
       | none => (60, 60 * a4Ratio)

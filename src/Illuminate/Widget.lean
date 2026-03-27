@@ -57,16 +57,16 @@ def diagramWidget : Lean.Widget.Module where
 -/
 
 /-- Renders a {lean}`Diagram SVG` to SVG with default settings. -/
-def diagramToSvg (d : Diagram SVG) : String :=
-  d.renderDiagram (padding := 5)
+def diagramToSvg (d : Diagram SVG) (viewBoxPixelWidth : Float := 0) : String :=
+  d.renderDiagram (padding := 5) (viewBoxPixelWidth := viewBoxPixelWidth)
 
 /-- Hit-tests a {lean}`Diagram SVG` at the given point. -/
 def diagramHitTest (d : Diagram SVG) (x y : Float) : Click :=
   d.hitTest (Point.mk x y)
 
 /-- Renders a {name}`DiagramWithInfo` to SVG with default settings. -/
-def dwiToSvg (dwi : DiagramWithInfo) : String :=
-  dwi.diagram.renderDiagram (padding := 5)
+def dwiToSvg (dwi : DiagramWithInfo) (viewBoxPixelWidth : Float := 0) : String :=
+  dwi.diagram.renderDiagram (padding := 5) (viewBoxPixelWidth := viewBoxPixelWidth)
 
 /-- Hit-tests a {name}`DiagramWithInfo` at the given point. -/
 def dwiHitTest (dwi : DiagramWithInfo) (x y : Float) : Click :=
@@ -132,6 +132,8 @@ structure EvalParamRequest where
   id : Nat
   /-- Parameter values as JSON (Float, String, or Bool). -/
   values : Array Lean.Json
+  /-- Pixel width of the widget container, for resolving scale-invariant lengths. -/
+  pixelWidth : Float := 0
 deriving Lean.FromJson, Lean.ToJson
 
 /-- Response containing the rendered SVG string. -/
@@ -204,7 +206,7 @@ private unsafe def evalParamDiagramUnsafe (req : EvalParamRequest) :
       | .error msg => throw (.mk .invalidParams msg : RequestError)
     let diagApp := if sd.returnsDwi
       then mkApp (mkConst ``DiagramWithInfo.diagram) app else app
-    let svgExpr := mkApp (mkConst ``diagramToSvg) diagApp
+    let svgExpr := mkApp2 (mkConst ``diagramToSvg) diagApp (mkFloatExpr req.pixelWidth)
     let ctx : Core.Context := { options := sd.opts, fileName := "<rpc>", fileMap := default }
     let st : Core.State := { env := sd.env }
     let action : CoreM String := MetaM.run' (TermElabM.run' (do
@@ -434,7 +436,7 @@ unsafe def elabDiagramCmd : CommandElab := fun stx => do
       for w in warnings do
         logWarningAt stx (m!"#diagram: {w}")
     let svgStr ← evalExpr String (mkConst ``String)
-      (mkApp (mkConst ``diagramToSvg) diagExpr)
+      (mkApp2 (mkConst ``diagramToSvg) diagExpr (mkFloatExpr 0))
     let props : Json := .mkObj [
       ("exprId", toJson id),
       ("initialSvg", .str svgStr),

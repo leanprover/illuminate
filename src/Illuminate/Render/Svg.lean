@@ -159,7 +159,7 @@ Each draw command variant always produces the same number of attribute
 pairs regardless of values, so frame-to-frame comparison by position is safe.
 -/
 def drawCmdAttrs {β : Type} [BackendRender β]
-    (cmd : DrawCmd β) (clipPrefix : String := "") : CmdAttrInfo :=
+    (cmd : DrawCmd β) (clipPrefix : String := "") (scale : Float := 0) : CmdAttrInfo :=
   match cmd with
   | .fillPath pd fill gradIdx =>
     match fill with
@@ -176,15 +176,17 @@ def drawCmdAttrs {β : Type} [BackendRender β]
         ("d", pathDataToD pd),
         ("fill", fillVal),
         ("fill-opacity", "1")]⟩
-  | .strokePath pd stroke => ⟨true, #[
+  | .strokePath pd stroke =>
+    let w := stroke.width.resolve scale
+    ⟨true, #[
       ("d", pathDataToD pd),
       ("fill", "none"),
       ("stroke", colorToSvg stroke.color),
-      ("stroke-width", fmtNum stroke.width),
+      ("stroke-width", fmtNum w),
       ("stroke-linecap", lineCapToSvg stroke.lineCap),
       ("stroke-linejoin", lineJoinToSvg stroke.lineJoin),
       ("stroke-opacity", fmtNum stroke.color.a),
-      ("stroke-dasharray", dashArrayValue stroke.dash stroke.width)]⟩
+      ("stroke-dasharray", dashArrayValue stroke.dash w)]⟩
   | .drawTextRun s style pos => ⟨true, #[
       ("textContent", s),
       ("x", fmtNum pos.x),
@@ -242,8 +244,8 @@ When {name}`elemTag` is provided, the patchable element gets a {lit}`data-e` att
 with that value so the animation player can locate it by explicit ID.
 -/
 def renderCmd {β : Type} [BackendRender β] (cmd : DrawCmd β)
-    (clipPrefix : String := "") (elemTag : Option Nat := none) : String :=
-  let info := drawCmdAttrs cmd clipPrefix
+    (clipPrefix : String := "") (elemTag : Option Nat := none) (scale : Float := 0) : String :=
+  let info := drawCmdAttrs cmd clipPrefix scale
   let eAttr := match elemTag with
     | some idx => s!" data-e=\"{idx}\""
     | none => ""
@@ -297,12 +299,12 @@ gets a {lit}`data-e` attribute with its element index. The animation player uses
 these to locate patchable elements by explicit ID rather than fragile DOM-walk order.
 -/
 def render {β : Type} [BackendRender β] (cmds : Array (DrawCmd β)) (viewBox : ViewBox)
-    (clipPrefix : String := "") (emitElemIdx : Bool := false) : String :=
+    (clipPrefix : String := "") (emitElemIdx : Bool := false) (scale : Float := 0) : String :=
   let header := s!"<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"{fmtNum viewBox.minX} {fmtNum viewBox.minY} {fmtNum viewBox.width} {fmtNum viewBox.height}\">"
   let (body, _) := cmds.foldl (init := ("", 0)) fun (acc, ei) cmd =>
-    let produces := (drawCmdAttrs cmd clipPrefix).producesElement
+    let produces := (drawCmdAttrs cmd clipPrefix scale).producesElement
     let tag := if emitElemIdx && produces then some ei else none
-    let fragment := renderCmd cmd clipPrefix tag
+    let fragment := renderCmd cmd clipPrefix tag scale
     (acc ++ "\n" ++ fragment, if produces then ei + 1 else ei)
   -- Flip y-axis: SVG y points down, diagram y points up
   header ++ "\n<g transform=\"scale(1,-1)\">" ++ body ++ "\n</g>\n</svg>"

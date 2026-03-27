@@ -32,8 +32,8 @@ def filmstrip (render : Float → Diagram SVG)
     match d.getEnvelope with
     | .empty => (mw, mh)
     | .nonempty env =>
-      let hw := (env Vec2.east + env Vec2.west) / 2
-      let hh := (env Vec2.north + env Vec2.south) / 2
+      let hw := ((env Vec2.east).diag + (env Vec2.west).diag) / 2
+      let hh := ((env Vec2.north).diag + (env Vec2.south).diag) / 2
       (max mw hw, max mh hh)
   let cellW := 2 * (maxHW + cellPadding)
   let cellH := 2 * (maxHH + cellPadding)

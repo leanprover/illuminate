@@ -326,21 +326,21 @@ def testApply_compositeChain : IO Unit := do
 -/
 
 def testEmpty_east : IO Unit := do
-  assertApproxEq (Envelope.empty[Vec2.east]) 0 "empty east"
+  assertApproxEq (Envelope.empty[Vec2.east].diag) 0 "empty east"
 
 def testEmpty_north : IO Unit := do
-  assertApproxEq (Envelope.empty[Vec2.north]) 0 "empty north"
+  assertApproxEq (Envelope.empty[Vec2.north].diag) 0 "empty north"
 
 def testEmpty_diagonal : IO Unit := do
-  assertApproxEq (Envelope.empty[Vec2.northeast]) 0 "empty diagonal"
+  assertApproxEq (Envelope.empty[Vec2.northeast].diag) 0 "empty diagonal"
 
 def testEmpty_arbitrary : IO Unit := do
-  assertApproxEq (Envelope.empty[Vec2.mk 0.3 0.95]) 0 "empty arbitrary"
+  assertApproxEq (Envelope.empty[Vec2.mk 0.3 0.95].diag) 0 "empty arbitrary"
 
 def testEmpty_unionIdentity : IO Unit := do
   let env := Envelope.ofRect 3 2
-  assertApproxEq (Envelope.empty.union env)[Vec2.east] 3 "empty is union identity (east)"
-  assertApproxEq (Envelope.empty.union env)[Vec2.north] 2 "empty is union identity (north)"
+  assertApproxEq (Envelope.empty.union env)[Vec2.east].diag 3 "empty is union identity (east)"
+  assertApproxEq (Envelope.empty.union env)[Vec2.north].diag 2 "empty is union identity (north)"
 
 /-!
 # Envelope.ofRect
@@ -348,30 +348,30 @@ def testEmpty_unionIdentity : IO Unit := do
 
 def testOfRect_cardinals : IO Unit := do
   let env := Envelope.ofRect 3 2
-  assertApproxEq env[Vec2.east] 3 "rect east"
-  assertApproxEq env[Vec2.west] 3 "rect west"
-  assertApproxEq env[Vec2.north] 2 "rect north"
-  assertApproxEq env[Vec2.south] 2 "rect south"
+  assertApproxEq env[Vec2.east].diag 3 "rect east"
+  assertApproxEq env[Vec2.west].diag 3 "rect west"
+  assertApproxEq env[Vec2.north].diag 2 "rect north"
+  assertApproxEq env[Vec2.south].diag 2 "rect south"
 
 def testOfRect_diagonal : IO Unit := do
   let env := Envelope.ofRect 3 2
-  assertApproxEq env[Vec2.northeast] (5 / Float.sqrt 2) "rect diagonal" (tol := 1e-7)
+  assertApproxEq env[Vec2.northeast].diag (5 / Float.sqrt 2) "rect diagonal" (tol := 1e-7)
 
 def testOfRect_square : IO Unit := do
   let env := Envelope.ofRect 5 5
-  assertApproxEq env[Vec2.east] 5 "square east"
-  assertApproxEq env[Vec2.north] 5 "square north"
-  assertApproxEq env[Vec2.northeast] (10 / Float.sqrt 2) "square diagonal" (tol := 1e-7)
+  assertApproxEq env[Vec2.east].diag 5 "square east"
+  assertApproxEq env[Vec2.north].diag 5 "square north"
+  assertApproxEq env[Vec2.northeast].diag (10 / Float.sqrt 2) "square diagonal" (tol := 1e-7)
 
 def testOfRect_zero : IO Unit := do
   let env := Envelope.ofRect 0 0
-  assertApproxEq env[Vec2.east]  0 "zero rect east"
-  assertApproxEq env[Vec2.north] 0 "zero rect north"
+  assertApproxEq env[Vec2.east].diag  0 "zero rect east"
+  assertApproxEq env[Vec2.north].diag 0 "zero rect north"
 
 def testOfRect_viaSize : IO Unit := do
   let env := Envelope.ofSize 6 4
-  assertApproxEq env[Vec2.east]  3 "ofSize east"
-  assertApproxEq env[Vec2.north] 2 "ofSize north"
+  assertApproxEq env[Vec2.east].diag  3 "ofSize east"
+  assertApproxEq env[Vec2.north].diag 2 "ofSize north"
 
 /-!
 # Envelope.ofCircle
@@ -379,22 +379,22 @@ def testOfRect_viaSize : IO Unit := do
 
 def testCircle_cardinal : IO Unit := do
   let env := Envelope.ofCircle 5
-  assertApproxEq env[Vec2.east]  5 "circle east"
-  assertApproxEq env[Vec2.north] 5 "circle north"
+  assertApproxEq env[Vec2.east].diag  5 "circle east"
+  assertApproxEq env[Vec2.north].diag 5 "circle north"
 
 def testCircle_diagonal : IO Unit := do
-  assertApproxEq (Envelope.ofCircle 5)[Vec2.northeast] 5 "circle diagonal"
+  assertApproxEq (Envelope.ofCircle 5)[Vec2.northeast].diag 5 "circle diagonal"
 
 def testCircle_arbitrary : IO Unit := do
-  assertApproxEq (Envelope.ofCircle 3)[Vec2.mk 0.6 0.8] 3 "circle arbitrary direction"
+  assertApproxEq (Envelope.ofCircle 3)[Vec2.mk 0.6 0.8].diag 3 "circle arbitrary direction"
 
 def testCircle_zero : IO Unit := do
-  assertApproxEq (Envelope.ofCircle 0)[Vec2.east] 0 "zero circle"
+  assertApproxEq (Envelope.ofCircle 0)[Vec2.east].diag 0 "zero circle"
 
 def testCircle_symmetry : IO Unit := do
   let env := Envelope.ofCircle 7
-  assertApproxEq env[Vec2.east] env[Vec2.west] "circle east = west"
-  assertApproxEq env[Vec2.north] env[Vec2.south] "circle north = south"
+  assertApproxEq env[Vec2.east].diag env[Vec2.west].diag "circle east = west"
+  assertApproxEq env[Vec2.north].diag env[Vec2.south].diag "circle north = south"
 
 /-!
 # Envelope.transform
@@ -403,32 +403,32 @@ def testCircle_symmetry : IO Unit := do
 def testTransform_rotate90 : IO Unit := do
   let env := Envelope.ofRect 3 2
   let rotated := Envelope.transform (Matrix.rotate (pi / 2)) env
-  assertApproxEq rotated[Vec2.east] 2 "rotated east" (tol := 1e-7)
-  assertApproxEq rotated[Vec2.north] 3 "rotated north" (tol := 1e-7)
+  assertApproxEq rotated[Vec2.east].diag 2 "rotated east" (tol := 1e-7)
+  assertApproxEq rotated[Vec2.north].diag 3 "rotated north" (tol := 1e-7)
 
 def testTransform_uniformScale : IO Unit := do
   let env := Envelope.ofRect 3 2
   let scaled := Envelope.transform (Matrix.uniformScale 2) env
-  assertApproxEq scaled[Vec2.east] 6 "scaled east" (tol := 1e-7)
-  assertApproxEq scaled[Vec2.north] 4 "scaled north" (tol := 1e-7)
+  assertApproxEq scaled[Vec2.east].diag 6 "scaled east" (tol := 1e-7)
+  assertApproxEq scaled[Vec2.north].diag 4 "scaled north" (tol := 1e-7)
 
 def testTransform_translate : IO Unit := do
   let env := Envelope.ofRect 3 2
   let moved := Envelope.transform (Matrix.translate 10 0) env
-  assertApproxEq moved[Vec2.east] 13 "translated east" (tol := 1e-7)
-  assertApproxEq moved[Vec2.west] (-7) "translated west" (tol := 1e-7)
+  assertApproxEq moved[Vec2.east].diag 13 "translated east" (tol := 1e-7)
+  assertApproxEq moved[Vec2.west].diag (-7) "translated west" (tol := 1e-7)
 
 def testTransform_identity : IO Unit := do
   let env := Envelope.ofRect 3 2
   let same := Envelope.transform Matrix.identity env
-  assertApproxEq same[Vec2.east] 3 "identity transform east"
-  assertApproxEq same[Vec2.north] 2 "identity transform north"
+  assertApproxEq same[Vec2.east].diag 3 "identity transform east"
+  assertApproxEq same[Vec2.north].diag 2 "identity transform north"
 
 def testTransform_nonUniformScale : IO Unit := do
   let env := Envelope.ofRect 1 1
   let scaled := Envelope.transform (Matrix.scale 3 5) env
-  assertApproxEq scaled[Vec2.east] 3 "non-uniform scale east" (tol := 1e-7)
-  assertApproxEq scaled[Vec2.north] 5 "non-uniform scale north" (tol := 1e-7)
+  assertApproxEq scaled[Vec2.east].diag 3 "non-uniform scale east" (tol := 1e-7)
+  assertApproxEq scaled[Vec2.north].diag 5 "non-uniform scale north" (tol := 1e-7)
 
 /-!
 # Envelope.union
@@ -438,33 +438,33 @@ def testUnion_disjointHorizontal : IO Unit := do
   let e1 := Envelope.translateBy ⟨-5, 0⟩ (Envelope.ofRect 1 1)
   let e2 := Envelope.translateBy ⟨5, 0⟩ (Envelope.ofRect 1 1)
   let u := Envelope.union e1 e2
-  assertApproxEq u[Vec2.east] 6 "union east"
-  assertApproxEq u[Vec2.west] 6 "union west"
+  assertApproxEq u[Vec2.east].diag 6 "union east"
+  assertApproxEq u[Vec2.west].diag 6 "union west"
 
 def testUnion_disjointVertical : IO Unit := do
   let e1 := Envelope.translateBy ⟨0, -3⟩ (Envelope.ofRect 1 1)
   let e2 := Envelope.translateBy ⟨0, 3⟩ (Envelope.ofRect 1 1)
   let u := Envelope.union e1 e2
-  assertApproxEq u[Vec2.north] 4 "union north"
-  assertApproxEq u[Vec2.south] 4 "union south"
+  assertApproxEq u[Vec2.north].diag 4 "union north"
+  assertApproxEq u[Vec2.south].diag 4 "union south"
 
 def testUnion_identical : IO Unit := do
   let env := Envelope.ofRect 3 2
   let u := Envelope.union env env
-  assertApproxEq u[Vec2.east] 3 "union identical east"
-  assertApproxEq u[Vec2.north] 2 "union identical north"
+  assertApproxEq u[Vec2.east].diag 3 "union identical east"
+  assertApproxEq u[Vec2.north].diag 2 "union identical north"
 
 def testUnion_contained : IO Unit := do
   let small := Envelope.ofRect 1 1
   let big := Envelope.ofRect 5 5
   let u := small ∪ big
-  assertApproxEq u[Vec2.east] 5 "union contained east"
+  assertApproxEq u[Vec2.east].diag 5 "union contained east"
 
 def testUnion_commutative : IO Unit := do
   let a := Envelope.translateBy ⟨2, 0⟩ (Envelope.ofRect 1 3)
   let b := Envelope.translateBy ⟨-1, 0⟩ (Envelope.ofRect 4 1)
-  assertApproxEq (a ∪ b)[Vec2.east] (b ∪ a)[Vec2.east] "union commutative east"
-  assertApproxEq (a ∪ b)[Vec2.north] (b ∪ a)[Vec2.north] "union commutative north"
+  assertApproxEq (a ∪ b)[Vec2.east].diag (b ∪ a)[Vec2.east].diag "union commutative east"
+  assertApproxEq (a ∪ b)[Vec2.north].diag (b ∪ a)[Vec2.north].diag "union commutative north"
 
 /-!
 # Envelope.translateBy
@@ -472,25 +472,25 @@ def testUnion_commutative : IO Unit := do
 
 def testTranslateBy_east : IO Unit := do
   let env := Envelope.translateBy ⟨5, 0⟩ (Envelope.ofRect 1 1)
-  assertApproxEq env[Vec2.east] 6 "translateBy east extent"
+  assertApproxEq env[Vec2.east].diag 6 "translateBy east extent"
 
 def testTranslateBy_west : IO Unit := do
   let env := Envelope.translateBy ⟨5, 0⟩ (Envelope.ofRect 1 1)
-  assertApproxEq env[Vec2.west] (-4) "translateBy west extent"
+  assertApproxEq env[Vec2.west].diag (-4) "translateBy west extent"
 
 def testTranslateBy_zero : IO Unit := do
   let env := Envelope.translateBy Vec2.zero (Envelope.ofRect 3 2)
-  assertApproxEq env[Vec2.east] 3 "translateBy zero unchanged"
+  assertApproxEq env[Vec2.east].diag 3 "translateBy zero unchanged"
 
 def testTranslateBy_bothAxes : IO Unit := do
   let env := Envelope.translateBy ⟨3, 4⟩ (Envelope.ofRect 1 1)
-  assertApproxEq env[Vec2.east] 4 "translateBy both east"
-  assertApproxEq env[Vec2.north] 5 "translateBy both north"
+  assertApproxEq env[Vec2.east].diag 4 "translateBy both east"
+  assertApproxEq env[Vec2.north].diag 5 "translateBy both north"
 
 def testTranslateBy_negative : IO Unit := do
   let env := Envelope.translateBy ⟨-10, 0⟩ (Envelope.ofRect 1 1)
-  assertApproxEq env[Vec2.east] (-9) "translateBy negative east"
-  assertApproxEq env[Vec2.west] 11 "translateBy negative west"
+  assertApproxEq env[Vec2.east].diag (-9) "translateBy negative east"
+  assertApproxEq env[Vec2.west].diag 11 "translateBy negative west"
 
 /-!
 # CardinalAnchors.fromEnvelope

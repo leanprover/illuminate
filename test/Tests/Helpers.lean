@@ -84,8 +84,8 @@ def assertEnvelopeConvex (env : Envelope) (label : String) (n : Nat := 64) : IO 
       let (d1, e1) := dirs[i]!
       let (d2, e2) := dirs[(i + 1) % n]!
       let det := d1.x * d2.y - d1.y * d2.x
-      if det.abs < 1e-10 then e1 • d1
-      else ⟨(e1 * d2.y - e2 * d1.y) / det, (d1.x * e2 - d2.x * e1) / det⟩
+      if det.abs < 1e-10 then e1.diag • d1
+      else ⟨(e1.diag * d2.y - e2.diag * d1.y) / det, (d1.x * e2.diag - d2.x * e1.diag) / det⟩
     -- Check that all consecutive cross products have the same sign
     let mut positiveCount := 0
     let mut negativeCount := 0
