@@ -411,6 +411,11 @@ def test_filmstrip_morph_arrows_visual():
     _run_visual_test("filmstrip-morph-arrows.svg", "filmstrip-morph-arrows")
 
 
+def test_px_stroke_anchors_visual():
+    """Compare px-width stroke anchor positioning against expected baseline."""
+    _run_visual_test("px-stroke-anchors.svg", "px-stroke-anchors")
+
+
 # ---------------------------------------------------------------------------
 # Standalone animation player tests
 # ---------------------------------------------------------------------------
@@ -560,6 +565,7 @@ def main():
         test_filmstrip_morph_rect_circle_visual,
         test_filmstrip_morph_nested_visual,
         test_filmstrip_morph_arrows_visual,
+        test_px_stroke_anchors_visual,
     ]
 
     passed = 0

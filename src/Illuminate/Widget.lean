@@ -405,6 +405,8 @@ unsafe def elabDiagramCmd : CommandElab := fun stx => do
           throwErrorAt t "Expected `DiagramWithInfo` or `Diagram SVG` but got `{ret}`"
     Term.synthesizeSyntheticMVarsNoPostponing
     let e ← instantiateMVars e
+    -- Don't evaluate if elaboration produced errors (e.g., type mismatches)
+    if (← Core.getMessageLog).hasErrors then return
     let ty ← instantiateMVars ty
     let gadgets ← extractGadgets ty
     -- Check if the return type is DiagramWithInfo (vs Diagram SVG)

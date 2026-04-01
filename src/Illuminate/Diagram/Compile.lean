@@ -78,8 +78,10 @@ where
           -- Trace-based boundary detection (connectEdge style)
           let srcSub := d.find start.point
           let tgtSub := d.find stop.point
-          let srcCenter := srcSub.origin.toVec2
-          let tgtCenter := tgtSub.origin.toVec2
+          let (srcOrig, srcPxOff) := srcSub.originPx
+          let srcCenter := srcOrig.toVec2 + scale • srcPxOff
+          let (tgtOrig, tgtPxOff) := tgtSub.originPx
+          let tgtCenter := tgtOrig.toVec2 + scale • tgtPxOff
           let defaultDir := (tgtCenter - srcCenter).normalize
           let srcDir := match start.angle with
             | some a => Vec2.mk (Float.cos a) (Float.sin a)
@@ -87,8 +89,8 @@ where
           let tgtDir := match stop.angle with
             | some a => Vec2.mk (Float.cos a) (Float.sin a)
             | none => -defaultDir
-          let srcTrace := srcSub.getStrokeTrace
-          let tgtTrace := tgtSub.getStrokeTrace
+          let srcTrace := Diagram.getStrokeTrace srcSub scale
+          let tgtTrace := Diagram.getStrokeTrace tgtSub scale
           -- Offset arrowhead tips: latex (open) heads need miter protrusion offset;
           -- filled heads (stealth/triangle/circle) have no stroke so need no offset.
           let resolvedW := stroke.width.resolve scale
@@ -114,14 +116,43 @@ where
           (src, tgt, stop')
         else
           -- Anchor-based resolution (connect style)
-          let srcPoint := (d.find start.point).origin
-          let tgtPoint := (d.find stop.point).origin
-          (srcPoint.toVec2 + start.shift, tgtPoint.toVec2 + stop.shift, stop)
+          let (srcOrigin, srcPxOff) := (d.find start.point).originPx
+          let (tgtOrigin, tgtPxOff) := (d.find stop.point).originPx
+          (srcOrigin.toVec2 + scale • srcPxOff + start.shift,
+           tgtOrigin.toVec2 + scale • tgtPxOff + stop.shift, stop)
       let arrowDiagram := ArrowDraw.drawLine src tgt start
         { stop' with arrowhead := stop'.arrowhead } stroke
       let (innerCmds, gi, ci) := go d acc gi ci
       let (arrowCmds, gi, ci) := go arrowDiagram #[] gi ci
       (innerCmds ++ arrowCmds, gi, ci)
+    | .showEnv samples color alpha d =>
+      -- Resolve the envelope polygon at compile time using the known scale
+      let (innerCmds, gi, ci) := go d acc gi ci
+      if let .nonempty env := d.getEnvelope then
+        let n := max samples 8
+        let step := 2 * pi / n.toFloat
+        -- Sample envelope and resolve Length extents with scale
+        let dirs := List.range n |>.map fun i =>
+          let θ := i.toFloat * step
+          let dir : Vec2 := ⟨Float.cos θ, Float.sin θ⟩
+          (dir, (env dir).resolve scale)
+        -- Compute boundary vertices as tangent-line intersections
+        let vertices := dirs.mapIdx fun i (d1, e1) =>
+          let (d2, e2) := match dirs[((i : Nat) + 1) % n]? with
+            | some v => v
+            | none => (d1, e1)
+          let det := d1.x * d2.y - d1.y * d2.x
+          if det.abs < 1e-10 then e1 • d1
+          else ⟨(e1 * d2.y - e2 * d1.y) / det, (d1.x * e2 - d2.x * e1) / det⟩
+        let path := match vertices with
+          | [] => PathData.empty
+          | p :: rest =>
+            let pd := PathData.empty |>.moveTo p
+            (rest.foldl (fun a pt => a.lineTo pt) pd).close
+        let fillColor : Color := { color with a := alpha }
+        let envCmd := DrawCmd.fillPath path (.solid fillColor) none
+        (innerCmds.push envCmd, gi, ci)
+      else (innerCmds, gi, ci)
 
 /--
 Renders a diagram to an SVG string.

@@ -411,8 +411,8 @@ def Diagram.connectEdge {β : Type} [Backend β] (start stop : LineEnd)
     let tgtDir := match stop'.angle with
       | some a => Vec2.mk (Float.cos a) (Float.sin a)
       | none => -defaultDir
-    let srcTrace := srcSub.getStrokeTrace
-    let tgtTrace := tgtSub.getStrokeTrace
+    let srcTrace := Diagram.getStrokeTrace srcSub 0
+    let tgtTrace := Diagram.getStrokeTrace tgtSub 0
     let diagHalf := stroke.width.diag / 2
     let tipOffset (ah? : Option Arrowhead) : Float := match ah? with
       | some ah =>
