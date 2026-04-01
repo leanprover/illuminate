@@ -34,6 +34,28 @@ Hover to see SVG in the InfoView.
       (stroke := { color := .black, width := 1 })
 
 
+def pxStrokeAnchorsDiagram : Diagram SVG :=
+  .vsep 5 <| List.range 5 |>.map fun i =>
+    let C := Lean.Name.num `C i
+    Diagram.circle 10 (stroke := {width := .ofPx (1 + 5 * i.toFloat)})
+      |>.namedWithAnchors C
+      |>.connect {point := C ++ `east, angle := some 0, pull := 1}
+        {point := C ++ `south, angle := some (pi / 2), pull := 1}
+        (stroke := { color := .red})
+
+#diagram pxStrokeAnchorsDiagram
+
+def pxStrokeAnchorsDiagramTraced : Diagram SVG :=
+  .vsep 5 <| List.range 5 |>.map fun i =>
+    let C := Lean.Name.num `C i
+    Diagram.circle 10 (stroke := {width := .ofPx (1 + 5 * i.toFloat)})
+      |>.namedWithAnchors C
+      |>.connectEdge {point := C ++ `east, angle := some 0, pull := 2}
+        {point := C ++ `south, angle := some (3* pi / 2), pull := 2}
+        (stroke := { color := .red}) |>.showEnvelope
+
+#diagram pxStrokeAnchorsDiagramTraced
+
 -- Rounded rectangle
 #diagram Diagram.roundedRect 80 40 8
   (fill := rgb!"#dcebff")
@@ -985,6 +1007,13 @@ def filmstripMorphArrows : Diagram SVG :=
 def testVisual_filmstripMorphArrows : IO Unit :=
   testVisualWrite "filmstrip-morph-arrows.svg" filmstripMorphArrows
 
+def testVisual_pxStrokeAnchors : IO Unit :=
+  testVisualWrite "px-stroke-anchors.svg" pxStrokeAnchorsDiagram (viewBoxPixelWidth := 300)
+
+def testVisual_pxStrokeAnchorsTraced : IO Unit :=
+  testVisualWrite "px-stroke-anchors-traced.svg" pxStrokeAnchorsDiagramTraced
+    (viewBoxPixelWidth := 300)
+
 def visualTests : List (String × IO Unit) := [
   ("Visual/roundedRects", testVisual_roundedRects),
   ("Visual/roundedRects_2_5", testVisual_roundedRects_2_5),
@@ -1015,5 +1044,7 @@ def visualTests : List (String × IO Unit) := [
   ("Visual/filmstripAnimatedClip", testVisual_filmstripAnimatedClip),
   ("Visual/filmstripMorphRectCircle", testVisual_filmstripMorphRectCircle),
   ("Visual/filmstripMorphNested", testVisual_filmstripMorphNested),
-  ("Visual/filmstripMorphArrows", testVisual_filmstripMorphArrows)
+  ("Visual/filmstripMorphArrows", testVisual_filmstripMorphArrows),
+  ("Visual/pxStrokeAnchors", testVisual_pxStrokeAnchors),
+  ("Visual/pxStrokeAnchorsTraced", testVisual_pxStrokeAnchorsTraced)
 ]

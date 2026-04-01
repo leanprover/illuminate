@@ -55,8 +55,10 @@ def assertTransform (d : Diagram Empty) (check : Matrix → IO Unit) (label : St
 
 /-- Renders a diagram to SVG, writes it to a file, and runs basic assertions. -/
 def testVisualWrite (filename : String) (diagram : Illuminate.Diagram SVG)
-    (padding : Float := 15) (checks : List (String × String) := []) : IO Unit := do
+    (padding : Float := 15) (viewBoxPixelWidth : Float := 0)
+    (checks : List (String × String) := []) : IO Unit := do
   let svg := diagram.renderDiagram (padding := padding)
+    (viewBoxPixelWidth := viewBoxPixelWidth)
   IO.FS.writeFile filename svg
   let contents ← IO.FS.readFile filename
   assertContains contents "<svg" "written file has svg"

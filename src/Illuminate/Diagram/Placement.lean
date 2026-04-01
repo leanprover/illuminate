@@ -189,11 +189,12 @@ namespace CorePrimitive
 /--
 Computes the stroke-aware trace of a core primitive.
 Path primitives use {name}`StrokeTrace.ofPathData`. Text and image use bounding-box traces
-with zero stroke width.
+with zero stroke width. The {name}`scale` parameter (diagram-units-per-pixel) resolves
+pixel-valued stroke widths.
 -/
-def toStrokeTrace (cp : CorePrimitive) : StrokeTrace :=
+def toStrokeTrace (cp : CorePrimitive) (scale : Float) : StrokeTrace :=
   match cp with
-  | .path pd _ stroke => StrokeTrace.ofPathData pd.commands stroke.width.diag
+  | .path pd _ stroke => StrokeTrace.ofPathData pd.commands (stroke.width.resolve scale)
   | .text s style =>
     let (hw, hh) := textTraceDims s style
     match style.anchor with
@@ -213,7 +214,7 @@ private def arrowCollectNames {β : Type} [Backend β] (d : Diagram β) (xform :
   match d with
   | .empty | .prim _ => acc
   | .foreign _ d | .tag _ d | .warning _ d | .cellophane _ d | .clip _ d | .arrow _ _ _ _ d
-  | .pxTranslate _ d =>
+  | .pxTranslate _ d | .showEnv _ _ _ d =>
     arrowCollectNames d xform pfx acc
   | .named name d =>
     let pos := Matrix.apply xform ⟨0, 0⟩
@@ -245,27 +246,30 @@ def getTrace (d : Diagram β) : Trace :=
   | .clip _ d => d.getTrace
   | .arrow _ _ _ _ d => d.getTrace
   | .pxTranslate _ d => d.getTrace
+  | .showEnv _ _ _ d => d.getTrace
 
 /-!
 # StrokeTrace extraction
 -/
 
-/-- Computes the stroke-aware trace of a diagram by recursive traversal. -/
-def getStrokeTrace (d : Diagram β) : StrokeTrace :=
+/-- Computes the stroke-aware trace of a diagram by recursive traversal.
+The {name}`scale` parameter (diagram-units-per-pixel) resolves pixel-valued stroke widths. -/
+def getStrokeTrace (d : Diagram β) (scale : Float) : StrokeTrace :=
   match d with
   | .empty => StrokeTrace.empty
-  | .prim cp => cp.toStrokeTrace
-  | .foreign val d => Backend.strokeTrace val d.getStrokeTrace
-  | .tag _ d => d.getStrokeTrace
-  | .named _ d => d.getStrokeTrace
-  | .transform m d => StrokeTrace.transform m d.getStrokeTrace
-  | .compose a b => StrokeTrace.union a.getStrokeTrace b.getStrokeTrace
-  | .withEnv _ d => d.getStrokeTrace
-  | .warning _ d => d.getStrokeTrace
-  | .cellophane _ d => d.getStrokeTrace
-  | .clip _ d => d.getStrokeTrace
-  | .arrow _ _ _ _ d => d.getStrokeTrace
-  | .pxTranslate _ d => d.getStrokeTrace
+  | .prim cp => cp.toStrokeTrace scale
+  | .foreign val d => Backend.strokeTrace val (d.getStrokeTrace scale)
+  | .tag _ d => d.getStrokeTrace scale
+  | .named _ d => d.getStrokeTrace scale
+  | .transform m d => StrokeTrace.transform m (d.getStrokeTrace scale)
+  | .compose a b => StrokeTrace.union (a.getStrokeTrace scale) (b.getStrokeTrace scale)
+  | .withEnv _ d => d.getStrokeTrace scale
+  | .warning _ d => d.getStrokeTrace scale
+  | .cellophane _ d => d.getStrokeTrace scale
+  | .clip _ d => d.getStrokeTrace scale
+  | .arrow _ _ _ _ d => d.getStrokeTrace scale
+  | .pxTranslate _ d => d.getStrokeTrace scale
+  | .showEnv _ _ _ d => d.getStrokeTrace scale
 
 /-!
 # Name resolution
@@ -297,6 +301,7 @@ def collectNames (d : Diagram β) (xform : Matrix) (pfx : Lean.Name)
   | .clip _ d => collectNames d xform pfx acc
   | .arrow _ _ _ _ d => collectNames d xform pfx acc
   | .pxTranslate _ d => collectNames d xform pfx acc
+  | .showEnv _ _ _ d => collectNames d xform pfx acc
 
 /--
 Extracts the named subdiagram from a diagram, wrapped in its accumulated transform.
@@ -304,42 +309,58 @@ Searches hierarchically: for a qualified name like {lean}`` `A.east ``, first ma
 then searches inside for {lit}`east`. Returns {lit}`.warning ... .empty` if the name is not found.
 -/
 def find (target : Lean.Name) (d : Diagram β) : Diagram β :=
-  match go target .anonymous Matrix.identity d with
+  match go target .anonymous Matrix.identity 0 d with
   | some result => result
   | none => .warning s!"missing anchor: {target}" .empty
 where
-  go (target : Lean.Name) (pfx : Lean.Name) (xform : Matrix) : Diagram β → Option (Diagram β)
+  go (target : Lean.Name) (pfx : Lean.Name) (xform : Matrix) (pxOff : Vec2) :
+      Diagram β → Option (Diagram β)
     | .empty => none
     | .prim _ => none
-    | .foreign _ d => go target pfx xform d
-    | .tag _ d => go target pfx xform d
+    | .foreign _ d => go target pfx xform pxOff d
+    | .tag _ d => go target pfx xform pxOff d
     | .named name d =>
       let qualName := match pfx with
         | .anonymous => name
         | _ => pfx ++ name
       if qualName == target then
-        some (.transform xform d)
+        let result := .transform xform d
+        if pxOff.x != 0 || pxOff.y != 0 then some (.pxTranslate pxOff result)
+        else some result
       else
-        go target qualName xform d
-    | .transform m d => go target pfx (Matrix.mul xform m) d
+        go target qualName xform pxOff d
+    | .transform m d => go target pfx (Matrix.mul xform m) pxOff d
     | .compose a b =>
-      match go target pfx xform a with
+      match go target pfx xform pxOff a with
       | some result => some result
-      | none => go target pfx xform b
-    | .withEnv _ d => go target pfx xform d
-    | .warning _ d => go target pfx xform d
-    | .cellophane _ d => go target pfx xform d
-    | .clip _ d => go target pfx xform d
-    | .arrow _ _ _ _ d => go target pfx xform d
-    | .pxTranslate _ d => go target pfx xform d
+      | none => go target pfx xform pxOff b
+    | .withEnv _ d => go target pfx xform pxOff d
+    | .warning _ d => go target pfx xform pxOff d
+    | .cellophane _ d => go target pfx xform pxOff d
+    | .clip _ d => go target pfx xform pxOff d
+    | .arrow _ _ _ _ d => go target pfx xform pxOff d
+    | .pxTranslate off d => go target pfx xform (pxOff + off) d
+    | .showEnv _ _ _ d => go target pfx xform pxOff d
 
-/-- Computes the origin of a diagram (where {lit}`(0,0)` maps to under accumulated transforms). -/
+/-- Computes the origin of a diagram (where {lit}`(0,0)` maps to under accumulated transforms).
+Pixel offsets from {name}`Diagram.pxTranslate` are traversed but not included in the result;
+use {lit}`originPx` to also retrieve accumulated pixel offsets. -/
 def origin (d : Diagram β) : Point :=
   go Matrix.identity d
 where
   go (xform : Matrix) : Diagram β → Point
     | .transform m d => go (Matrix.mul xform m) d
+    | .pxTranslate _ d => go xform d
     | _ => Matrix.applyPoint xform Point.origin
+
+/-- Computes the origin and accumulated pixel offset of a diagram. -/
+def originPx (d : Diagram β) : Point × Vec2 :=
+  go Matrix.identity 0 d
+where
+  go (xform : Matrix) (pxOff : Vec2) : Diagram β → Point × Vec2
+    | .transform m d => go (Matrix.mul xform m) pxOff d
+    | .pxTranslate off d => go xform (pxOff + off) d
+    | _ => (Matrix.applyPoint xform Point.origin, pxOff)
 
 /-!
 # Envelope extraction
@@ -361,13 +382,15 @@ def getEnvelope (d : Diagram β) : Envelope :=
   | .clip _ d => d.getEnvelope
   | .arrow start stop stroke useTrace d =>
     let childEnv := d.getEnvelope
-    let (src, tgt, srcAngle, tgtAngle) :=
+    let (src, tgt, srcAngle, tgtAngle, srcPxOff, tgtPxOff) :=
       if useTrace then
         -- Use the same trace-based edge positions as compile
         let srcSub := d.find start.point
         let tgtSub := d.find stop.point
-        let srcCenter := srcSub.origin.toVec2
-        let tgtCenter := tgtSub.origin.toVec2
+        let (srcOrig, srcPxOff) := srcSub.originPx
+        let srcCenter := srcOrig.toVec2
+        let (tgtOrig, tgtPxOff) := tgtSub.originPx
+        let tgtCenter := tgtOrig.toVec2
         let defaultDir := (tgtCenter - srcCenter).normalize
         let srcDir := match start.angle with
           | some a => Vec2.mk (Float.cos a) (Float.sin a)
@@ -375,8 +398,8 @@ def getEnvelope (d : Diagram β) : Envelope :=
         let tgtDir := match stop.angle with
           | some a => Vec2.mk (Float.cos a) (Float.sin a)
           | none => -defaultDir
-        let srcTrace := srcSub.getStrokeTrace
-        let tgtTrace := tgtSub.getStrokeTrace
+        let srcTrace := Diagram.getStrokeTrace srcSub 0
+        let tgtTrace := Diagram.getStrokeTrace tgtSub 0
         let diagHalf := stroke.width.diag / 2
         let tipOffset (ah? : Option Arrowhead) : Float := match ah? with
           | some ah =>
@@ -398,7 +421,7 @@ def getEnvelope (d : Diagram β) : Envelope :=
         let tgtAngle := match stop.angle with
           | some a => a + pi
           | none => straightAngle + pi
-        (src, tgt, srcAngle, tgtAngle)
+        (src, tgt, srcAngle, tgtAngle, srcPxOff, tgtPxOff)
       else
         let names := arrowCollectNames d Matrix.identity .anonymous []
         let resolve (n : Lean.Name) : Vec2 :=
@@ -408,7 +431,8 @@ def getEnvelope (d : Diagram β) : Envelope :=
         let src := resolve start.point + start.shift
         let tgt := resolve stop.point + stop.shift
         let straightAngle := Float.atan2 (tgt.y - src.y) (tgt.x - src.x)
-        (src, tgt, start.angle.getD straightAngle, stop.angle.getD straightAngle)
+        (src, tgt, start.angle.getD straightAngle, stop.angle.getD straightAngle,
+         (0 : Vec2), (0 : Vec2))
     let dist := (tgt - src).length
     let srcDir : Vec2 := ⟨Float.cos srcAngle, Float.sin srcAngle⟩
     let tgtDir : Vec2 := ⟨Float.cos tgtAngle, Float.sin tgtAngle⟩
@@ -483,12 +507,19 @@ def getEnvelope (d : Diagram β) : Envelope :=
     let halfPx := stroke.width.px / 2
     let halfDiag := sw / 2
     let arrowEnv := Envelope.ofVertices curvePoints
+    -- Px offsets shift endpoints; pull factors amplify this through control
+    -- points. Project each anchor's px offset onto the query direction and
+    -- scale by (1 + pull) for a conservative per-direction bound.
+    let pullAmp := 1 + max start.pull stop.pull
     let paddedEnv := match arrowEnv with
       | .empty => .empty
       | .nonempty f => .nonempty fun v =>
-        ⟨(f v).diag + halfDiag, (f v).px + halfPx⟩
+        let srcPx := max 0 (srcPxOff.dot v) * pullAmp
+        let tgtPx := max 0 (tgtPxOff.dot v) * pullAmp
+        ⟨(f v).diag + halfDiag, (f v).px + halfPx + max srcPx tgtPx⟩
     Envelope.union childEnv paddedEnv
   | .pxTranslate _ d => d.getEnvelope
+  | .showEnv _ _ _ d => d.getEnvelope
 
 /-- Names a diagram and adds cardinal anchors derived from its envelope. -/
 def namedWithAnchors (n : Lean.Name) (d : Diagram β) : Diagram β :=
@@ -497,15 +528,19 @@ def namedWithAnchors (n : Lean.Name) (d : Diagram β) : Diagram β :=
   | .nonempty env =>
     -- Envelope values are always positive extents from the origin.
     -- West and south anchors are negated to place them in negative x/y.
-    let e := (env Vec2.east).diag
-    let w := (env Vec2.west).diag
-    let no := (env Vec2.north).diag
-    let s := (env Vec2.south).diag
+    let e := env Vec2.east
+    let w := env Vec2.west
+    let no := env Vec2.north
+    let s := env Vec2.south
     withNameAndAnchors d n [
-      (`north, ⟨0, no⟩), (`south, ⟨0, -s⟩),
-      (`east, ⟨e, 0⟩), (`west, ⟨-w, 0⟩),
-      (`northeast, ⟨e, no⟩), (`northwest, ⟨-w, no⟩),
-      (`southeast, ⟨e, -s⟩), (`southwest, ⟨-w, -s⟩)
+      { name := `north, offset := ⟨0, no.diag⟩, pixelOffset := ⟨0, no.px⟩ },
+      { name := `south, offset := ⟨0, -s.diag⟩, pixelOffset := ⟨0, -s.px⟩ },
+      { name := `east, offset := ⟨e.diag, 0⟩, pixelOffset := ⟨e.px, 0⟩ },
+      { name := `west, offset := ⟨-w.diag, 0⟩, pixelOffset := ⟨-w.px, 0⟩ },
+      { name := `northeast, offset := ⟨e.diag, no.diag⟩, pixelOffset := ⟨e.px, no.px⟩ },
+      { name := `northwest, offset := ⟨-w.diag, no.diag⟩, pixelOffset := ⟨-w.px, no.px⟩ },
+      { name := `southeast, offset := ⟨e.diag, -s.diag⟩, pixelOffset := ⟨e.px, -s.px⟩ },
+      { name := `southwest, offset := ⟨-w.diag, -s.diag⟩, pixelOffset := ⟨-w.px, -s.px⟩ }
     ]
 
 /-- Computes the total width of a diagram from its envelope. -/
@@ -886,48 +921,13 @@ def filledFrame (d : Diagram β) (fill : Fill := default) (stroke : Stroke := {}
 
 /--
 Overlays a translucent polygon showing the diagram's envelope boundary.
-Samples the envelope at {name}`samples` evenly-spaced directions to build the polygon.
-Useful for debugging layout and envelope behavior.
+The polygon is resolved at compile time when the diagram-units-per-pixel scale is known,
+so pixel-valued envelope extents are rendered correctly at any display size.
 -/
 def showEnvelope (d : Diagram β) (samples : Nat := 64)
     (color : Color := { r := 255, g := 153, b := 153 })
     (alpha : Float := 0.2) : Diagram β :=
-  if let .nonempty env := d.getEnvelope then
-    let n := max samples 8
-    let step := 2 * pi / n.toFloat
-    -- Sample envelope directions and extents
-    let dirs := List.range n |>.map fun i =>
-      let θ := i.toFloat * step
-      let dir : Vec2 := ⟨Float.cos θ, Float.sin θ⟩
-      (dir, (env dir).diag)
-    -- Compute boundary vertices as intersections of adjacent tangent lines.
-    -- Each tangent line is { p | p · dᵢ = eᵢ }. The intersection of adjacent
-    -- lines p · d₁ = e₁ and p · d₂ = e₂ gives a vertex of the convex shape.
-    let vertices := dirs.mapIdx fun i (d1, e1) =>
-      let (d2, e2) := match dirs[((i : Nat) + 1) % n]? with
-        | some v => v
-        | none => (d1, e1)
-      -- Solve: d1.x * x + d1.y * y = e1, d2.x * x + d2.y * y = e2
-      let det := d1.x * d2.y - d1.y * d2.x
-      if det.abs < 1e-10 then
-        -- Nearly parallel: fall back to polar point
-        e1 • d1
-      else
-        ⟨(e1 * d2.y - e2 * d1.y) / det, (d1.x * e2 - d2.x * e1) / det⟩
-    -- Build a closed polygon path
-    let path := match vertices with
-      | [] => PathData.empty
-      | p :: rest =>
-        let pd := PathData.empty |>.moveTo p
-        let pd := rest.foldl (fun acc pt => acc.lineTo pt) pd
-        pd.close
-    let fillColor : Color := { color with a := alpha }
-    let overlay : Diagram β := fromPath path
-      (fill := .solid fillColor)
-      (stroke := { width := (0 : Float) })
-    Diagram.compose d overlay
-  else
-    d.warning "Attempted to show empty envelope"
+  .showEnv samples color alpha d
 /--
 Overlays a small red X at the origin of the diagram's coordinate system.
 Useful for debugging layout and positioning.

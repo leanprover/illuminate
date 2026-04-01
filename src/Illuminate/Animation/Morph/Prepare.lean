@@ -62,7 +62,7 @@ where
     | .named name inner, acc => go inner (name :: acc)
     | .transform _ d, acc | .cellophane _ d, acc | .clip _ d, acc
     | .withEnv _ d, acc | .warning _ d, acc | .tag _ d, acc
-    | .foreign _ d, acc | .pxTranslate _ d, acc => go d acc
+    | .foreign _ d, acc | .pxTranslate _ d, acc | .showEnv _ _ _ d, acc => go d acc
     -- Do not recurse into arrow children; their names are handled by
     -- the recursive prepareMorph in matchSkeletons.
     | .arrow _ _ _ _ _, acc => acc
@@ -81,7 +81,7 @@ where
     | .transform m d => go (Matrix.mul xform m) d
     | .compose a b => (go xform a).orElse fun _ => go xform b
     | .withEnv _ d | .warning _ d | .cellophane _ d | .clip _ d
-    | .tag _ d | .foreign _ d | .pxTranslate _ d => go xform d
+    | .tag _ d | .foreign _ d | .pxTranslate _ d | .showEnv _ _ _ d => go xform d
     -- Do not recurse into arrow children (names handled by matchSkeletons).
     | .arrow _ _ _ _ _ => none
     | _ => none
@@ -109,6 +109,7 @@ private def toSkeleton {β : Type} (d : Diagram β) (matched : Std.HashSet Lean.
   | .foreign _ inner => toSkeleton inner matched
   | .pxTranslate _ inner => toSkeleton inner matched
   | .tag _ inner => toSkeleton inner matched
+  | .showEnv _ _ _ inner => toSkeleton inner matched
 
 /-!
 # Skeleton structural matching
