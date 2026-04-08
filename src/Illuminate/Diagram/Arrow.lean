@@ -104,7 +104,8 @@ def drawArrowhead (ah : Arrowhead) (tip dir : Vec2) (stroke : Stroke) :
       |>.lineTo notch
       |>.lineTo (tip + headLen • rd)
       |>.close
-    (Diagram.fromPath path (fill := .solid stroke.color) (stroke := stroke), headLen * 0.5)
+    let noStroke : Stroke := { width := 0 }
+    (Diagram.fromPath path (fill := .solid stroke.color) (stroke := noStroke), headLen * 0.5)
   | .triangle =>
     let cosA := Float.cos halfAngle
     let sinA := Float.sin halfAngle
@@ -115,12 +116,14 @@ def drawArrowhead (ah : Arrowhead) (tip dir : Vec2) (stroke : Stroke) :
       |>.lineTo (tip + headLen • ld)
       |>.lineTo (tip + headLen • rd)
       |>.close
-    (Diagram.fromPath path (fill := .solid stroke.color) (stroke := stroke), headLen * cosA)
+    let noStroke : Stroke := { width := 0 }
+    (Diagram.fromPath path (fill := .solid stroke.color) (stroke := noStroke), headLen * cosA)
   | .circle =>
     let r := headLen * 0.4
     let center := tip - r • n
+    let noStroke : Stroke := { width := 0 }
     let d := Diagram.transform (Matrix.translate center.x center.y)
-      (Diagram.circle r (fill := .solid stroke.color) (stroke := stroke))
+      (Diagram.circle r (fill := .solid stroke.color) (stroke := noStroke))
     (d, r * 2)
 
 /-!
@@ -410,11 +413,21 @@ def Diagram.connectEdge {β : Type} [Backend β] (start stop : LineEnd)
       | none => -defaultDir
     let srcTrace := srcSub.getStrokeTrace
     let tgtTrace := tgtSub.getStrokeTrace
+    let diagHalf := stroke.width / 2
+    let tipOffset (ah? : Option Arrowhead) : Float := match ah? with
+      | some ah =>
+        match ah.type with
+        | .latex =>
+          let halfAngle := 0.4 * ah.width
+          if halfAngle > 0.01 then stroke.width / (2 * Float.sin halfAngle)
+          else diagHalf
+        | _ => diagHalf
+      | none => 0
     let src := match srcTrace.closest (Point.ofVec2 srcCenter) srcDir with
-      | some hit => srcCenter + (hit.edge + hit.width) • srcDir + start.shift
+      | some hit => srcCenter + (hit.edge + hit.width + tipOffset start.arrowhead) • srcDir + start.shift
       | none => srcCenter + start.shift
     let tgt := match tgtTrace.closest (Point.ofVec2 tgtCenter) tgtDir with
-      | some hit => tgtCenter + (hit.edge + hit.width) • tgtDir + stop'.shift
+      | some hit => tgtCenter + (hit.edge + hit.width + tipOffset stop'.arrowhead) • tgtDir + stop'.shift
       | none => tgtCenter + stop'.shift
     let stop'' := match stop'.angle with
       | some a => { stop' with angle := some (a + pi) }

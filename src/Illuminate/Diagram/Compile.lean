@@ -82,11 +82,22 @@ where
             | none => -defaultDir
           let srcTrace := srcSub.getStrokeTrace
           let tgtTrace := tgtSub.getStrokeTrace
+          -- Offset arrowhead tips: latex (open) heads need miter protrusion offset;
+          -- filled heads (stealth/triangle/circle) have no stroke so need no offset.
+          let tipOffset (ah? : Option Arrowhead) : Float := match ah? with
+            | some ah =>
+              match ah.type with
+              | .latex =>
+                let halfAngle := 0.4 * ah.width
+                if halfAngle > 0.01 then stroke.width / (2 * Float.sin halfAngle)
+                else stroke.width / 2
+              | _ => 0
+            | none => 0
           let src := match srcTrace.closest (Point.ofVec2 srcCenter) srcDir with
-            | some hit => srcCenter + (hit.edge + hit.width) • srcDir + start.shift
+            | some hit => srcCenter + (hit.edge + hit.width + tipOffset start.arrowhead) • srcDir + start.shift
             | none => srcCenter + start.shift
           let tgt := match tgtTrace.closest (Point.ofVec2 tgtCenter) tgtDir with
-            | some hit => tgtCenter + (hit.edge + hit.width) • tgtDir + stop.shift
+            | some hit => tgtCenter + (hit.edge + hit.width + tipOffset stop.arrowhead) • tgtDir + stop.shift
             | none => tgtCenter + stop.shift
           -- Flip stop angle for arrival tangent (outward → inward)
           let stop' := match stop.angle with
@@ -103,6 +114,31 @@ where
       let (innerCmds, gi, ci) := go d acc gi ci
       let (arrowCmds, gi, ci) := go arrowDiagram #[] gi ci
       (innerCmds ++ arrowCmds, gi, ci)
+    | .showEnv samples color alpha d =>
+      let (innerCmds, gi, ci) := go d acc gi ci
+      if let .nonempty env := d.getEnvelope then
+        let n := max samples 8
+        let step := 2 * pi / n.toFloat
+        let dirs := List.range n |>.map fun i =>
+          let θ := i.toFloat * step
+          let dir : Vec2 := ⟨Float.cos θ, Float.sin θ⟩
+          (dir, env dir)
+        let vertices := dirs.mapIdx fun i (d1, e1) =>
+          let (d2, e2) := match dirs[((i : Nat) + 1) % n]? with
+            | some v => v
+            | none => (d1, e1)
+          let det := d1.x * d2.y - d1.y * d2.x
+          if det.abs < 1e-10 then e1 • d1
+          else ⟨(e1 * d2.y - e2 * d1.y) / det, (d1.x * e2 - d2.x * e1) / det⟩
+        let path := match vertices with
+          | [] => PathData.empty
+          | p :: rest =>
+            let pd := PathData.empty |>.moveTo p
+            (rest.foldl (fun a pt => a.lineTo pt) pd).close
+        let fillColor : Color := { color with a := alpha }
+        let envCmd := DrawCmd.fillPath path (.solid fillColor) none
+        (innerCmds.push envCmd, gi, ci)
+      else (innerCmds, gi, ci)
 
 /-- Renders a diagram to an SVG string. -/
 def renderDiagram [BackendRender β] [Hashable β] (d : Diagram β) (padding : Float := 2) : String :=

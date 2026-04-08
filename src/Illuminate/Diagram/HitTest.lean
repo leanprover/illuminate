@@ -142,3 +142,4 @@ def hitTest (d : Diagram β) (p : Point) : Click :=
   | .clip pd d =>
     if pd.contains p then hitTest d p else .nothing
   | .arrow _ _ _ _ d => hitTest d p
+  | .showEnv _ _ _ d => hitTest d p

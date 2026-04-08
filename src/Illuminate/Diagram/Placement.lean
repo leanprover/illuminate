@@ -93,7 +93,7 @@ Real text sizes require the monadic measurement pass and are not available here.
 -/
 def toEnvelope (cp : CorePrimitive) : Envelope :=
   match cp with
-  | .path pd _ _ =>
+  | .path pd _ stroke =>
     let pts := pd.commands.foldl (init := ([], Vec2.mk 0 0)) fun (acc, cur) cmd =>
       match cmd with
       | .moveTo p => (p :: acc, p)
@@ -101,7 +101,11 @@ def toEnvelope (cp : CorePrimitive) : Envelope :=
       | .curveTo c1 c2 ep => (PathData.bezierExtrema cur c1 c2 ep ++ acc, ep)
       | .arcTo rx ry rot largeArc sweep ep => (arcExtrema cur rx ry rot largeArc sweep ep ++ acc, ep)
       | .closePath => (acc, cur)
-    Envelope.ofVertices pts.1
+    let geom := Envelope.ofVertices pts.1
+    let halfStroke := stroke.width / 2
+    if halfStroke == 0 then geom
+    else geom.modify fun env v =>
+      env v + halfStroke
   | .text s style =>
     let fontSize := style.fontSize
     let anchor := style.anchor
@@ -206,7 +210,8 @@ private def arrowCollectNames {β : Type} [Backend β] (d : Diagram β) (xform :
     (pfx : Lean.Name) (acc : List (Lean.Name × Vec2)) : List (Lean.Name × Vec2) :=
   match d with
   | .empty | .prim _ => acc
-  | .foreign _ d | .tag _ d | .warning _ d | .cellophane _ d | .clip _ d | .arrow _ _ _ _ d =>
+  | .foreign _ d | .tag _ d | .warning _ d | .cellophane _ d | .clip _ d
+  | .arrow _ _ _ _ d | .showEnv _ _ _ d =>
     arrowCollectNames d xform pfx acc
   | .named name d =>
     let pos := Matrix.apply xform ⟨0, 0⟩
@@ -237,6 +242,7 @@ def getTrace (d : Diagram β) : Trace :=
   | .cellophane _ d => d.getTrace
   | .clip _ d => d.getTrace
   | .arrow _ _ _ _ d => d.getTrace
+  | .showEnv _ _ _ d => d.getTrace
 
 /-!
 # StrokeTrace extraction
@@ -257,6 +263,7 @@ def getStrokeTrace (d : Diagram β) : StrokeTrace :=
   | .cellophane _ d => d.getStrokeTrace
   | .clip _ d => d.getStrokeTrace
   | .arrow _ _ _ _ d => d.getStrokeTrace
+  | .showEnv _ _ _ d => d.getStrokeTrace
 
 /-!
 # Name resolution
@@ -287,6 +294,7 @@ def collectNames (d : Diagram β) (xform : Matrix) (pfx : Lean.Name)
   | .cellophane _ d => collectNames d xform pfx acc
   | .clip _ d => collectNames d xform pfx acc
   | .arrow _ _ _ _ d => collectNames d xform pfx acc
+  | .showEnv _ _ _ d => collectNames d xform pfx acc
 
 /--
 Extracts the named subdiagram from a diagram, wrapped in its accumulated transform.
@@ -321,6 +329,7 @@ where
     | .cellophane _ d => go target pfx xform d
     | .clip _ d => go target pfx xform d
     | .arrow _ _ _ _ d => go target pfx xform d
+    | .showEnv _ _ _ d => go target pfx xform d
 
 /-- Computes the origin of a diagram (where {lit}`(0,0)` maps to under accumulated transforms). -/
 def origin (d : Diagram β) : Point :=
@@ -366,11 +375,21 @@ def getEnvelope (d : Diagram β) : Envelope :=
           | none => -defaultDir
         let srcTrace := srcSub.getStrokeTrace
         let tgtTrace := tgtSub.getStrokeTrace
+        let diagHalf := stroke.width / 2
+        let tipOffset (ah? : Option Arrowhead) : Float := match ah? with
+          | some ah =>
+            match ah.type with
+            | .latex =>
+              let halfAngle := 0.4 * ah.width
+              if halfAngle > 0.01 then stroke.width / (2 * Float.sin halfAngle)
+              else diagHalf
+            | _ => diagHalf
+          | none => 0
         let src := match srcTrace.closest (Point.ofVec2 srcCenter) srcDir with
-          | some hit => srcCenter + (hit.edge + hit.width) • srcDir + start.shift
+          | some hit => srcCenter + (hit.edge + hit.width + tipOffset start.arrowhead) • srcDir + start.shift
           | none => srcCenter + start.shift
         let tgt := match tgtTrace.closest (Point.ofVec2 tgtCenter) tgtDir with
-          | some hit => tgtCenter + (hit.edge + hit.width) • tgtDir + stop.shift
+          | some hit => tgtCenter + (hit.edge + hit.width + tipOffset stop.arrowhead) • tgtDir + stop.shift
           | none => tgtCenter + stop.shift
         let straightAngle := Float.atan2 (tgt.y - src.y) (tgt.x - src.x)
         let srcAngle := start.angle.getD straightAngle
@@ -393,23 +412,79 @@ def getEnvelope (d : Diagram β) : Envelope :=
     let tgtDir : Vec2 := ⟨Float.cos tgtAngle, Float.sin tgtAngle⟩
     let c1 := src + (start.pull * dist) • srcDir
     let c2 := tgt - (stop.pull * dist) • tgtDir
-    -- Sample the Bézier curve to capture extent in all directions.
+    -- Mirror ArrowDraw.drawLine: the rendered shaft is shortened for arrowheads,
+    -- with recomputed control points. Sample the SAME curve the renderer draws.
+    let sampleAt (p0 cp1 cp2 p3 : Vec2) (t : Float) : Vec2 :=
+      let u := 1 - t
+      (u*u*u) • p0 + (3*u*u*t) • cp1 + (3*u*t*t) • cp2 + (t*t*t) • p3
+    let sw := stroke.width
+    let srcVisualDir := match start.arrowhead with
+      | some ah =>
+        let headLen := 8.0 * ah.length
+        let δ := if dist > 0.001 then min 0.15 (headLen / dist) else 0.1
+        (src - sampleAt src c1 c2 tgt δ).normalize
+      | none => Vec2.zero
+    let tgtVisualDir := match stop.arrowhead with
+      | some ah =>
+        let headLen := 8.0 * ah.length
+        let δ := if dist > 0.001 then min 0.15 (headLen / dist) else 0.1
+        (tgt - sampleAt src c1 c2 tgt (1 - δ)).normalize
+      | none => Vec2.zero
+    -- Inline arrowheadShorten logic (can't import Arrow from Placement)
+    let ahShorten (ah : Arrowhead) : Float :=
+      let headLen := 8.0 * ah.length
+      let headAngle := 0.4 * ah.width
+      match ah.type with
+      | .latex => 0
+      | .stealth => headLen * 0.5
+      | .triangle => headLen * Float.cos headAngle
+      | .circle => headLen * 0.4 * 2
+    let srcShorten := match start.arrowhead with
+      | some ah => ahShorten ah
+      | none => 0.0
+    let tgtShorten := match stop.arrowhead with
+      | some ah => ahShorten ah
+      | none => 0.0
+    let shaftSrc := src - srcShorten • srcVisualDir
+    let shaftTgt := tgt - tgtShorten • tgtVisualDir
+    let sDist := (shaftTgt - shaftSrc).length
+    let sc1 := shaftSrc + (start.pull * sDist) • srcDir
+    let sc2 := shaftTgt - (stop.pull * sDist) • tgtDir
+    -- Compute arrowhead corner vertices (the outer extremes of the arrowhead shape)
+    let ahCorners (ah : Arrowhead) (tip n : Vec2) : List Vec2 :=
+      let headLen := 8.0 * ah.length
+      let halfAngle := 0.4 * ah.width
+      let cosA := Float.cos halfAngle
+      let sinA := Float.sin halfAngle
+      let ld : Vec2 := ⟨-(n.x * cosA - n.y * sinA), -(n.y * cosA + n.x * sinA)⟩
+      let rd : Vec2 := ⟨-(n.x * cosA + n.y * sinA), -(n.y * cosA - n.x * sinA)⟩
+      match ah.type with
+      | .circle =>
+        let r := headLen * 0.4
+        let center := tip - r • n
+        [center + ⟨r, 0⟩, center - ⟨r, 0⟩, center + ⟨0, r⟩, center - ⟨0, r⟩]
+      | _ => [tip + headLen • ld, tip + headLen • rd]
+    let srcAhPts := match start.arrowhead with
+      | some ah => ahCorners ah src srcVisualDir
+      | none => []
+    let tgtAhPts := match stop.arrowhead with
+      | some ah => ahCorners ah tgt tgtVisualDir
+      | none => []
+    -- Sample the shortened Bézier + arrowhead corner positions
     let sampleBezier (n : Nat) : List Vec2 := Id.run do
-      let mut pts : List Vec2 := [src, tgt]
+      let mut pts : List Vec2 := [src, tgt, shaftSrc, shaftTgt] ++ srcAhPts ++ tgtAhPts
       for i in List.range (n - 1) do
-        let u := (i + 1).toFloat / n.toFloat
-        let u2 := u * u; let u3 := u2 * u
-        let v := 1 - u; let v2 := v * v; let v3 := v2 * v
-        pts := ⟨v3*src.x + 3*v2*u*c1.x + 3*v*u2*c2.x + u3*tgt.x,
-                v3*src.y + 3*v2*u*c1.y + 3*v*u2*c2.y + u3*tgt.y⟩ :: pts
+        let t := (i + 1).toFloat / n.toFloat
+        pts := sampleAt shaftSrc sc1 sc2 shaftTgt t :: pts
       pts
     let curvePoints := sampleBezier 16
-    let sw := stroke.width / 2
+    let halfStroke := sw / 2
     let arrowEnv := Envelope.ofVertices curvePoints
     let paddedEnv := match arrowEnv with
       | .empty => .empty
-      | .nonempty f => .nonempty fun v => f v + sw
+      | .nonempty f => .nonempty fun v => f v + halfStroke
     Envelope.union childEnv paddedEnv
+  | .showEnv _ _ _ d => d.getEnvelope
 
 /-- Names a diagram and adds cardinal anchors derived from its envelope. -/
 def namedWithAnchors (n : Lean.Name) (d : Diagram β) : Diagram β :=
@@ -423,10 +498,14 @@ def namedWithAnchors (n : Lean.Name) (d : Diagram β) : Diagram β :=
     let no := env Vec2.north
     let s := env Vec2.south
     withNameAndAnchors d n [
-      (`north, ⟨0, no⟩), (`south, ⟨0, -s⟩),
-      (`east, ⟨e, 0⟩), (`west, ⟨-w, 0⟩),
-      (`northeast, ⟨e, no⟩), (`northwest, ⟨-w, no⟩),
-      (`southeast, ⟨e, -s⟩), (`southwest, ⟨-w, -s⟩)
+      { name := `north, offset := ⟨0, no⟩ },
+      { name := `south, offset := ⟨0, -s⟩ },
+      { name := `east, offset := ⟨e, 0⟩ },
+      { name := `west, offset := ⟨-w, 0⟩ },
+      { name := `northeast, offset := ⟨e, no⟩ },
+      { name := `northwest, offset := ⟨-w, no⟩ },
+      { name := `southeast, offset := ⟨e, -s⟩ },
+      { name := `southwest, offset := ⟨-w, -s⟩ }
     ]
 
 /-- Computes the total width of a diagram from its envelope. -/
@@ -810,42 +889,7 @@ Useful for debugging layout and envelope behavior.
 def showEnvelope (d : Diagram β) (samples : Nat := 64)
     (color : Color := { r := 255, g := 153, b := 153 })
     (alpha : Float := 0.2) : Diagram β :=
-  if let .nonempty env := d.getEnvelope then
-    let n := max samples 8
-    let step := 2 * pi / n.toFloat
-    -- Sample envelope directions and extents
-    let dirs := List.range n |>.map fun i =>
-      let θ := i.toFloat * step
-      let dir : Vec2 := ⟨Float.cos θ, Float.sin θ⟩
-      (dir, env dir)
-    -- Compute boundary vertices as intersections of adjacent tangent lines.
-    -- Each tangent line is { p | p · dᵢ = eᵢ }. The intersection of adjacent
-    -- lines p · d₁ = e₁ and p · d₂ = e₂ gives a vertex of the convex shape.
-    let vertices := dirs.mapIdx fun i (d1, e1) =>
-      let (d2, e2) := match dirs[((i : Nat) + 1) % n]? with
-        | some v => v
-        | none => (d1, e1)
-      -- Solve: d1.x * x + d1.y * y = e1, d2.x * x + d2.y * y = e2
-      let det := d1.x * d2.y - d1.y * d2.x
-      if det.abs < 1e-10 then
-        -- Nearly parallel: fall back to polar point
-        e1 • d1
-      else
-        ⟨(e1 * d2.y - e2 * d1.y) / det, (d1.x * e2 - d2.x * e1) / det⟩
-    -- Build a closed polygon path
-    let path := match vertices with
-      | [] => PathData.empty
-      | p :: rest =>
-        let pd := PathData.empty |>.moveTo p
-        let pd := rest.foldl (fun acc pt => acc.lineTo pt) pd
-        pd.close
-    let fillColor : Color := { color with a := alpha }
-    let overlay : Diagram β := fromPath path
-      (fill := .solid fillColor)
-      (stroke := { width := (0 : Float) })
-    Diagram.compose d overlay
-  else
-    d.warning "Attempted to show empty envelope"
+  .showEnv samples color alpha d
 /--
 Overlays a small red X at the origin of the diagram's coordinate system.
 Useful for debugging layout and positioning.

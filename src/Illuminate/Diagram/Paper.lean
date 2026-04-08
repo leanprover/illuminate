@@ -71,10 +71,14 @@ def paper (label : Option (Diagram β) := none)
     | none => sheet
     | some n =>
       withNameAndAnchors sheet n [
-        (`north, ⟨0, hh⟩), (`south, ⟨0, -hh⟩),
-        (`east, ⟨hw, 0⟩), (`west, ⟨-hw, 0⟩),
-        (`northeast, ⟨hw - fold, hh⟩), (`northwest, ⟨-hw, hh⟩),
-        (`southeast, ⟨hw, -hh⟩), (`southwest, ⟨-hw, -hh⟩)
+        { name := `north, offset := ⟨0, hh⟩ },
+        { name := `south, offset := ⟨0, -hh⟩ },
+        { name := `east, offset := ⟨hw, 0⟩ },
+        { name := `west, offset := ⟨-hw, 0⟩ },
+        { name := `northeast, offset := ⟨hw - fold, hh⟩ },
+        { name := `northwest, offset := ⟨-hw, hh⟩ },
+        { name := `southeast, offset := ⟨hw, -hh⟩ },
+        { name := `southwest, offset := ⟨-hw, -hh⟩ }
       ]
   if warn then
     .warning s!"paper: cornerFold={cornerFold} is outside 0–1, clamped to {cf}" result

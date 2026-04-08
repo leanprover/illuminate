@@ -28,7 +28,7 @@ def testLayout_namedAnchors : IO Unit := do
 def testLayout_envelopeIn : IO Unit := do
   let d : Diagram SVG := .named `box (Diagram.rect 6 4)
   let env := (d.find `box).getEnvelope
-  assertApproxEq (env[Vec2.east]) 3 "envelope east" (tol := 0.01)
+  assertApproxEq (env[Vec2.east]) 3.5 "envelope east" (tol := 0.01)
 
 def testLayout_deterministic : IO Unit := do
   let d : Diagram SVG := .compose
