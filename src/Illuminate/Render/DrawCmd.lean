@@ -5,9 +5,9 @@ Author: David Thrane Christiansen
 -/
 module
 public import Illuminate.Geometry.PathData
-public import Illuminate.Style.Color
 public import Illuminate.Style.Stroke
 public import Illuminate.Style.Text
+import Lean.DocString.Syntax
 public section
 
 

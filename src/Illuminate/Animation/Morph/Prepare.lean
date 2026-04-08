@@ -4,12 +4,11 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Author: David Thrane Christiansen
 -/
 module
-import Std.Data.HashSet
 public import Illuminate.Diagram.Placement
-public import Illuminate.Diagram.Basic
 public import Illuminate.Animation.Morph.Types
-import Illuminate.Animation.Morph.CubicSeg
 import Illuminate.Animation.Morph.Style
+public import Std.Data.HashSet.Basic
+import Lean.DocString.Syntax
 public section
 
 

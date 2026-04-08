@@ -4,13 +4,11 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Author: David Thrane Christiansen
 -/
 module
-import Lean
 public import Illuminate.Animation.Animate
-import Illuminate.Animation.Compile
+public import Illuminate.Animation.Compile -- shake: keep
 public meta import Illuminate.Animation.Render
-public import Illuminate.Animation.Types
 public import Illuminate.Widget
-import Illuminate.Backend.SVG
+import Illuminate.Animation.Render
 public section
 
 
@@ -59,7 +57,7 @@ meta unsafe def elabAnimateCmd : CommandElab := fun stx => do
     let fps : Nat := if fpsOpt.isNone then 60
       else fpsOpt[0][2].isNatLit?.getD 60
     let fpsLit := Syntax.mkNumLit (toString fps)
-    let callStx ← `(compileAnimation $stepsStx $renderStx (fps := $fpsLit))
+    let callStx ← ``(compileAnimation $stepsStx $renderStx (fps := $fpsLit))
     let e ← Term.elabTerm callStx (some compiledAnimTy)
     Term.synthesizeSyntheticMVarsNoPostponing
     let e ← instantiateMVars e

@@ -4,8 +4,8 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Author: David Thrane Christiansen
 -/
 module
-public import Illuminate.Geometry.Basic
 public import Illuminate.Geometry.Vec2
+import Illuminate.Geometry.Basic
 public section
 
 namespace Illuminate

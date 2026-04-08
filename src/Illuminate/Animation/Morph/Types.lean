@@ -6,6 +6,7 @@ Author: David Thrane Christiansen
 module
 public import Illuminate.Diagram.Basic
 public import Illuminate.Animation.Morph.CubicSeg
+import Lean.DocString.Syntax
 public section
 
 

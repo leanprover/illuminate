@@ -4,8 +4,8 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Author: David Thrane Christiansen
 -/
 module
-public import Illuminate.Geometry.Vec2
 public import Illuminate.Style.Color
+import Lean.DocString.Syntax
 public section
 
 

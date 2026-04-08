@@ -6,6 +6,7 @@ Author: David Thrane Christiansen
 module
 public import Illuminate.Diagram.Basic
 import Illuminate.Animation.Interpolate
+import Lean.DocString.Syntax
 public section
 
 

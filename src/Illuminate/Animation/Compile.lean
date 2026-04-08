@@ -4,12 +4,11 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Author: David Thrane Christiansen
 -/
 module
-import Std.Data.HashSet
 public import Illuminate.Animation.Types
 import Illuminate.Animation.Animate
-import Illuminate.Diagram
-public import Illuminate.Diagram.Basic
 public import Illuminate.Backend.SVG
+import Illuminate.Diagram.Compile
+import Lean.DocString.Syntax
 public section
 
 

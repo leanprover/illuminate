@@ -4,11 +4,9 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Author: David Thrane Christiansen
 -/
 module
-import Illuminate.Geometry
-import Illuminate.Style
-public import Illuminate.Style.Color
-import Illuminate.Diagram
 public import Illuminate.Diagram.Basic
+import Illuminate.Diagram.Arrow
+import Lean.DocString.Syntax
 public section
 
 

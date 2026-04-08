@@ -5,6 +5,7 @@ Author: David Thrane Christiansen
 -/
 module
 public import Illuminate.Style.Color
+import Lean.DocString.Syntax
 public section
 
 namespace Illuminate

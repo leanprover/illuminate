@@ -4,15 +4,12 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Author: David Thrane Christiansen
 -/
 module
-public import Lean.Server.Requests
 public import Lean.Server.Rpc.RequestHandling
-public meta import Lean.Meta.Eval
 public meta import Lean.Widget.UserWidget
-public import Std.Data.HashMap
-import Illuminate.Diagram
-public import Illuminate.Diagram.Basic
 public import Illuminate.Diagram.HitTest
 public import Illuminate.Backend.SVG
+meta import Illuminate.Diagram.HitTest
+import Illuminate.Diagram.Validate
 public section
 
 

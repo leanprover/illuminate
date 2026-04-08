@@ -4,10 +4,9 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Author: David Thrane Christiansen
 -/
 module
-public meta import Lean.Elab.Term
-import Illuminate.Geometry.Basic
-public import Illuminate.Geometry.Vec2
 public import Illuminate.Geometry.Envelope
+public meta import Lean.Elab.Term.TermElabM
+import Lean.DocString.Syntax
 public section
 
 namespace Illuminate

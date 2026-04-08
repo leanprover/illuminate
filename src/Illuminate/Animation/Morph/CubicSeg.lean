@@ -5,7 +5,6 @@ Author: David Thrane Christiansen
 -/
 module
 import Illuminate.Geometry.Basic
-public import Illuminate.Geometry.Vec2
 public import Illuminate.Geometry.PathData
 public section
 

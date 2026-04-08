@@ -4,10 +4,10 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Author: David Thrane Christiansen
 -/
 module
-public import Illuminate.Diagram.Basic
 public import Illuminate.Animation.Morph.Types
 public import Illuminate.Animation.Morph.Evaluate
 public import Illuminate.Animation.Morph.Prepare
+import Lean.DocString.Syntax
 public section
 
 
