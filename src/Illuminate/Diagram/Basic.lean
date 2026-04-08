@@ -330,21 +330,20 @@ def curlyBrace (width : Float) (depth : Float := 0)
   -- Quarter-circle bend radius, capped so bends don't overlap
   let r := min mid (hw * roundness)
   -- Shape: vertical drop at ends → horizontal shoulder → vertical drop to center tip
-  -- Left end vertical drop + bend into horizontal
   let path := PathData.empty
     |>.moveTo ⟨-hw, 0⟩
     |>.lineTo ⟨-hw, -(mid - r)⟩
-    |>.curveTo ⟨-hw, -mid⟩ ⟨-hw + r, -mid⟩ ⟨-hw + r, -mid⟩
+    |>.arcTo r r 0 false true ⟨-hw + r, -mid⟩
     -- Left horizontal shoulder
     |>.lineTo ⟨-r, -mid⟩
-    -- Bend down into center tip
-    |>.curveTo ⟨0, -mid⟩ ⟨0, -mid⟩ ⟨0, -depth⟩
+    -- Bend down into center tip (elliptical: rx=r, ry=mid)
+    |>.arcTo r mid 0 false false ⟨0, -depth⟩
     -- Bend up from center tip into right shoulder
-    |>.curveTo ⟨0, -mid⟩ ⟨0, -mid⟩ ⟨r, -mid⟩
+    |>.arcTo r mid 0 false false ⟨r, -mid⟩
     -- Right horizontal shoulder
     |>.lineTo ⟨hw - r, -mid⟩
     -- Bend up into right end vertical
-    |>.curveTo ⟨hw, -mid⟩ ⟨hw, -mid⟩ ⟨hw, -(mid - r)⟩
+    |>.arcTo r r 0 false true ⟨hw, -(mid - r)⟩
     |>.lineTo ⟨hw, 0⟩
   let brace : Diagram β := fromStroke path stroke
   match label with
