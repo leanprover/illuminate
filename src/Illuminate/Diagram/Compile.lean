@@ -16,7 +16,7 @@ namespace Diagram
 variable {β : Type} [Backend β]
 
 /-- Compiles a diagram tree into a flat display list of drawing commands. -/
-partial def compile (d : Diagram β) (scale : Float := 0) : Array (DrawCmd β) :=
+partial def compile (d : Diagram β) : Array (DrawCmd β) :=
   (go d #[] 0 0).1
 where
   go (d : Diagram β) (acc : Array (DrawCmd β)) (gi ci : Nat) :
@@ -37,7 +37,7 @@ where
             let acc := acc.push (.defGradient gi g)
             (acc.push (.fillPath pd resolved (some gi)), gi + 1)
           | .none => (acc, gi)
-        if (stroke.width.diag > 0 || stroke.width.px > 0) && stroke.color.a > 0 then
+        if stroke.width > 0 && stroke.color.a > 0 then
           (acc.push (.strokePath pd stroke), gi, ci)
         else
           (acc, gi, ci)
@@ -65,23 +65,14 @@ where
     | .clip pd d =>
       let (inner, gi, ci) := go d #[] gi (ci + 1)
       ((acc.push (.pushClip pd ci) ++ inner).push .popClip, gi, ci)
-    | .pxTranslate pxOffset d =>
-      if scale == 0 then go d acc gi ci
-      else
-        let duOffset := scale • pxOffset
-        let m := Matrix.translate duOffset.x duOffset.y
-        let (inner, gi, ci) := go d #[] gi ci
-        ((acc.push (.pushTransform m) ++ inner).push .popTransform, gi, ci)
     | .arrow start stop stroke useTrace d =>
       let (src, tgt, stop') :=
         if useTrace then
           -- Trace-based boundary detection (connectEdge style)
           let srcSub := d.find start.point
           let tgtSub := d.find stop.point
-          let (srcOrig, srcPxOff) := srcSub.originPx
-          let srcCenter := srcOrig.toVec2 + scale • srcPxOff
-          let (tgtOrig, tgtPxOff) := tgtSub.originPx
-          let tgtCenter := tgtOrig.toVec2 + scale • tgtPxOff
+          let srcCenter := srcSub.origin.toVec2
+          let tgtCenter := tgtSub.origin.toVec2
           let defaultDir := (tgtCenter - srcCenter).normalize
           let srcDir := match start.angle with
             | some a => Vec2.mk (Float.cos a) (Float.sin a)
@@ -89,11 +80,11 @@ where
           let tgtDir := match stop.angle with
             | some a => Vec2.mk (Float.cos a) (Float.sin a)
             | none => -defaultDir
-          let srcTrace := Diagram.getStrokeTrace srcSub scale
-          let tgtTrace := Diagram.getStrokeTrace tgtSub scale
+          let srcTrace := Diagram.getStrokeTrace srcSub
+          let tgtTrace := Diagram.getStrokeTrace tgtSub
           -- Offset arrowhead tips: latex (open) heads need miter protrusion offset;
           -- filled heads (stealth/triangle/circle) have no stroke so need no offset.
-          let resolvedW := stroke.width.resolve scale
+          let resolvedW := stroke.width
           let tipOffset (ah? : Option Arrowhead) : Float := match ah? with
             | some ah =>
               match ah.type with
@@ -116,26 +107,26 @@ where
           (src, tgt, stop')
         else
           -- Anchor-based resolution (connect style)
-          let (srcOrigin, srcPxOff) := (d.find start.point).originPx
-          let (tgtOrigin, tgtPxOff) := (d.find stop.point).originPx
-          (srcOrigin.toVec2 + scale • srcPxOff + start.shift,
-           tgtOrigin.toVec2 + scale • tgtPxOff + stop.shift, stop)
+          let srcOrigin := (d.find start.point).origin
+          let tgtOrigin := (d.find stop.point).origin
+          (srcOrigin.toVec2 + start.shift,
+           tgtOrigin.toVec2 + stop.shift, stop)
       let arrowDiagram := ArrowDraw.drawLine src tgt start
         { stop' with arrowhead := stop'.arrowhead } stroke
       let (innerCmds, gi, ci) := go d acc gi ci
       let (arrowCmds, gi, ci) := go arrowDiagram #[] gi ci
       (innerCmds ++ arrowCmds, gi, ci)
     | .showEnv samples color alpha d =>
-      -- Resolve the envelope polygon at compile time using the known scale
+      -- Resolve the envelope polygon at compile time
       let (innerCmds, gi, ci) := go d acc gi ci
       if let .nonempty env := d.getEnvelope then
         let n := max samples 8
         let step := 2 * pi / n.toFloat
-        -- Sample envelope and resolve Length extents with scale
+        -- Sample envelope extents
         let dirs := List.range n |>.map fun i =>
           let θ := i.toFloat * step
           let dir : Vec2 := ⟨Float.cos θ, Float.sin θ⟩
-          (dir, (env dir).resolve scale)
+          (dir, env dir)
         -- Compute boundary vertices as tangent-line intersections
         let vertices := dirs.mapIdx fun i (d1, e1) =>
           let (d2, e2) := match dirs[((i : Nat) + 1) % n]? with
@@ -154,40 +145,21 @@ where
         (innerCmds.push envCmd, gi, ci)
       else (innerCmds, gi, ci)
 
-/--
-Renders a diagram to an SVG string.
-
-The {name}`viewBoxPixelWidth` parameter specifies the intended display width in pixels.
-This is used to compute the diagram-units-per-pixel scale for resolving pixel-valued
-lengths. When 0, pixel components are ignored (backward-compatible default).
--/
+/-- Renders a diagram to an SVG string. -/
 def renderDiagram [BackendRender β] [Hashable β] (d : Diagram β)
-    (padding : Float := 2) (viewBoxPixelWidth : Float := 0) : String :=
+    (padding : Float := 2) : String :=
   let pfx := s!"{(hash d).toNat % 65536}_"
   if let .nonempty env := d.getEnvelope then
-    -- Compute diag and px extents separately
-    let eastL := env Vec2.east
-    let westL := env Vec2.west
-    let northL := env Vec2.north
-    let southL := env Vec2.south
-    let diagW := westL.diag + eastL.diag + 2 * padding
-    let pxW := westL.px + eastL.px
-    -- Closed-form scale: scale = D_diag / (vpw - D_px)
-    let scale :=
-      if viewBoxPixelWidth > 0 && viewBoxPixelWidth > pxW then
-        diagW / (viewBoxPixelWidth - pxW)
-      else 0
-    -- Resolve envelope extents to diagram units using scale
-    let east := eastL.resolve scale
-    let west := westL.resolve scale
-    let north := northL.resolve scale
-    let south := southL.resolve scale
+    let east := env Vec2.east
+    let west := env Vec2.west
+    let north := env Vec2.north
+    let south := env Vec2.south
     let minX := -(west + padding)
     let minY := -(north + padding)
     let width := west + east + 2 * padding
     let height := north + south + 2 * padding
-    let cmds := d.compile scale
-    Svg.render cmds { minX, minY, width, height } pfx false scale
+    let cmds := d.compile
+    Svg.render cmds { minX, minY, width, height } pfx
   else
     let cmds := d.warning "Diagram has no envelope, defaulting to 640x480" |>.compile
     Svg.render cmds ViewBox.fallback pfx

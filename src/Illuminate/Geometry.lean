@@ -5,7 +5,6 @@ Author: David Thrane Christiansen
 -/
 
 import Illuminate.Geometry.Basic
-import Illuminate.Geometry.Length
 import Illuminate.Geometry.Vec2
 import Illuminate.Geometry.Point
 import Illuminate.Geometry.Matrix

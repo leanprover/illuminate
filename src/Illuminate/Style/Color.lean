@@ -262,8 +262,8 @@ def resolve (env : Envelope) (f : Fill) : ResolvedFill :=
   | .resolved rf => rf
   | .linearGradient dir stops spread =>
     let d := Vec2.normalize dir
-    let fwd := env[d].diag
-    let bwd := env[Vec2.neg d].diag
+    let fwd := env[d]
+    let bwd := env[Vec2.neg d]
     let x1 := -bwd * d.x
     let y1 := -bwd * d.y
     let x2 := fwd * d.x
@@ -271,10 +271,10 @@ def resolve (env : Envelope) (f : Fill) : ResolvedFill :=
     .gradient (.linear x1 y1 x2 y2 stops spread)
   | .radialGradient stops center focal spread =>
     -- Compute the envelope's centroid as the midpoint of opposing extents
-    let e := env[Vec2.east].diag
-    let w := env[Vec2.west].diag
-    let n := env[Vec2.north].diag
-    let s := env[Vec2.south].diag
+    let e := env[Vec2.east]
+    let w := env[Vec2.west]
+    let n := env[Vec2.north]
+    let s := env[Vec2.south]
     let cx := center.x + (e - w) / 2
     let cy := center.y + (n - s) / 2
     let fx := focal.x + (e - w) / 2
@@ -284,7 +284,7 @@ def resolve (env : Envelope) (f : Fill) : ResolvedFill :=
                  Vec2.south, Vec2.southwest, Vec2.west, Vec2.northwest]
     let centroid := Vec2.mk ((e - w) / 2) ((n - s) / 2)
     let radius := dirs.foldl (init := (0 : Float)) fun acc d =>
-      let extent := env[d].diag
+      let extent := env[d]
       let bx := extent * d.x
       let by_ := extent * d.y
       let dist := ((bx - centroid.x) * (bx - centroid.x) +

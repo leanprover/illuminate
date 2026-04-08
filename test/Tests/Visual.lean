@@ -22,39 +22,18 @@ Hover to see SVG in the InfoView.
   let c : Diagram SVG :=
     Diagram.circle 6
       (fill := rgb!"#e8f4e8")
-      (stroke := { color := .black, width := .ofPx 1 }) |>.named `c
+      (stroke := { color := .black, width := 1 }) |>.named `c
   c
     |>.connectEdge
       { point := `c, angle := some pi, pull := 2, arrowhead := some { type := .stealth } }
       { point := `c, angle := some (3 * pi / 2), pull := 2, arrowhead := some {} }
-      (stroke := { color := .black, width := .ofPx 1 })
+      (stroke := { color := .black, width := 1 })
     |>.connectEdge
       { point := `c, angle := some 0, pull := 2, arrowhead := some { type := .stealth } }
       { point := `c, angle := some (pi / 2), pull := 2, arrowhead := some {} }
       (stroke := { color := .black, width := 1 })
 
 
-def pxStrokeAnchorsDiagram : Diagram SVG :=
-  .vsep 5 <| List.range 5 |>.map fun i =>
-    let C := Lean.Name.num `C i
-    Diagram.circle 10 (stroke := {width := .ofPx (1 + 5 * i.toFloat)})
-      |>.namedWithAnchors C
-      |>.connect {point := C ++ `east, angle := some 0, pull := 1}
-        {point := C ++ `south, angle := some (pi / 2), pull := 1}
-        (stroke := { color := .red})
-
-#diagram pxStrokeAnchorsDiagram
-
-def pxStrokeAnchorsDiagramTraced : Diagram SVG :=
-  .vsep 5 <| List.range 5 |>.map fun i =>
-    let C := Lean.Name.num `C i
-    Diagram.circle 10 (stroke := {width := .ofPx (1 + 5 * i.toFloat)})
-      |>.namedWithAnchors C
-      |>.connectEdge {point := C ++ `east, angle := some 0, pull := 2}
-        {point := C ++ `south, angle := some (3* pi / 2), pull := 2}
-        (stroke := { color := .red}) |>.showEnvelope
-
-#diagram pxStrokeAnchorsDiagramTraced
 
 -- Rounded rectangle
 #diagram Diagram.roundedRect 80 40 8
@@ -117,7 +96,7 @@ open Diagram in
 def arrowDemo (arrowhead : Arrowhead) : Diagram SVG :=
   vsep 10 <|
   List.range 7 |>.map fun l =>
-    let length := Length.ofDiag (l.toFloat * 0.3)
+    let length := l.toFloat * 0.3
     hsep 5 <|
     List.range 5 |>.map fun w =>
       let width := w.toFloat * 0.3
@@ -125,7 +104,7 @@ def arrowDemo (arrowhead : Arrowhead) : Diagram SVG :=
       let c2 := circle 0 (name := `c2)
       hsep 15 [c1, c2]
         |>.connect `c1 { point := `c2, arrowhead := some { arrowhead with length, width } }
-        |>.named (Lean.Name.mkSimple s!"{length.diag}x{width}")
+        |>.named (Lean.Name.mkSimple s!"{length}x{width}")
 
 #diagram arrowDemo {}
 
@@ -309,7 +288,7 @@ where
     let box := field name label w
     let brace := Diagram.curlyBrace (w - 8) (depth := braceDepth) (label := some braceLabel)
     let braceEnv := brace.getEnvelope
-    let excess := braceEnv[Vec2.east].diag - w / 2
+    let excess := braceEnv[Vec2.east] - w / 2
     let brace := if excess > 0 then brace |>.padLeft (-excess) |>.padRight (-excess) else brace
     Diagram.vsep braceGap [box, brace]
 
@@ -1007,12 +986,6 @@ def filmstripMorphArrows : Diagram SVG :=
 def testVisual_filmstripMorphArrows : IO Unit :=
   testVisualWrite "filmstrip-morph-arrows.svg" filmstripMorphArrows
 
-def testVisual_pxStrokeAnchors : IO Unit :=
-  testVisualWrite "px-stroke-anchors.svg" pxStrokeAnchorsDiagram (viewBoxPixelWidth := 300)
-
-def testVisual_pxStrokeAnchorsTraced : IO Unit :=
-  testVisualWrite "px-stroke-anchors-traced.svg" pxStrokeAnchorsDiagramTraced
-    (viewBoxPixelWidth := 300)
 
 def visualTests : List (String × IO Unit) := [
   ("Visual/roundedRects", testVisual_roundedRects),
@@ -1044,7 +1017,5 @@ def visualTests : List (String × IO Unit) := [
   ("Visual/filmstripAnimatedClip", testVisual_filmstripAnimatedClip),
   ("Visual/filmstripMorphRectCircle", testVisual_filmstripMorphRectCircle),
   ("Visual/filmstripMorphNested", testVisual_filmstripMorphNested),
-  ("Visual/filmstripMorphArrows", testVisual_filmstripMorphArrows),
-  ("Visual/pxStrokeAnchors", testVisual_pxStrokeAnchors),
-  ("Visual/pxStrokeAnchorsTraced", testVisual_pxStrokeAnchorsTraced)
+  ("Visual/filmstripMorphArrows", testVisual_filmstripMorphArrows)
 ]
