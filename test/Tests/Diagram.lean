@@ -3,8 +3,9 @@ Copyright (c) 2026 Lean FRO LLC. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 Author: David Thrane Christiansen
 -/
-
+module
 import Tests.Helpers
+public section
 
 open Illuminate
 
@@ -317,7 +318,7 @@ def testAnchor_isNamed : IO Unit := do
 
 def testAnchor_composedEnvelope : IO Unit := do
   let box : Diagram SVG := Diagram.rect 4 2
-  let d := Diagram.atop box (Diagram.anchor `center)
+  let d := Diagram.atop (Diagram.anchor `center) box
   let env := d.getEnvelope
   assertApproxEq env[Vec2.east] 2.5 "anchor in compose doesn't change envelope"
 

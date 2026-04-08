@@ -3,9 +3,10 @@ Copyright (c) 2026 Lean FRO LLC. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 Author: David Thrane Christiansen
 -/
-
-import Tests.Helpers
+module
+public import Tests.Helpers
 import Tests.AnimationExamples
+public section
 
 set_option linter.missingDocs false
 
@@ -159,9 +160,9 @@ where
   gap := 50
   node (name : Lean.Name) (label : String) : Diagram SVG :=
     Diagram.atop
+      (.text label { fontSize := 14 })
       (Diagram.roundedRect 80 40 8 (fill := rgb!"#dcebff")
         (stroke := { color := Color.black, width := 1.5 }) (name := name))
-      (.text label { fontSize := 14 })
 
 #diagram roundedRectsDiagram
 
@@ -280,8 +281,8 @@ where
     Diagram.vsep 1 [txt description, .text typeLine { fontSize := 8, fontFamily := "monospace" }]
   field (name : Lean.Name) (label : String) (w : Float) : Diagram SVG :=
     Diagram.atop
-      ((Diagram.rect w 28 (fill := Color.white) (name := name)).padRight (-0.5) |>.padLeft (-0.5))
       (.text label monoStyle)
+      ((Diagram.rect w 28 (fill := Color.white) (name := name)).padRight (-0.5) |>.padLeft (-0.5))
   /-- Builds a field box with a curly brace and label below it. -/
   fieldWithBrace (name : Lean.Name) (label : String) (w : Float)
       (braceDepth braceGap : Float) (braceLabel : Diagram SVG) : Diagram SVG :=
@@ -562,7 +563,7 @@ def ghostRefocusDiagram : Diagram SVG :=
   -- Row 2: refocus — combined diagram uses sub-diagram's envelope
   let big := Diagram.rect 60 40 (fill := green)
   let small := Diagram.circle 10 (fill := red)
-  let combined := Diagram.atop big small
+  let combined := Diagram.atop small big
   let refocused := Diagram.refocus small combined
   Diagram.vsep 20 [
     Diagram.hsep 30 [
@@ -600,8 +601,8 @@ def cellophaneClipDiagram : Diagram SVG :=
   ] (align := .top)
   -- Row 2: clip
   let checker := Diagram.atop
-    (Diagram.rect 60 60 (fill := blue))
     (Diagram.translate 10 10 (Diagram.rect 40 40 (fill := green)))
+    (Diagram.rect 60 60 (fill := blue))
   let clipped := Diagram.clipCircle 25 checker
   let clipRow := Diagram.hsep 30 [
     Diagram.vsep 5 [label "unclipped", checker],

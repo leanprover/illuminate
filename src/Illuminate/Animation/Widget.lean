@@ -3,19 +3,19 @@ Copyright (c) 2026 Lean FRO LLC. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 Author: David Thrane Christiansen
 -/
-
-import Lean
-import Illuminate.Animation.Animate
-import Illuminate.Animation.Compile
+module
+public import Illuminate.Animation.Animate
+public import Illuminate.Animation.Compile -- shake: keep
+public meta import Illuminate.Animation.Render
+public import Illuminate.Widget
 import Illuminate.Animation.Render
-import Illuminate.Widget
-import Illuminate.Backend.SVG
+public section
 
 
 namespace Illuminate
 
 /--
-Wraps an animation render function for preview in the Lean InfoView via {kw}`#diagram`.
+Wraps an animation render function for preview in the Lean InfoView via `#diagram`.
 
 The returned function takes a time slider value and produces the diagram at that time,
 allowing interactive scrubbing through the animation.
@@ -35,7 +35,7 @@ def previewAnimation (steps : List Step)
 open Lean Widget in
 /-- Widget module that plays compiled animations with requestAnimationFrame-driven SVG playback. -/
 @[widget_module]
-def animateWidget : Lean.Widget.Module where
+meta def animateWidget : Lean.Widget.Module where
   javascript := animCoreJs ++ "\n" ++ include_str "../../../player_js/animate_widget.js"
 
 /-!
@@ -48,7 +48,7 @@ syntax (name := animateCmd) "#animate " ("(" &"fps" " := " num ") ")? term:max t
 open Lean Widget Elab Command Term Meta in
 /-- Elaborates the {kw}`#animate` command, compiling the animation and rendering it in the InfoView. -/
 @[command_elab animateCmd]
-unsafe def elabAnimateCmd : CommandElab := fun stx => do
+meta unsafe def elabAnimateCmd : CommandElab := fun stx => do
   let fpsOpt := stx[1]
   let stepsStx : TSyntax `term := ⟨stx[2]⟩
   let renderStx : TSyntax `term := ⟨stx[3]⟩
@@ -57,7 +57,7 @@ unsafe def elabAnimateCmd : CommandElab := fun stx => do
     let fps : Nat := if fpsOpt.isNone then 60
       else fpsOpt[0][2].isNatLit?.getD 60
     let fpsLit := Syntax.mkNumLit (toString fps)
-    let callStx ← `(compileAnimation $stepsStx $renderStx (fps := $fpsLit))
+    let callStx ← ``(compileAnimation $stepsStx $renderStx (fps := $fpsLit))
     let e ← Term.elabTerm callStx (some compiledAnimTy)
     Term.synthesizeSyntheticMVarsNoPostponing
     let e ← instantiateMVars e

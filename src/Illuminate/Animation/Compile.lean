@@ -3,13 +3,13 @@ Copyright (c) 2026 Lean FRO LLC. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 Author: David Thrane Christiansen
 -/
-
-import Std.Data.HashSet
-import Illuminate.Animation.Types
+module
+public import Illuminate.Animation.Types
 import Illuminate.Animation.Animate
-import Illuminate.Diagram
-import Illuminate.Render
-import Illuminate.Backend.SVG
+public import Illuminate.Backend.SVG
+import Illuminate.Diagram.Compile
+import Lean.DocString.Syntax
+public section
 
 
 namespace Illuminate

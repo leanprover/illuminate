@@ -3,10 +3,12 @@ Copyright (c) 2026 Lean FRO LLC. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 Author: David Thrane Christiansen
 -/
-
+module
 import Illuminate.Geometry.Basic
-import Illuminate.Geometry.Vec2
+public import Illuminate.Geometry.Types
 import Illuminate.Geometry.PathData
+import Illuminate.Geometry.Vec2
+public section
 
 
 namespace Illuminate

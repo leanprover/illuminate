@@ -3,21 +3,11 @@ Copyright (c) 2026 Lean FRO LLC. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 Author: David Thrane Christiansen
 -/
+module
+public import Illuminate.Geometry.Types
+public section
 
-import Illuminate.Geometry.Vec2
-
-
-namespace Illuminate
-
-/-- A 2D point representing a position in space, distinct from {name}`Vec2` which represents a direction or offset. -/
-structure Point where
-  /-- Horizontal coordinate. -/
-  x : Float
-  /-- Vertical coordinate. -/
-  y : Float
-deriving Repr, BEq, Inhabited, Hashable
-
-namespace Point
+namespace Illuminate.Point
 
 /-- The origin point {lit}`(0, 0)`. -/
 def origin : Point := ⟨0, 0⟩

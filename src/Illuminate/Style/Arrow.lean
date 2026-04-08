@@ -3,8 +3,9 @@ Copyright (c) 2026 Lean FRO LLC. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 Author: David Thrane Christiansen
 -/
-
-import Illuminate.Geometry.Basic
+module
+import Illuminate.Geometry.Types
+public section
 
 
 namespace Illuminate
@@ -31,4 +32,3 @@ structure Arrowhead where
   /-- Scaling factor for head width (1 = default). -/
   width : Float := 1
 deriving Repr, BEq, Inhabited, Hashable
-

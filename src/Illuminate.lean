@@ -3,12 +3,13 @@ Copyright (c) 2026 Lean FRO LLC. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 Author: David Thrane Christiansen
 -/
-
-import Illuminate.Geometry
-import Illuminate.Style
-import Illuminate.Diagram
-import Illuminate.Render
-import Illuminate.DSL
-import Illuminate.Backend.SVG
-import Illuminate.Widget
-import Illuminate.Animation
+module
+public import Illuminate.Geometry
+public import Illuminate.Style
+public import Illuminate.Diagram
+public import Illuminate.Render
+public import Illuminate.DSL
+public import Illuminate.Backend.SVG
+public import Illuminate.Widget
+public import Illuminate.Animation
+public section

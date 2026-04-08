@@ -3,25 +3,14 @@ Copyright (c) 2026 Lean FRO LLC. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 Author: David Thrane Christiansen
 -/
-
-import Lean.Elab.Term
-import Illuminate.Geometry.Basic
-import Illuminate.Geometry.Vec2
+module
+public meta import Lean.Elab.Term.TermElabM
+import Lean.DocString.Syntax
 import Illuminate.Geometry.Envelope
+public import Illuminate.Style.Types
+public section
 
 namespace Illuminate
-
-/-- An RGBA color with 8-bit channels and a floating-point alpha. -/
-structure Color where
-  /-- Red channel (0–255). -/
-  r : UInt8
-  /-- Green channel (0–255). -/
-  g : UInt8
-  /-- Blue channel (0–255). -/
-  b : UInt8
-  /-- Alpha (opacity), from 0.0 (transparent) to 1.0 (opaque). -/
-  a : Float := 1.0
-deriving Repr, BEq, Inhabited, Hashable
 
 namespace Color
 
@@ -48,13 +37,13 @@ def rgba (r g b : UInt8) (a : Float) : Color := { r, g, b, a }
 
 end Color
 
-private def hexVal (c : Char) : Option Nat :=
+private meta def hexVal (c : Char) : Option Nat :=
   if '0' ≤ c ∧ c ≤ '9' then some (c.toNat - '0'.toNat)
   else if 'a' ≤ c ∧ c ≤ 'f' then some (c.toNat - 'a'.toNat + 10)
   else if 'A' ≤ c ∧ c ≤ 'F' then some (c.toNat - 'A'.toNat + 10)
   else none
 
-private def parseHexPair (s : String.Slice) : Option UInt8 := do
+private meta def parseHexPair (s : String.Slice) : Option UInt8 := do
   let p := s.startPos
   if h : p = s.endPos then none
   else
@@ -68,7 +57,7 @@ private def parseHexPair (s : String.Slice) : Option UInt8 := do
       return (h * 16 + l).toUInt8
 
 /-- Parses a hex color string like {lit}`"#ffcc93"` or {lit}`"#ffcc9380"` into RGBA channel values. -/
-def parseRgbHex (s : String) : Except String (UInt8 × UInt8 × UInt8 × Option UInt8) := do
+meta def parseRgbHex (s : String) : Except String (UInt8 × UInt8 × UInt8 × Option UInt8) := do
   let len := if s.startsWith "#" then s.length - 1 else s.length
   let chars := s.dropPrefix "#"
   unless len == 6 || len == 8 do
@@ -87,7 +76,7 @@ def parseRgbHex (s : String) : Except String (UInt8 × UInt8 × UInt8 × Option 
     return (r, g, b, none)
 
 /-- Builds a {name}`Color` syntax literal from parsed RGBA channels. -/
-def rgbHexToSyntax (r g b : UInt8) (a? : Option UInt8) : Lean.MacroM Lean.Syntax := do
+meta def rgbHexToSyntax (r g b : UInt8) (a? : Option UInt8) : Lean.MacroM Lean.Syntax := do
   let rLit := Lean.Syntax.mkNumLit (toString r.toNat)
   let gLit := Lean.Syntax.mkNumLit (toString g.toNat)
   let bLit := Lean.Syntax.mkNumLit (toString b.toNat)
@@ -112,51 +101,7 @@ elab_rules : term
     let result ← liftMacroM <| rgbHexToSyntax r g b a?
     elabTerm result none
 
-/-- Specifies the color of a solid fill. -/
-structure FillSpec where
-  /-- Fill color. -/
-  color : Color := Color.lightGray
-deriving Repr, BEq, Hashable
-
 instance : Inhabited FillSpec := ⟨{ color := Color.lightGray }⟩
-
-/-- A color stop in a gradient, positioned at a fractional offset along the gradient axis. -/
-structure GradientStop where
-  /-- Fractional position along the gradient (0.0 = start, 1.0 = end). -/
-  offset : Float
-  /-- Color at this stop. -/
-  color : Color
-deriving Inhabited, Repr, BEq, Hashable
-
-/-- Controls how a gradient extends beyond its defined region. -/
-inductive SpreadMethod where
-  /-- Extends the terminal colors beyond the gradient bounds. -/
-  | pad
-  /-- Mirrors the gradient repeatedly. -/
-  | reflect
-  /-- Tiles the gradient repeatedly. -/
-  | repeat
-deriving Inhabited, Repr, BEq, Inhabited, Hashable
-
-/--
-A gradient fill specification with coordinates in diagram-local space.
-
-Gradient coordinates are absolute in the diagram's local coordinate system and transform
-with the diagram when affine transforms (translate, rotate, scale) are applied.
--/
-inductive Gradient where
-  /-- Linear gradient between two points. -/
-  | linear (x1 y1 x2 y2 : Float) (stops : Array GradientStop)
-      (spread : SpreadMethod := .pad)
-  /--
-  Radial gradient between two circles (SVG/Cairo two-circle model).
-
-  The gradient radiates from the focal circle ({name}`fx`, {name}`fy`, {name}`fr`)
-  to the outer circle ({name}`cx`, {name}`cy`, {name}`r`).
-  -/
-  | radial (cx cy r : Float) (fx fy fr : Float)
-      (stops : Array GradientStop) (spread : SpreadMethod := .pad)
-deriving Inhabited, Repr, BEq, Hashable
 
 namespace Gradient
 
@@ -177,21 +122,6 @@ def radialSymmetric (radius : Float) (stops : Array GradientStop)
 
 end Gradient
 
-/--
-Resolved fill style for closed paths, with absolute gradient coordinates.
-
-Used internally by the core primitive and draw command types. User-facing code should
-use the {lit}`Fill` type instead, which resolves relative gradients against the shape's envelope.
--/
-inductive ResolvedFill where
-  /-- No fill — the interior is not rendered and not hittable. -/
-  | none
-  /-- Solid color fill — the interior is rendered and hittable, even if the color is fully transparent. -/
-  | solid : FillSpec → ResolvedFill
-  /-- Gradient fill with absolute coordinates — the interior is rendered and hittable. -/
-  | gradient : Gradient → ResolvedFill
-deriving Repr, BEq, Hashable
-
 instance : Inhabited ResolvedFill := ⟨.solid default⟩
 
 instance : Coe Color FillSpec := ⟨FillSpec.mk⟩
@@ -200,27 +130,6 @@ instance : Coe FillSpec ResolvedFill := ⟨.solid⟩
 
 instance : Coe Gradient ResolvedFill := ⟨.gradient⟩
 
-/--
-User-facing fill style for closed paths.
-
-Gradient variants specify direction and stops relative to the shape; absolute
-coordinates are computed automatically from the shape's envelope when the fill
-is resolved automatically by shape constructors.
--/
-inductive Fill where
-  /-- No fill — the interior is not rendered and not hittable. -/
-  | none
-  /-- Solid color fill. -/
-  | solid : FillSpec → Fill
-  /-- Linear gradient along a direction, sized to the shape's envelope. -/
-  | linearGradient (dir : Vec2) (stops : Array GradientStop)
-      (spread : SpreadMethod := .pad) : Fill
-  /-- Radial gradient sized to the shape's inscribed circle. -/
-  | radialGradient (stops : Array GradientStop) (center : Vec2 := Vec2.zero)
-      (focal : Vec2 := Vec2.zero) (spread : SpreadMethod := .pad) : Fill
-  /-- Pre-resolved fill with absolute gradient coordinates. -/
-  | resolved : ResolvedFill → Fill
-deriving Repr, BEq, Hashable
 
 instance : Inhabited Fill := ⟨.solid default⟩
 
@@ -291,5 +200,3 @@ def resolve (env : Envelope) (f : Fill) : ResolvedFill :=
                    (by_ - centroid.y) * (by_ - centroid.y)).sqrt
       max acc dist
     .gradient (.radial cx cy radius fx fy 0 stops spread)
-
-end Fill

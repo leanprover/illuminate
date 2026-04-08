@@ -3,11 +3,11 @@ Copyright (c) 2026 Lean FRO LLC. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 Author: David Thrane Christiansen
 -/
-
-import Illuminate.Geometry
-import Illuminate.Style
-import Illuminate.Diagram.Basic
-import Illuminate.Diagram.Placement
+module
+public import Illuminate.Diagram.Placement
+import Lean.DocString.Syntax
+public import Illuminate.Style.Stroke
+public section
 
 
 namespace Illuminate
@@ -225,8 +225,8 @@ def drawLine (srcPos tgtPos : Vec2)
         (PathData.empty |>.moveTo shaftSrc |>.curveTo sc1 sc2 shaftTgt) stroke
   -- Compose
   let result := shaft
-  let result := match srcHead with | some h => Diagram.atop result h | none => result
-  let result := match tgtHead with | some h => Diagram.atop result h | none => result
+  let result := match srcHead with | some h => Diagram.atop h result | none => result
+  let result := match tgtHead with | some h => Diagram.atop h result | none => result
   result
 
 end ArrowDraw
@@ -278,7 +278,7 @@ private def buildArrow {β : Type} [Backend β] (srcPos tgtPos : Vec2)
           let angle := let a := Float.atan2 n.y n.x
             if a > halfPi || a < -halfPi then a + pi else a
           Matrix.mul (Matrix.translate pos.x pos.y) (Matrix.rotate angle)
-      Diagram.atop arrow (Diagram.transform labelXform lbl.label)
+      Diagram.atop (Diagram.transform labelXform lbl.label) arrow
     else
       let isUpright := lbl.upright || labelUpright
       let labelXform :=
@@ -289,7 +289,7 @@ private def buildArrow {β : Type} [Backend β] (srcPos tgtPos : Vec2)
           let angle := let a := Float.atan2 n.y n.x
             if a > halfPi || a < -halfPi then a + pi else a
           Matrix.rotate angle
-      Diagram.atop arrow (Diagram.transform labelXform lbl.label) |>.warning "Label has no envelope"
+      Diagram.atop (Diagram.transform labelXform lbl.label) arrow |>.warning "Label has no envelope"
 
 /--
 Draws a line or arrow between two points.

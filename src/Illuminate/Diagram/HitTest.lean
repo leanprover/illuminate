@@ -3,21 +3,18 @@ Copyright (c) 2026 Lean FRO LLC. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 Author: David Thrane Christiansen
 -/
-
-import Illuminate.Diagram.Placement
+module
+import Lean.DocString.Syntax
+import Illuminate.Geometry.Matrix
+public import Illuminate.Diagram.Types
+import Illuminate.Style.Text
+meta import Lean.Parser.Term
+public section
 
 
 namespace Illuminate
 
-/-- The result of a point hit test against a diagram. -/
-inductive Click where
-  /-- The point did not hit anything. -/
-  | nothing
-  /-- The point hit an untagged primitive. -/
-  | something
-  /-- The point hit a primitive inside a tag annotation with the given ID. -/
-  | tag : Nat → Click
-deriving Repr, BEq, Inhabited
+
 
 namespace Click
 

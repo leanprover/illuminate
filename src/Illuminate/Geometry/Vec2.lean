@@ -3,21 +3,13 @@ Copyright (c) 2026 Lean FRO LLC. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 Author: David Thrane Christiansen
 -/
-
+module
 import Illuminate.Geometry.Basic
+public import Illuminate.Geometry.Types
+public section
 
 
-namespace Illuminate
-
-/-- A 2D vector with {name (full := Vec2.x)}`x` and {name (full := Vec2.y)}`y` components. -/
-structure Vec2 where
-  /-- Horizontal component. -/
-  x : Float
-  /-- Vertical component. -/
-  y : Float
-deriving Repr, BEq, Inhabited, Hashable
-
-namespace Vec2
+namespace Illuminate.Vec2
 
 /-- The zero vector {lit}`(0, 0)`. -/
 def zero : Vec2 := ⟨0, 0⟩

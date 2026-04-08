@@ -3,22 +3,24 @@ Copyright (c) 2026 Lean FRO LLC. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 Author: David Thrane Christiansen
 -/
-
-import Lean
-import Illuminate.Style.Color
+module
+public meta import Lean.Widget.UserWidget
+public import Illuminate.Style.Color
+import Lean.DocString.Syntax
+public section
 
 namespace Illuminate
 
 open Lean Widget in
 /-- Widget module that shows a color swatch and picker for {lit}`rgb!` literals. -/
 @[widget_module]
-def colorWidget : Lean.Widget.Module where
+meta def colorWidget : Lean.Widget.Module where
   javascript := include_str "../../../player_js/color_widget.js"
 
 open Lean Widget Elab Term in
 /-- Elaborates {lit}`rgb!` literals with an attached color picker widget in the infoview. -/
 @[term_elab rgbLit]
-def elabRgbLitWidget : TermElab := fun stx _expectedType? => do
+meta def elabRgbLitWidget : TermElab := fun stx _expectedType? => do
   match stx with
   | `(rgb! $s:str) =>
     let str := s.getString

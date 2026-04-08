@@ -3,11 +3,14 @@ Copyright (c) 2026 Lean FRO LLC. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 Author: David Thrane Christiansen
 -/
-
-import Illuminate.Geometry.Vec2
-import Illuminate.Geometry.Point
+module
+import Illuminate.Geometry.Basic
+public import Illuminate.Geometry.Types
 import Illuminate.Geometry.Matrix
 import Illuminate.Geometry.PathData
+import Illuminate.Geometry.Vec2
+import Illuminate.Geometry.Point -- shake: keep
+public section
 
 
 namespace Illuminate
@@ -370,9 +373,6 @@ private def pathDataHits (commands : Array PathCmd) (p : Point) (v : Vec2) :
       lastT := result[i].t
   return deduped
 
-/-!
-# Trace
--/
 
 /--
 {given -show}`t : Float, p : Point, v : Vec2`

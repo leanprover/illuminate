@@ -3,9 +3,10 @@ Copyright (c) 2026 Lean FRO LLC. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 Author: David Thrane Christiansen
 -/
-
-import Illuminate.Diagram.Basic
-import Illuminate.Diagram.Placement
+module
+public import Illuminate.Diagram.Placement
+import Lean.DocString.Syntax
+public section
 
 namespace Illuminate
 
@@ -65,7 +66,7 @@ def paper (label : Option (Diagram β) := none)
   let foldLine : Diagram β := fromStroke foldMark stroke
   let sheet := Diagram.compose body foldLine
   let sheet := match label with
-    | some lbl => atop sheet lbl
+    | some lbl => atop lbl sheet
     | none => sheet
   let result := match name with
     | none => sheet

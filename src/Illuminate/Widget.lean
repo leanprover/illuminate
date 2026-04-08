@@ -3,12 +3,14 @@ Copyright (c) 2026 Lean FRO LLC. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 Author: David Thrane Christiansen
 -/
-
-import Lean
-import Std.Data.HashMap
-import Illuminate.Diagram
-import Illuminate.Render
-import Illuminate.Backend.SVG
+module
+public import Lean.Server.Rpc.RequestHandling
+public meta import Lean.Widget.UserWidget
+public import Illuminate.Backend.SVG
+import Illuminate.Diagram.Validate
+import Illuminate.Diagram.HitTest
+meta import Illuminate.Diagram.Types
+public section
 
 
 namespace Illuminate
@@ -32,6 +34,7 @@ instance : Coe (Diagram SVG) DiagramWithInfo where
 -/
 
 /-- A slider parameter with a label, min, max, and optional initial value. Reduces to {name}`Float`. -/
+@[expose]
 def Slider (_name : String) (_min _max : Float)
     (_initial : Float := (_min + _max) / 2) : Type :=
   Float
@@ -49,7 +52,7 @@ def Checkbox (_name : String) (_initial : Bool := false) : Type := Bool
 open Lean Widget in
 /-- Widget module that renders diagrams with optional parameter controls and hit-test hover. -/
 @[widget_module]
-def diagramWidget : Lean.Widget.Module where
+meta def diagramWidget : Lean.Widget.Module where
   javascript := include_str "../../player_js/diagram_widget.js"
 
 /-!
@@ -86,7 +89,7 @@ def validateDiagram (d : Diagram SVG) : List String :=
 
 open Lean in
 /-- Builds a Lean {name}`Expr` representing a {name}`Float` literal, including negative values. -/
-private def mkFloatExpr (f : Float) : Expr :=
+private meta def mkFloatExpr (f : Float) : Expr :=
   -- Float.ofScientific (m : Nat) (s : Bool) (e : Nat) : Float
   -- Represents m × 10^(if s then -e else e)
   -- We use 6 decimal places of precision
@@ -121,10 +124,10 @@ structure StoredDiagram where
   returnsDwi : Bool := false
 
 /-- Global store for diagram expressions, keyed by unique ID. -/
-initialize diagramStore : IO.Ref (Array (Nat × StoredDiagram)) ← IO.mkRef #[]
+meta initialize diagramStore : IO.Ref (Array (Nat × StoredDiagram)) ← IO.mkRef #[]
 
 /-- Counter for unique diagram IDs. -/
-initialize nextDiagramId : IO.Ref Nat ← IO.mkRef 0
+meta initialize nextDiagramId : IO.Ref Nat ← IO.mkRef 0
 
 /-- Request to evaluate a parameterized diagram with new parameter values. -/
 structure EvalParamRequest where
@@ -168,7 +171,7 @@ deriving Lean.FromJson, Lean.ToJson
 Applies stored gadget parameter values to a diagram expression, producing the
 fully-applied {lean}`Diagram SVG` expression.
 -/
-private def applyGadgetValues (sd : StoredDiagram) (values : Array Lean.Json) :
+private meta def applyGadgetValues (sd : StoredDiagram) (values : Array Lean.Json) :
     Except String Lean.Expr := do
   let mut app := sd.expr
   if values.size < sd.gadgets.size then
@@ -195,7 +198,7 @@ private def applyGadgetValues (sd : StoredDiagram) (values : Array Lean.Json) :
 
 open Lean Server Elab Term Meta in
 /-- Unsafe implementation of the parameterized diagram RPC evaluator. -/
-private unsafe def evalParamDiagramUnsafe (req : EvalParamRequest) :
+private meta unsafe def evalParamDiagramUnsafe (req : EvalParamRequest) :
     RequestM (RequestTask EvalParamResponse) :=
   RequestM.asTask do
     let store ← diagramStore.get
@@ -220,13 +223,13 @@ private unsafe def evalParamDiagramUnsafe (req : EvalParamRequest) :
 open Lean Server in
 /-- Safe wrapper for the unsafe evaluator, linked via {attr}`@[implemented_by]`. -/
 @[implemented_by evalParamDiagramUnsafe]
-private opaque evalParamDiagramImpl (req : EvalParamRequest) :
+private meta opaque evalParamDiagramImpl (req : EvalParamRequest) :
     RequestM (RequestTask EvalParamResponse)
 
 open Lean Server in
 /-- Server RPC method that re-evaluates a parameterized diagram with new values. -/
 @[server_rpc_method]
-def evalParamDiagram (req : EvalParamRequest) :
+meta def evalParamDiagram (req : EvalParamRequest) :
     RequestM (RequestTask EvalParamResponse) :=
   evalParamDiagramImpl req
 
@@ -236,7 +239,7 @@ def evalParamDiagram (req : EvalParamRequest) :
 
 open Lean Server Elab Term Meta in
 /-- Unsafe implementation of the hit-test RPC evaluator. -/
-private unsafe def hitTestDiagramUnsafe (req : HitTestRequest) :
+private meta unsafe def hitTestDiagramUnsafe (req : HitTestRequest) :
     RequestM (RequestTask HitTestResponse) :=
   RequestM.asTask do
     let store ← diagramStore.get
@@ -288,13 +291,13 @@ private unsafe def hitTestDiagramUnsafe (req : HitTestRequest) :
 open Lean Server in
 /-- Safe wrapper for the unsafe hit-test evaluator, linked via {attr}`@[implemented_by]`. -/
 @[implemented_by hitTestDiagramUnsafe]
-private opaque hitTestDiagramImpl (req : HitTestRequest) :
+private meta opaque hitTestDiagramImpl (req : HitTestRequest) :
     RequestM (RequestTask HitTestResponse)
 
 open Lean Server in
 /-- Server RPC method that hit-tests a stored diagram at a given point. -/
 @[server_rpc_method]
-def hitTestDiagram (req : HitTestRequest) :
+meta def hitTestDiagram (req : HitTestRequest) :
     RequestM (RequestTask HitTestResponse) :=
   hitTestDiagramImpl req
 
@@ -308,7 +311,7 @@ Extracts gadget parameter specifications from a function type.
 Walks binders, recognizing {name}`Slider`, {name}`TextInput`, {name}`Checkbox` applications.
 Returns an array of JSON gadget specs.
 -/
-unsafe def extractGadgets (ty : Expr) : MetaM (Array Json) := do
+meta unsafe def extractGadgets (ty : Expr) : MetaM (Array Json) := do
   forallTelescopeReducing ty fun args _ => do
     let mut gadgets : Array Json := #[]
     for arg in args do
@@ -366,7 +369,7 @@ syntax (name := diagramCmd) "#diagram " term : command
 
 open Lean Widget Elab Command Term Meta in
 /-- Applies initial gadget values to a parameterized diagram expression. -/
-private unsafe def applyInitialGadgetValues (e : Expr) (gadgets : Array Json) : TermElabM Expr := do
+private meta unsafe def applyInitialGadgetValues (e : Expr) (gadgets : Array Json) : TermElabM Expr := do
   let mut app := e
   for g in gadgets do
     let kind := g.getObjValD "kind" |>.getStr? |>.toOption |>.getD ""
@@ -389,7 +392,7 @@ private unsafe def applyInitialGadgetValues (e : Expr) (gadgets : Array Json) : 
 open Lean Widget Elab Command Term Meta in
 /-- Elaborates the {kw}`#diagram` command, evaluating the term and rendering it as SVG. -/
 @[command_elab diagramCmd]
-unsafe def elabDiagramCmd : CommandElab := fun stx => do
+meta unsafe def elabDiagramCmd : CommandElab := fun stx => do
   let t := stx[1]
   liftTermElabM do
     let e ← Term.elabTerm t none
@@ -425,18 +428,18 @@ unsafe def elabDiagramCmd : CommandElab := fun stx => do
     let regions := dwi.regions
     -- Project .diagram to get Diagram SVG for rendering/hit-testing
     let diagExpr := mkApp (mkConst ``DiagramWithInfo.diagram) initDwi
-    -- For RPC, store a Diagram-SVG-producing expression:
-    -- for static diagrams, store the projected diagram directly;
-    -- for parameterized, store the original (RPC applies values then renders)
-    let storedExpr := if gadgets.isEmpty then diagExpr else e
-    let sd : StoredDiagram := { env, opts, expr := storedExpr, gadgets, regions, returnsDwi }
-    diagramStore.modify (·.push (id, sd))
     if gadgets.isEmpty then
       let listStringType := mkApp (mkConst ``List [.zero]) (mkConst ``String)
       let warnings ← evalExpr (List String) listStringType
         (mkApp (mkConst ``validateDiagram) diagExpr)
       for w in warnings do
         logWarningAt stx (m!"#diagram: {w}")
+    -- For RPC, store a Diagram-SVG-producing expression:
+    -- for static diagrams, store the projected diagram directly;
+    -- for parameterized, store the original (RPC applies values then renders)
+    let storedExpr := if gadgets.isEmpty then diagExpr else e
+    let sd : StoredDiagram := { env, opts, expr := storedExpr, gadgets, regions, returnsDwi }
+    diagramStore.modify (·.push (id, sd))
     let svgStr ← evalExpr String (mkConst ``String)
       (mkApp (mkConst ``diagramToSvg) diagExpr)
     let props : Json := .mkObj [

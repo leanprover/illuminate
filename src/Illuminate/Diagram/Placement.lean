@@ -3,10 +3,16 @@ Copyright (c) 2026 Lean FRO LLC. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 Author: David Thrane Christiansen
 -/
-
-import Illuminate.Geometry
-import Illuminate.Style
-import Illuminate.Diagram.Basic
+module
+public import Illuminate.Diagram.Basic
+import Lean.DocString.Syntax
+public import Illuminate.Geometry.Point
+public import Illuminate.Geometry.Basic
+public import Illuminate.Geometry.Envelope
+public import Illuminate.Geometry.Matrix
+public import Illuminate.Geometry.PathData
+import Illuminate.Style.Text
+public section
 
 
 namespace Illuminate
@@ -565,8 +571,11 @@ private def centerOrigin (d : Diagram β) : Diagram β :=
     if cx.abs < 0.001 && cy.abs < 0.001 then d
     else .transform (Matrix.translate (-cx) (-cy)) d
 
-/-- Layers {name}`b` atop {name}`a`, sharing the origin. {name}`a` is drawn first (behind), {name}`b` on top. -/
-def atop (a b : Diagram β) : Diagram β := .compose a b
+/--
+Layers {name}`a` atop {name}`b`, sharing the origin. {name}`b` is drawn first (behind), {name}`a` on
+top.
+-/
+def atop (a b : Diagram β) : Diagram β := .compose b a
 
 /--
 Places {name}`b` beside {name}`a` in direction {name}`v` with the given gap.
@@ -901,9 +910,9 @@ def showOrigin (d : Diagram β) (size : Float := 5)
     (color : Color := Color.red) : Diagram β :=
   let stroke : Stroke := { color := color, width := (1.5 : Float) }
   let cross : Diagram β := Diagram.atop
-    (Diagram.fromStroke (PathData.line ⟨-size, -size⟩ ⟨size, size⟩) stroke)
     (Diagram.fromStroke (PathData.line ⟨-size, size⟩ ⟨size, -size⟩) stroke)
-  Diagram.atop d cross
+    (Diagram.fromStroke (PathData.line ⟨-size, -size⟩ ⟨size, size⟩) stroke)
+  Diagram.atop cross d
 
 /--
 Renders the ray, arrowhead, and intersection dots for a single trace query.

@@ -3,9 +3,11 @@ Copyright (c) 2026 Lean FRO LLC. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 Author: David Thrane Christiansen
 -/
-
-import Lean.Data.Json
-import Illuminate.Animation.Types
+module
+public import Lean.Data.Json.Basic
+public import Illuminate.Animation.Types
+import Lean.Data.Json.Printer
+public section
 
 
 namespace Illuminate

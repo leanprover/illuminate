@@ -3,8 +3,10 @@ Copyright (c) 2026 Lean FRO LLC. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 Author: David Thrane Christiansen
 -/
-
-import Illuminate
+module
+public import Illuminate
+public meta import Illuminate
+public section
 
 set_option linter.missingDocs false
 
@@ -23,7 +25,7 @@ Hover over {lit}`#animate` to see playback in the InfoView, with play/pause butt
     let t := Easing.easeInOut progress[1]
     let radius := Interpolate.interpolate 10.0 50.0 t
     let color := Interpolate.interpolate Color.blue Color.red t
-    Diagram.atop (Diagram.rect 100 100) (Diagram.circle radius (fill := .solid { color })))
+    Diagram.atop (Diagram.circle radius (fill := .solid { color })) (Diagram.rect 100 100))
 
 -- Fade in title, then slide in subtitle
 #animate (fps := 30)

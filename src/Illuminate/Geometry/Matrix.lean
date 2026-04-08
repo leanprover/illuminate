@@ -3,38 +3,13 @@ Copyright (c) 2026 Lean FRO LLC. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 Author: David Thrane Christiansen
 -/
+module
+import Illuminate.Geometry.Basic
+public import Illuminate.Geometry.Types
+public section
 
-import Illuminate.Geometry.Vec2
-import Illuminate.Geometry.Point
 
-
-namespace Illuminate
-
-/--
-A 3×3 homogeneous matrix for 2D affine transforms.
-Stored as six values (the third row is always {lit}`[0, 0, 1]`):
-```
-⎡ a  b  tx ⎤
-⎢ c  d  ty ⎥
-⎣ 0  0   1 ⎦
-```
--/
-structure Matrix where
-  /-- First-row x-scale / rotation component. -/
-  a : Float
-  /-- First-row y-shear / rotation component. -/
-  b : Float
-  /-- Horizontal translation. -/
-  tx : Float
-  /-- Second-row x-shear / rotation component. -/
-  c : Float
-  /-- Second-row y-scale / rotation component. -/
-  d : Float
-  /-- Vertical translation. -/
-  ty : Float
-deriving Repr, BEq, Inhabited, Hashable
-
-namespace Matrix
+namespace Illuminate.Matrix
 
 /-- The identity matrix (no transformation). -/
 def identity : Matrix := ⟨1, 0, 0, 0, 1, 0⟩
