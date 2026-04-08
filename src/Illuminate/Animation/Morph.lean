@@ -3,12 +3,12 @@ Copyright (c) 2026 Lean FRO LLC. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 Author: David Thrane Christiansen
 -/
-
-import Illuminate.Animation.Morph.CubicSeg
-import Illuminate.Animation.Morph.Style
-import Illuminate.Animation.Morph.Types
-import Illuminate.Animation.Morph.Evaluate
-import Illuminate.Animation.Morph.Prepare
+module
+public import Illuminate.Diagram.Basic
+public import Illuminate.Animation.Morph.Types
+public import Illuminate.Animation.Morph.Evaluate
+public import Illuminate.Animation.Morph.Prepare
+public section
 
 
 namespace Illuminate

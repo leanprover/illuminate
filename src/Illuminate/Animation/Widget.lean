@@ -3,19 +3,21 @@ Copyright (c) 2026 Lean FRO LLC. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 Author: David Thrane Christiansen
 -/
-
+module
 import Lean
-import Illuminate.Animation.Animate
+public import Illuminate.Animation.Animate
 import Illuminate.Animation.Compile
-import Illuminate.Animation.Render
-import Illuminate.Widget
+public meta import Illuminate.Animation.Render
+public import Illuminate.Animation.Types
+public import Illuminate.Widget
 import Illuminate.Backend.SVG
+public section
 
 
 namespace Illuminate
 
 /--
-Wraps an animation render function for preview in the Lean InfoView via {kw}`#diagram`.
+Wraps an animation render function for preview in the Lean InfoView via `#diagram`.
 
 The returned function takes a time slider value and produces the diagram at that time,
 allowing interactive scrubbing through the animation.
@@ -35,7 +37,7 @@ def previewAnimation (steps : List Step)
 open Lean Widget in
 /-- Widget module that plays compiled animations with requestAnimationFrame-driven SVG playback. -/
 @[widget_module]
-def animateWidget : Lean.Widget.Module where
+meta def animateWidget : Lean.Widget.Module where
   javascript := animCoreJs ++ "\n" ++ include_str "../../../player_js/animate_widget.js"
 
 /-!
@@ -48,7 +50,7 @@ syntax (name := animateCmd) "#animate " ("(" &"fps" " := " num ") ")? term:max t
 open Lean Widget Elab Command Term Meta in
 /-- Elaborates the {kw}`#animate` command, compiling the animation and rendering it in the InfoView. -/
 @[command_elab animateCmd]
-unsafe def elabAnimateCmd : CommandElab := fun stx => do
+meta unsafe def elabAnimateCmd : CommandElab := fun stx => do
   let fpsOpt := stx[1]
   let stepsStx : TSyntax `term := ⟨stx[2]⟩
   let renderStx : TSyntax `term := ⟨stx[3]⟩

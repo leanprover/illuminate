@@ -3,12 +3,14 @@ Copyright (c) 2026 Lean FRO LLC. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 Author: David Thrane Christiansen
 -/
-
-import Std.Data.HashMap
-import Illuminate.Diagram
-import Illuminate.Animation.Morph.Types
+module
+import Std.Data.HashSet
+public import Illuminate.Diagram.Placement
+public import Illuminate.Diagram.Basic
+public import Illuminate.Animation.Morph.Types
 import Illuminate.Animation.Morph.CubicSeg
 import Illuminate.Animation.Morph.Style
+public section
 
 
 namespace Illuminate
@@ -155,7 +157,7 @@ def skelToDiagram {β : Type} : Skeleton β → Diagram β
 /--
 A matched name pair with transforms and content, queued for recursive processing.
 -/
-private structure MatchedPair (β : Type) where
+structure MatchedPair (β : Type) where
   /-- The shared name. -/
   name : Lean.Name
   /-- World transform in the source diagram. -/

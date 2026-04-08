@@ -3,7 +3,7 @@ Copyright (c) 2026 Lean FRO LLC. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 Author: David Thrane Christiansen
 -/
-
+module
 import Tests.Geometry
 import Tests.Style
 import Tests.Diagram
@@ -15,6 +15,7 @@ import Tests.Visual
 import Tests.HitTest
 import Tests.Animation
 import Tests.Morph
+public section
 
 def main : IO Unit := do
   let tests := geometryTests ++ styleTests ++ diagramTests ++ renderTests

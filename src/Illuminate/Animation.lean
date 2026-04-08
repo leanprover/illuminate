@@ -3,14 +3,14 @@ Copyright (c) 2026 Lean FRO LLC. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 Author: David Thrane Christiansen
 -/
-
-import Illuminate.Animation.Easing
-import Illuminate.Animation.Interpolate
-import Illuminate.Animation.Types
-import Illuminate.Animation.Animate
-import Illuminate.Animation.Effects
-import Illuminate.Animation.Compile
-import Illuminate.Animation.Render
-import Illuminate.Animation.Widget
-import Illuminate.Animation.Filmstrip
-import Illuminate.Animation.Morph
+module
+public import Illuminate.Animation.Easing
+public import Illuminate.Animation.Interpolate
+public import Illuminate.Animation.Types
+public import Illuminate.Animation.Animate
+public import Illuminate.Animation.Effects
+public import Illuminate.Animation.Compile
+public import Illuminate.Animation.Render
+public import Illuminate.Animation.Widget
+public import Illuminate.Animation.Filmstrip
+public import Illuminate.Animation.Morph

@@ -3,11 +3,12 @@ Copyright (c) 2026 Lean FRO LLC. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 Author: David Thrane Christiansen
 -/
-
-import Lean.Elab.Term
+module
+public meta import Lean.Elab.Term
 import Illuminate.Geometry.Basic
-import Illuminate.Geometry.Vec2
-import Illuminate.Geometry.Envelope
+public import Illuminate.Geometry.Vec2
+public import Illuminate.Geometry.Envelope
+public section
 
 namespace Illuminate
 
@@ -48,13 +49,13 @@ def rgba (r g b : UInt8) (a : Float) : Color := { r, g, b, a }
 
 end Color
 
-private def hexVal (c : Char) : Option Nat :=
+private meta def hexVal (c : Char) : Option Nat :=
   if '0' ≤ c ∧ c ≤ '9' then some (c.toNat - '0'.toNat)
   else if 'a' ≤ c ∧ c ≤ 'f' then some (c.toNat - 'a'.toNat + 10)
   else if 'A' ≤ c ∧ c ≤ 'F' then some (c.toNat - 'A'.toNat + 10)
   else none
 
-private def parseHexPair (s : String.Slice) : Option UInt8 := do
+private meta def parseHexPair (s : String.Slice) : Option UInt8 := do
   let p := s.startPos
   if h : p = s.endPos then none
   else
@@ -68,7 +69,7 @@ private def parseHexPair (s : String.Slice) : Option UInt8 := do
       return (h * 16 + l).toUInt8
 
 /-- Parses a hex color string like {lit}`"#ffcc93"` or {lit}`"#ffcc9380"` into RGBA channel values. -/
-def parseRgbHex (s : String) : Except String (UInt8 × UInt8 × UInt8 × Option UInt8) := do
+meta def parseRgbHex (s : String) : Except String (UInt8 × UInt8 × UInt8 × Option UInt8) := do
   let len := if s.startsWith "#" then s.length - 1 else s.length
   let chars := s.dropPrefix "#"
   unless len == 6 || len == 8 do
@@ -87,7 +88,7 @@ def parseRgbHex (s : String) : Except String (UInt8 × UInt8 × UInt8 × Option 
     return (r, g, b, none)
 
 /-- Builds a {name}`Color` syntax literal from parsed RGBA channels. -/
-def rgbHexToSyntax (r g b : UInt8) (a? : Option UInt8) : Lean.MacroM Lean.Syntax := do
+meta def rgbHexToSyntax (r g b : UInt8) (a? : Option UInt8) : Lean.MacroM Lean.Syntax := do
   let rLit := Lean.Syntax.mkNumLit (toString r.toNat)
   let gLit := Lean.Syntax.mkNumLit (toString g.toNat)
   let bLit := Lean.Syntax.mkNumLit (toString b.toNat)

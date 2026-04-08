@@ -3,10 +3,10 @@ Copyright (c) 2026 Lean FRO LLC. All rights reserved.
 Released under Apache 2.0 license as described in the file LICENSE.
 Author: David Thrane Christiansen
 -/
-
-import Illuminate.Geometry
-import Illuminate.Style
-import Illuminate.Diagram.Basic
+module
+public import Illuminate.Geometry.PathData
+public import Illuminate.Diagram.Basic
+public section
 
 
 namespace Illuminate
