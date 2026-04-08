@@ -46,7 +46,7 @@ Computes the minimum half-angle so the arrowhead covers the shaft at its end poi
 For stealth, the shaft ends at the notch (headLen/2); for triangle, at the base.
 -/
 private def minHalfAngle (ah : Arrowhead) (strokeWidth : Float) : Float :=
-  let headLen := baseHeadLen * ah.length.diag
+  let headLen := baseHeadLen * ah.length
   match ah.type with
   | .stealth =>
     -- At notch (headLen*0.5 from tip), width = headLen * tan(a). Need >= strokeWidth.
@@ -62,7 +62,7 @@ Computes how much the shaft must be shortened for a given arrowhead type.
 Takes the stroke width to match the minimum angle enforcement in {name scope:="Illuminate.Diagram.Arrow"}`drawArrowhead`.
 -/
 def arrowheadShorten (ah : Arrowhead) (strokeWidth : Float) : Float :=
-  let headLen := baseHeadLen * ah.length.diag
+  let headLen := baseHeadLen * ah.length
   let halfAngle := max (headAngle * ah.width) (minHalfAngle ah strokeWidth)
   match ah.type with
   | .latex => 0
@@ -77,9 +77,9 @@ to avoid overlapping the head.
 -/
 def drawArrowhead (ah : Arrowhead) (tip dir : Vec2) (stroke : Stroke) :
     Diagram β × Float :=
-  let headLen := baseHeadLen * ah.length.diag
+  let headLen := baseHeadLen * ah.length
   -- For filled arrowheads, enforce minimum angle so the arrowhead covers the shaft
-  let halfAngle := max (headAngle * ah.width) (minHalfAngle ah stroke.width.diag)
+  let halfAngle := max (headAngle * ah.width) (minHalfAngle ah stroke.width)
   let n := dir.normalize
   match ah.type with
   | .latex =>
@@ -185,23 +185,23 @@ def drawLine (srcPos tgtPos : Vec2)
   let dist := (tgtPos - srcPos).length
   let srcVisualDir := match srcEnd.arrowhead with
     | some ah =>
-      let headLen := baseHeadLen * ah.length.diag
+      let headLen := baseHeadLen * ah.length
       let δ := min 0.15 (headLen / dist)
       (srcPos - bezierAt srcPos c1 c2 tgtPos δ).normalize
     | none => Vec2.zero
   let tgtVisualDir := match tgtEnd.arrowhead with
     | some ah =>
-      let headLen := baseHeadLen * ah.length.diag
+      let headLen := baseHeadLen * ah.length
       let δ := min 0.15 (headLen / dist)
       (tgtPos - bezierAt srcPos c1 c2 tgtPos (1 - δ)).normalize
     | none => Vec2.zero
   -- Shorten shaft along the visual arrowhead direction so it doesn't poke
   -- through filled heads. For unfilled heads (latex), the shaft meets the tip.
   let srcShorten := match srcEnd.arrowhead with
-    | some ah => arrowheadShorten ah stroke.width.diag
+    | some ah => arrowheadShorten ah stroke.width
     | none => 0.0
   let tgtShorten := match tgtEnd.arrowhead with
-    | some ah => arrowheadShorten ah stroke.width.diag
+    | some ah => arrowheadShorten ah stroke.width
     | none => 0.0
   let shaftSrc := srcPos - srcShorten • srcVisualDir
   let shaftTgt := tgtPos - tgtShorten • tgtVisualDir
@@ -265,11 +265,11 @@ private def buildArrow {β : Type} [Backend β] (srcPos tgtPos : Vec2)
       let isUpright := lbl.upright || labelUpright
       let pos :=
         if isUpright then
-          let extent := (labelEnv (-perp)).diag
-          mid + (extent + stroke.width.diag + 6) • perp + lbl.shift
+          let extent := labelEnv (-perp)
+          mid + (extent + stroke.width + 6) • perp + lbl.shift
         else
-          let labelH := ((labelEnv Vec2.north).diag + (labelEnv Vec2.south).diag) / 2
-          mid + (labelH + stroke.width.diag + 4) • perp + lbl.shift
+          let labelH := (labelEnv Vec2.north + labelEnv Vec2.south) / 2
+          mid + (labelH + stroke.width + 4) • perp + lbl.shift
       let labelXform :=
         if isUpright then
           Matrix.translate pos.x pos.y
@@ -411,15 +411,15 @@ def Diagram.connectEdge {β : Type} [Backend β] (start stop : LineEnd)
     let tgtDir := match stop'.angle with
       | some a => Vec2.mk (Float.cos a) (Float.sin a)
       | none => -defaultDir
-    let srcTrace := Diagram.getStrokeTrace srcSub 0
-    let tgtTrace := Diagram.getStrokeTrace tgtSub 0
-    let diagHalf := stroke.width.diag / 2
+    let srcTrace := Diagram.getStrokeTrace srcSub
+    let tgtTrace := Diagram.getStrokeTrace tgtSub
+    let diagHalf := stroke.width / 2
     let tipOffset (ah? : Option Arrowhead) : Float := match ah? with
       | some ah =>
         match ah.type with
         | .latex =>
           let halfAngle := 0.4 * ah.width
-          if halfAngle > 0.01 then stroke.width.diag / (2 * Float.sin halfAngle)
+          if halfAngle > 0.01 then stroke.width / (2 * Float.sin halfAngle)
           else diagHalf
         | _ => diagHalf
       | none => 0

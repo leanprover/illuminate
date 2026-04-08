@@ -70,7 +70,7 @@ where
     match d with
     | .empty | .prim _ => acc
     | .foreign _ d | .tag _ d | .named _ d | .transform _ d | .withEnv _ d
-    | .cellophane _ d | .clip _ d | .arrow _ _ _ _ d | .pxTranslate _ d
+    | .cellophane _ d | .clip _ d | .arrow _ _ _ _ d
     | .showEnv _ _ _ d => go d acc
     | .compose a b => go b (go a acc)
     | .warning msg d => go d (acc ++ [msg])

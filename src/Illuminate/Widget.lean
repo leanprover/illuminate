@@ -57,16 +57,16 @@ def diagramWidget : Lean.Widget.Module where
 -/
 
 /-- Renders a {lean}`Diagram SVG` to SVG with default settings. -/
-def diagramToSvg (d : Diagram SVG) (viewBoxPixelWidth : Float := 0) : String :=
-  d.renderDiagram (padding := 5) (viewBoxPixelWidth := viewBoxPixelWidth)
+def diagramToSvg (d : Diagram SVG) : String :=
+  d.renderDiagram (padding := 5)
 
 /-- Hit-tests a {lean}`Diagram SVG` at the given point. -/
 def diagramHitTest (d : Diagram SVG) (x y : Float) : Click :=
   d.hitTest (Point.mk x y)
 
 /-- Renders a {name}`DiagramWithInfo` to SVG with default settings. -/
-def dwiToSvg (dwi : DiagramWithInfo) (viewBoxPixelWidth : Float := 0) : String :=
-  dwi.diagram.renderDiagram (padding := 5) (viewBoxPixelWidth := viewBoxPixelWidth)
+def dwiToSvg (dwi : DiagramWithInfo) : String :=
+  dwi.diagram.renderDiagram (padding := 5)
 
 /-- Hit-tests a {name}`DiagramWithInfo` at the given point. -/
 def dwiHitTest (dwi : DiagramWithInfo) (x y : Float) : Click :=
@@ -206,7 +206,7 @@ private unsafe def evalParamDiagramUnsafe (req : EvalParamRequest) :
       | .error msg => throw (.mk .invalidParams msg : RequestError)
     let diagApp := if sd.returnsDwi
       then mkApp (mkConst ``DiagramWithInfo.diagram) app else app
-    let svgExpr := mkApp2 (mkConst ``diagramToSvg) diagApp (mkFloatExpr req.pixelWidth)
+    let svgExpr := mkApp (mkConst ``diagramToSvg) diagApp
     let ctx : Core.Context := { options := sd.opts, fileName := "<rpc>", fileMap := default }
     let st : Core.State := { env := sd.env }
     let action : CoreM String := MetaM.run' (TermElabM.run' (do
@@ -438,7 +438,7 @@ unsafe def elabDiagramCmd : CommandElab := fun stx => do
       for w in warnings do
         logWarningAt stx (m!"#diagram: {w}")
     let svgStr ← evalExpr String (mkConst ``String)
-      (mkApp2 (mkConst ``diagramToSvg) diagExpr (mkFloatExpr 0))
+      (mkApp (mkConst ``diagramToSvg) diagExpr)
     let props : Json := .mkObj [
       ("exprId", toJson id),
       ("initialSvg", .str svgStr),

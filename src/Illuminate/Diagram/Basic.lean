@@ -79,8 +79,6 @@ inductive Diagram (β : Type) where
   | clip : PathData → Diagram β → Diagram β
   /-- Draws an arrow between two named anchors in a sub-diagram. When {name}`useTrace` is true, endpoints are resolved via trace-based boundary detection instead of named anchor positions. -/
   | arrow (start stop : LineEnd) (stroke : Stroke) (useTrace : Bool) (child : Diagram β) : Diagram β
-  /-- Applies a pixel-valued translation offset, resolved at compile time using the diagram-units-per-pixel scale. -/
-  | pxTranslate : Vec2 → Diagram β → Diagram β
   /-- Overlays a translucent envelope-boundary polygon, resolved at compile time when the scale is known. -/
   | showEnv : Nat → Color → Float → Diagram β → Diagram β
 deriving Hashable
@@ -114,28 +112,23 @@ namespace Diagram
 
 variable {β : Type}
 
-/-- An anchor point with a name, diagram-unit offset, and optional pixel offset. -/
+/-- An anchor point with a name and diagram-unit offset. -/
 structure AnchorPos where
   /-- Hierarchical name for the anchor. -/
   name : Lean.Name
   /-- Offset from the origin in diagram units. -/
   offset : Vec2
-  /-- Additional offset in screen pixels (constant visual size). -/
-  pixelOffset : Vec2 := 0
 
 /--
 Wraps a diagram with a hierarchical name and named anchor points.
-Each anchor is placed at the given diagram-unit offset plus an optional pixel offset.
+Each anchor is placed at the given diagram-unit offset.
 -/
 def withNameAndAnchors (d : Diagram β) (n : Lean.Name)
     (anchors : List AnchorPos) : Diagram β :=
   let withAnchors := anchors.foldl (fun acc a =>
     let anchor : Diagram β := .named a.name .empty
     let translated := .transform (Matrix.translate a.offset.x a.offset.y) anchor
-    let withPx := if a.pixelOffset.x != 0 || a.pixelOffset.y != 0 then
-                    .pxTranslate a.pixelOffset translated
-                  else translated
-    .compose acc withPx
+    .compose acc translated
   ) d
   .named n withAnchors
 
@@ -192,19 +185,18 @@ def rect (width height : Float) (fill : Fill := default) (stroke : Stroke := {})
   match name with
   | none => d
   | some n =>
-    let halfDiag := stroke.width.diag / 2
-    let halfPx := stroke.width.px / 2
-    let hw := width / 2 + halfDiag
-    let hh := height / 2 + halfDiag
+    let halfStroke := stroke.width / 2
+    let hw := width / 2 + halfStroke
+    let hh := height / 2 + halfStroke
     withNameAndAnchors d n [
-      { name := `north, offset := ⟨0, hh⟩, pixelOffset := ⟨0, halfPx⟩ },
-      { name := `south, offset := ⟨0, -hh⟩, pixelOffset := ⟨0, -halfPx⟩ },
-      { name := `east, offset := ⟨hw, 0⟩, pixelOffset := ⟨halfPx, 0⟩ },
-      { name := `west, offset := ⟨-hw, 0⟩, pixelOffset := ⟨-halfPx, 0⟩ },
-      { name := `northeast, offset := ⟨hw, hh⟩, pixelOffset := ⟨halfPx, halfPx⟩ },
-      { name := `northwest, offset := ⟨-hw, hh⟩, pixelOffset := ⟨-halfPx, halfPx⟩ },
-      { name := `southeast, offset := ⟨hw, -hh⟩, pixelOffset := ⟨halfPx, -halfPx⟩ },
-      { name := `southwest, offset := ⟨-hw, -hh⟩, pixelOffset := ⟨-halfPx, -halfPx⟩ }
+      { name := `north, offset := ⟨0, hh⟩ },
+      { name := `south, offset := ⟨0, -hh⟩ },
+      { name := `east, offset := ⟨hw, 0⟩ },
+      { name := `west, offset := ⟨-hw, 0⟩ },
+      { name := `northeast, offset := ⟨hw, hh⟩ },
+      { name := `northwest, offset := ⟨-hw, hh⟩ },
+      { name := `southeast, offset := ⟨hw, -hh⟩ },
+      { name := `southwest, offset := ⟨-hw, -hh⟩ }
     ]
 
 /-- A filled rounded rectangle centered at the origin. -/
@@ -215,63 +207,60 @@ def roundedRect (width height : Float) (cornerRadius : Float)
   match name with
   | none => d
   | some n =>
-    let halfDiag := stroke.width.diag / 2
-    let halfPx := stroke.width.px / 2
-    let hw := width / 2 + halfDiag
-    let hh := height / 2 + halfDiag
+    let halfStroke := stroke.width / 2
+    let hw := width / 2 + halfStroke
+    let hh := height / 2 + halfStroke
     withNameAndAnchors d n [
-      { name := `north, offset := ⟨0, hh⟩, pixelOffset := ⟨0, halfPx⟩ },
-      { name := `south, offset := ⟨0, -hh⟩, pixelOffset := ⟨0, -halfPx⟩ },
-      { name := `east, offset := ⟨hw, 0⟩, pixelOffset := ⟨halfPx, 0⟩ },
-      { name := `west, offset := ⟨-hw, 0⟩, pixelOffset := ⟨-halfPx, 0⟩ },
-      { name := `northeast, offset := ⟨hw, hh⟩, pixelOffset := ⟨halfPx, halfPx⟩ },
-      { name := `northwest, offset := ⟨-hw, hh⟩, pixelOffset := ⟨-halfPx, halfPx⟩ },
-      { name := `southeast, offset := ⟨hw, -hh⟩, pixelOffset := ⟨halfPx, -halfPx⟩ },
-      { name := `southwest, offset := ⟨-hw, -hh⟩, pixelOffset := ⟨-halfPx, -halfPx⟩ }
+      { name := `north, offset := ⟨0, hh⟩ },
+      { name := `south, offset := ⟨0, -hh⟩ },
+      { name := `east, offset := ⟨hw, 0⟩ },
+      { name := `west, offset := ⟨-hw, 0⟩ },
+      { name := `northeast, offset := ⟨hw, hh⟩ },
+      { name := `northwest, offset := ⟨-hw, hh⟩ },
+      { name := `southeast, offset := ⟨hw, -hh⟩ },
+      { name := `southwest, offset := ⟨-hw, -hh⟩ }
     ]
 
 /-- A filled circle centered at the origin. -/
 def circle (radius : Float) (fill : Fill := default) (stroke : Stroke := {})
     (name : Option Lean.Name := none) : Diagram β :=
-  let halfStroke := stroke.width / (2.0 : Float)
+  let halfStroke := stroke.width / 2
   let circleEnv : Envelope :=
-    if halfStroke.diag == 0 && halfStroke.px == 0 then Envelope.ofCircle radius
-    else .nonempty fun _ => ⟨radius + halfStroke.diag, halfStroke.px⟩
+    if halfStroke == 0 then Envelope.ofCircle radius
+    else .nonempty fun _ => radius + halfStroke
   let d : Diagram β := .withEnv circleEnv
     (fromPath (PathData.circle radius) fill stroke)
   match name with
   | none => d
   | some n =>
-    let halfDiag := stroke.width.diag / 2
-    let halfPx := stroke.width.px / 2
-    let r := radius + halfDiag
+    let half := stroke.width / 2
+    let r := radius + half
     withNameAndAnchors d n [
-      { name := `north, offset := ⟨0, r⟩, pixelOffset := ⟨0, halfPx⟩ },
-      { name := `south, offset := ⟨0, -r⟩, pixelOffset := ⟨0, -halfPx⟩ },
-      { name := `east, offset := ⟨r, 0⟩, pixelOffset := ⟨halfPx, 0⟩ },
-      { name := `west, offset := ⟨-r, 0⟩, pixelOffset := ⟨-halfPx, 0⟩ }
+      { name := `north, offset := ⟨0, r⟩ },
+      { name := `south, offset := ⟨0, -r⟩ },
+      { name := `east, offset := ⟨r, 0⟩ },
+      { name := `west, offset := ⟨-r, 0⟩ }
     ]
 
 /-- A filled ellipse centered at the origin with the given half-widths. -/
 def ellipse (rx ry : Float) (fill : Fill := default) (stroke : Stroke := {})
     (name : Option Lean.Name := none) : Diagram β :=
-  let halfStroke := stroke.width / (2.0 : Float)
+  let halfStroke := stroke.width / 2
   let ellipseEnv : Envelope :=
-    if halfStroke.diag == 0 && halfStroke.px == 0 then Envelope.ofRect rx ry
+    if halfStroke == 0 then Envelope.ofRect rx ry
     else .nonempty fun v =>
-      ⟨v.x.abs * (rx + halfStroke.diag) + v.y.abs * (ry + halfStroke.diag), halfStroke.px⟩
+      v.x.abs * (rx + halfStroke) + v.y.abs * (ry + halfStroke)
   let d : Diagram β := .withEnv ellipseEnv
     (fromPath (PathData.ellipse rx ry) fill stroke)
   match name with
   | none => d
   | some n =>
-    let halfDiag := stroke.width.diag / 2
-    let halfPx := stroke.width.px / 2
+    let half := stroke.width / 2
     withNameAndAnchors d n [
-      { name := `north, offset := ⟨0, ry + halfDiag⟩, pixelOffset := ⟨0, halfPx⟩ },
-      { name := `south, offset := ⟨0, -(ry + halfDiag)⟩, pixelOffset := ⟨0, -halfPx⟩ },
-      { name := `east, offset := ⟨rx + halfDiag, 0⟩, pixelOffset := ⟨halfPx, 0⟩ },
-      { name := `west, offset := ⟨-(rx + halfDiag), 0⟩, pixelOffset := ⟨-halfPx, 0⟩ }
+      { name := `north, offset := ⟨0, ry + half⟩ },
+      { name := `south, offset := ⟨0, -(ry + half)⟩ },
+      { name := `east, offset := ⟨rx + half, 0⟩ },
+      { name := `west, offset := ⟨-(rx + half), 0⟩ }
     ]
 
 /--
@@ -285,7 +274,7 @@ def wedge (startAngle endAngle radius : Float)
   match name with
   | none => d
   | some n =>
-    let sw := stroke.width.diag / 2
+    let sw := stroke.width / 2
     let r := radius + sw
     let midAngle := (startAngle + endAngle) / 2
     let p1 := Vec2.mk (r * Float.cos startAngle) (r * Float.sin startAngle)
@@ -311,7 +300,7 @@ def ringWedge (startAngle endAngle innerRadius outerRadius : Float)
   match name with
   | none => d
   | some n =>
-    let sw := stroke.width.diag / 2
+    let sw := stroke.width / 2
     let ro := outerRadius + sw
     let ri := innerRadius - sw
     let midAngle := (startAngle + endAngle) / 2
@@ -451,9 +440,3 @@ def curlyBrace (width : Float) (depth : Float := 0)
 /-- An image primitive. -/
 def fromImage (ref : ImageRef) : Diagram β :=
   .prim (.image ref)
-
-/-- Translates by a Length-valued offset: diag part is immediate, px part is deferred. -/
-def translateLength (dx dy : Length) (d : Diagram β) : Diagram β :=
-  let base := .transform (Matrix.translate dx.diag dy.diag) d
-  if dx.px != 0 || dy.px != 0 then .pxTranslate ⟨dx.px, dy.px⟩ base
-  else base
