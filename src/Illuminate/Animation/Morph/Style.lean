@@ -4,10 +4,10 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Author: David Thrane Christiansen
 -/
 module
-public import Illuminate.Style.Stroke
-public import Illuminate.Style.Text
 import Illuminate.Animation.Interpolate
 import Lean.DocString.Syntax
+public import Illuminate.Style.Types
+import Illuminate.Style.Color
 public section
 
 

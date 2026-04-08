@@ -15,13 +15,7 @@ namespace Illuminate
 # Validation errors
 -/
 
-/-- Structural errors detected during validation. -/
-inductive DiagramError where
-  /-- Indicates two sub-diagrams share the same hierarchical name. -/
-  | duplicateName : Lean.Name → DiagramError
-  /-- Indicates a path primitive with invalid or empty command data. -/
-  | malformedPath : String → DiagramError
-deriving Repr, BEq
+
 
 instance : ToString DiagramError where
   toString

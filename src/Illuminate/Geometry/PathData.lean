@@ -5,33 +5,10 @@ Author: David Thrane Christiansen
 -/
 module
 import Illuminate.Geometry.Basic
-public import Illuminate.Geometry.Vec2
+public import Illuminate.Geometry.Types
 public section
 
-
-namespace Illuminate
-
-/-- A single drawing command within a path. -/
-inductive PathCmd where
-  /-- Moves the pen to the given point without drawing. -/
-  | moveTo : Vec2 → PathCmd
-  /-- Draws a straight line from the current point to the given point. -/
-  | lineTo : Vec2 → PathCmd
-  /-- Draws a cubic Bézier curve through two control points to an endpoint. -/
-  | curveTo : Vec2 → Vec2 → Vec2 → PathCmd
-  /-- Draws an elliptical arc to the given endpoint (SVG {lit}`A` command). -/
-  | arcTo (rx ry xRotation : Float) (largeArc sweep : Bool) (endpoint : Vec2) : PathCmd
-  /-- Closes the current sub-path by drawing a line back to its start. -/
-  | closePath : PathCmd
-deriving Repr, BEq, Inhabited, Hashable
-
-/-- An ordered sequence of path commands describing a shape outline. -/
-structure PathData where
-  /-- The sequence of drawing commands. -/
-  commands : Array PathCmd
-deriving Repr, BEq, Inhabited, Hashable
-
-namespace PathData
+namespace Illuminate.PathData
 
 /-- Creates an empty path with no commands. -/
 def empty : PathData := ⟨#[]⟩

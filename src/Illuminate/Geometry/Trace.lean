@@ -4,9 +4,12 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Author: David Thrane Christiansen
 -/
 module
-public import Illuminate.Geometry.Matrix
-public import Illuminate.Geometry.PathData
 import Illuminate.Geometry.Basic
+public import Illuminate.Geometry.Types
+import Illuminate.Geometry.Matrix
+import Illuminate.Geometry.PathData
+import Illuminate.Geometry.Vec2
+import Illuminate.Geometry.Point -- shake: keep
 public section
 
 
@@ -370,9 +373,6 @@ private def pathDataHits (commands : Array PathCmd) (p : Point) (v : Vec2) :
       lastT := result[i].t
   return deduped
 
-/-!
-# Trace
--/
 
 /--
 {given -show}`t : Float, p : Point, v : Vec2`

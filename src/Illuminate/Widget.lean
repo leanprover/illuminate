@@ -6,10 +6,10 @@ Author: David Thrane Christiansen
 module
 public import Lean.Server.Rpc.RequestHandling
 public meta import Lean.Widget.UserWidget
-public import Illuminate.Diagram.HitTest
 public import Illuminate.Backend.SVG
-meta import Illuminate.Diagram.HitTest
 import Illuminate.Diagram.Validate
+import Illuminate.Diagram.HitTest
+meta import Illuminate.Diagram.Types
 public section
 
 

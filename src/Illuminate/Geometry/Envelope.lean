@@ -4,23 +4,11 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Author: David Thrane Christiansen
 -/
 module
-public import Illuminate.Geometry.Basic
-public import Illuminate.Geometry.Matrix
+public import Illuminate.Geometry.Vec2
+import Illuminate.Geometry.Basic
 public section
 
-
 namespace Illuminate
-
-/--
-An envelope maps a unit direction vector to a scalar extent of a shape
-in that direction. Given direction $`v`, $`envelope(v)` returns the scalar $`t`
-such that the shape fits within the half-plane $`{ p | p · v ≤ t }`.
--/
-inductive Envelope where
-  /-- The empty envelope takes up no space. -/
-  | empty
-  /-- A nonempty envelope. -/
-  | nonempty (env : Vec2 → Float)
 
 instance : Hashable Envelope where
   hash

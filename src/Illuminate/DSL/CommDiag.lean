@@ -203,7 +203,7 @@ private def buildArrow (base : Diagram β) (morph : Morphism) : Diagram β :=
   if morph.bend == 0 then
     let shaft := Diagram.fromStroke (PathData.line a b) arrowStroke
     let (head, _) := ArrowDraw.drawArrowhead defaultArrowhead b (Vec2.sub b a) arrowStroke
-    let arrow := Diagram.atop shaft head
+    let arrow := Diagram.atop head shaft
     let arrow := match morph.label with
       | some labelExpr =>
         let mid : Vec2 := ⟨(a.x + b.x) / 2, (a.y + b.y) / 2⟩
@@ -212,7 +212,7 @@ private def buildArrow (base : Diagram β) (morph : Morphism) : Diagram β :=
         let labelDiag := Diagram.transform
           (Matrix.translate labelPos.x labelPos.y)
           (.text labelExpr { fontSize := (12 : Float) })
-        Diagram.atop arrow labelDiag
+        Diagram.atop labelDiag arrow
       | none => arrow
     match morph.tag with
     | some t => Diagram.tag t arrow
@@ -229,7 +229,7 @@ private def buildArrow (base : Diagram β) (morph : Morphism) : Diagram β :=
       arrowStroke
     let headDir := Vec2.sub b c2
     let (head, _) := ArrowDraw.drawArrowhead defaultArrowhead b headDir arrowStroke
-    let arrow := Diagram.atop shaft head
+    let arrow := Diagram.atop head shaft
     match morph.tag with
     | some t => Diagram.tag t arrow
     | none => arrow
@@ -253,8 +253,8 @@ def compile (m : CommDiagM Unit) : Diagram β :=
   let (_, st) := StateT.run m initState
   let nodeLayer := buildNodeLayer st
   let arrowLayer := st.morphisms.foldl (init := Diagram.empty) fun acc morph =>
-    Diagram.atop acc (buildArrow nodeLayer morph)
-  Diagram.atop nodeLayer arrowLayer
+    Diagram.atop (buildArrow nodeLayer morph) acc
+  Diagram.atop arrowLayer nodeLayer
 
 end CommDiag
 

@@ -8,6 +8,8 @@ public import Illuminate.Animation.Morph.Types
 public import Illuminate.Animation.Morph.Style
 import Illuminate.Animation.Interpolate
 import Lean.DocString.Syntax
+import Illuminate.Geometry.PathData
+meta import Lean.Parser.Term
 public section
 
 
