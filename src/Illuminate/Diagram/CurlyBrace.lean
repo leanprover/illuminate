@@ -5,7 +5,7 @@ Author: David Thrane Christiansen
 -/
 module
 public import Illuminate.Diagram.Placement
-meta import Lean.DocString.Syntax
+import Lean.DocString.Syntax
 public section
 
 namespace Illuminate.Diagram
