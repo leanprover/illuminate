@@ -83,7 +83,11 @@ inductive Diagram (β : Type) where
   | arrow (start stop : LineEnd) (stroke : Stroke) (useTrace : Bool) (child : Diagram β) : Diagram β
   /-- Overlays a translucent envelope-boundary polygon, resolved at compile time when the scale is known. -/
   | showEnv : Nat → Color → Float → Diagram β → Diagram β
+  /-- Scopes name visibility: names inside are resolvable within the scope but invisible from outside. -/
+  | scope : Diagram β → Diagram β
 deriving Hashable
+
+instance {β : Type} : Inhabited (Diagram β) := ⟨.empty⟩
 
 /--
 Controls how a backend-specific foreign value interacts with the diagram pipeline.

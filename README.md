@@ -57,6 +57,11 @@ qualified name. The `connect` function, for instance, draws an arrow
 between two named anchors, and `pinOver` places an overlay at a named
 anchor's position.
 
+`Diagram.scopeNames` wraps a diagram in a name scope. Names inside the
+scope are resolvable by arrows and connections within the scope, but
+invisible from outside. This prevents name collisions when composing
+independent diagram fragments that use the same internal names.
+
 ### Cascading Configuration
 
 Style properties such as stroke width, fill color, font size, and
@@ -306,6 +311,49 @@ U-shaped (double bend) connector, with an `offset` parameter
 controlling the position of the middle segment. All connection
 functions accept optional labels.
 
+### Tree Layout
+
+`treeLayout` arranges a rose tree of diagrams automatically using the
+[Buchheim-Junger-Leipert](https://doi.org/10.1007/3-540-36151-0_32)
+algorithm, which runs in linear time and produces aesthetically
+balanced layouts: nodes at the same depth are aligned, parents are
+centered over their children, and isomorphic subtrees are drawn
+identically.
+
+The input is a `Tree (Diagram β)`, a rose tree where each node carries
+a diagram. Convenience constructors `Tree.leaf`, `Tree.binary`, and
+the general `Tree.node` build trees.
+
+A `TreeConfig` controls the layout:
+
+- `siblingGap` — minimum spacing between adjacent subtrees (default
+  20).
+- `levelGap` — distance between depth levels (default 40).
+- `orientation` — direction from root to children in radians. The
+  default `3 * pi / 2` gives a top-down tree; `0` gives left-to-right.
+  Any angle works.
+- `siblingAlign` — cross-axis alignment when nodes differ in size (0 =
+  near edge, 0.5 = center, 1 = far edge).
+- `drawEdge` — callback to draw each parent-child edge. Defaults to
+  `connectEdge`; set to `none` to suppress edges.
+- `drawRule` — callback to draw a rule spanning all children of a
+  node. Useful for proof trees.
+
+Nodes are named by their path in the tree: `node_0` for the root,
+`node_0_0` for the first child, `node_0_1_5` for the sixth child of
+the second child, etc. These names have cardinal anchors, so custom
+edge-drawing callbacks can use any connection function (`connect`,
+`connectEdge`, `connectL`).
+
+By default, the result is wrapped in a name scope so that internal
+node names are invisible from outside and multiple trees can be
+composed without conflicts. Pass `name` to make the node names
+accessible under that namespace instead.
+
+The preset `TreeConfig.proofTree` disables individual edges and draws
+horizontal inference lines, suitable for natural deduction and sequent
+calculus proof trees.
+
 ### Style Helpers
 
 Convenience functions such as `withFillColor`, `withStrokeColor`,
@@ -409,7 +457,7 @@ presentations (`CompiledAnimation.renderRevealHTML`).
 ## Module Overview
 
 - `Illuminate.Diagram` contains the `Diagram` type, core shapes,
-  spatial algebra, and arrow routing.
+  spatial algebra, arrow routing, and tree layout.
 - `Illuminate.Shapes` provides extended shapes: flowchart nodes, block
   arrows, hearts, cylinders, clouds, speech and thought bubbles, and
   math operator symbols.

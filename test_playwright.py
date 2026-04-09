@@ -486,6 +486,26 @@ def test_flowchart_demo_visual():
     _run_visual_test("flowchart-demo.svg", "flowchart-demo")
 
 
+def test_binary_tree_visual():
+    """Compare binary tree layout rendering against expected baseline."""
+    _run_visual_test("binary-tree.svg", "binary-tree")
+
+
+def test_nary_tree_visual():
+    """Compare n-ary tree layout rendering against expected baseline."""
+    _run_visual_test("nary-tree.svg", "nary-tree")
+
+
+def test_ltr_tree_visual():
+    """Compare left-to-right tree layout rendering against expected baseline."""
+    _run_visual_test("ltr-tree.svg", "ltr-tree")
+
+
+def test_proof_tree_visual():
+    """Compare proof tree layout rendering against expected baseline."""
+    _run_visual_test("proof-tree.svg", "proof-tree")
+
+
 # ---------------------------------------------------------------------------
 # Standalone animation player tests
 # ---------------------------------------------------------------------------
@@ -650,6 +670,10 @@ def main():
         test_bubble_placement_visual,
         test_operator_shapes_visual,
         test_flowchart_demo_visual,
+        test_binary_tree_visual,
+        test_nary_tree_visual,
+        test_ltr_tree_visual,
+        test_proof_tree_visual,
     ]
 
     passed = 0

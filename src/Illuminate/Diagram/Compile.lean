@@ -52,7 +52,7 @@ where
     | .tag n d =>
       let (inner, gi, ci) := go d #[] gi ci
       ((acc.push (.pushAnnotation n) ++ inner).push .popAnnotation, gi, ci)
-    | .named _ d => go d acc gi ci
+    | .named _ d | .scope d => go d acc gi ci
     | .transform m d =>
       let (inner, gi, ci) := go d #[] gi ci
       ((acc.push (.pushTransform m) ++ inner).push .popTransform, gi, ci)

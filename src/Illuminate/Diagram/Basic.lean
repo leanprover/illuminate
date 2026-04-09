@@ -52,6 +52,9 @@ def withNameAndAnchors (d : Diagram β) (n : Lean.Name)
 /-- The empty diagram — renders nothing, has zero envelope. -/
 def emptyDiagram : Diagram β := .empty
 
+/-- Wraps a diagram in a name scope, hiding its internal names from outside. -/
+def scopeNames (d : Diagram β) : Diagram β := .scope d
+
 /-- A filled and/or stroked path. -/
 def fromPath (pd : PathData) (fill : Fill := default) (stroke : Stroke := {}) :
     Diagram β :=
