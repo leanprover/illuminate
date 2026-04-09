@@ -77,6 +77,11 @@ approval. If visual tests fail, investigate and fix the underlying
 issue first. Only update baselines when the visual change is
 intentional and the user has confirmed it.
 
+### Import minimization
+
+After tests pass, run `lake shake`. If it doesn't succeed, ask the
+user whether to run `lake shake --fix`.
+
 ### JavaScript type checking
 
 The animation player and widget JavaScript in `player_js/` uses JSDoc
