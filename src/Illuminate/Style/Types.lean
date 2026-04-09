@@ -161,30 +161,33 @@ inductive TextAnchor where
   | «end»
 deriving Repr, BEq, Inhabited, Hashable
 
-/-- Text rendering style: font family, size, weight, slant, and color. -/
-structure TextStyle where
+/-- Font specification for text measurement. -/
+structure FontSpec where
   /-- CSS font family name. -/
   fontFamily : String := "sans-serif"
   /-- Font size in diagram units. -/
   fontSize : Float := 16
-  /-- Whether to render in bold weight. -/
-  bold : Bool := false
-  /-- Whether to render in italic style. -/
-  italic : Bool := false
-  /-- Text fill color. -/
-  color : Color := { r := 0, g := 0, b := 0 }
-  /-- Horizontal anchor point for text layout. -/
-  anchor : TextAnchor := .middle
-deriving Repr, BEq, Inhabited, Hashable
-
-/-- Font specification for text measurement. -/
-structure FontSpec where
-  /-- CSS font family name. -/
-  family : String := "sans-serif"
-  /-- Font size in diagram units. -/
-  size : Float := 16
   /-- Whether the font is bold. -/
   bold : Bool := false
   /-- Whether the font is italic. -/
   italic : Bool := false
 deriving Repr, BEq, Inhabited, Hashable
+
+/-- Font style for a single span of styled text: font family, size, weight, slant, and color. -/
+structure FontStyle extends FontSpec where
+  /-- Text fill color. -/
+  color : Color := { r := 0, g := 0, b := 0 }
+deriving Repr, BEq, Inhabited, Hashable
+
+/-- Text rendering style: font family, size, weight, slant, and color. -/
+structure TextStyle extends FontStyle where
+  /-- Horizontal anchor point for text layout. -/
+  anchor : TextAnchor := .middle
+deriving Repr, BEq, Inhabited, Hashable
+
+/-- A styled text fragment that resolves against an ambient {name}`FontStyle` to produce lines of styled segments. -/
+structure StyledText where
+  /--
+  Given an ambient style, produces a list of lines, each of which is a sequence of styled strings.
+  -/
+  toLines : FontStyle → List (List (FontStyle × String))

@@ -25,6 +25,8 @@ inductive DrawCmd (β : Type) where
   | strokePath : PathData → Stroke → DrawCmd β
   /-- Draws a text string at the given position. -/
   | drawTextRun : String → TextStyle → Vec2 → DrawCmd β
+  /-- Draws styled text with per-span font and color at the given position. -/
+  | drawStyledText : Array (Array (FontStyle × String)) → TextAnchor → Vec2 → DrawCmd β
   /-- Pushes an affine transform onto the graphics state stack. -/
   | pushTransform : Matrix → DrawCmd β
   /-- Pops the most recent transform from the graphics state stack. -/

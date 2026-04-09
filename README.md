@@ -113,9 +113,44 @@ diagram with an appropriate envelope:
 - `Diagram.star` produces a star with alternating outer and inner
   vertices.
 - `Diagram.text` produces a text label.
+- `Diagram.styledText` produces a text label with mixed fonts and
+  colors.
 - `Diagram.line` produces a straight line segment.
 
 All shapes are centered at the origin.
+
+### Styled Text
+
+`Diagram.styledText` renders text where different segments can have
+different fonts, sizes, weights, and colors. It takes a `StyledText`
+value and a base font style. Bare strings inherit the base style;
+combinators modify it for their contents. Newline characters are
+respected:
+
+```lean
+Diagram.styledText (style := { fontSize := 12 }) <|
+  "The " ++ family "monospace" "List" ++ " type is " ++ bold "polymorphic" ++ "."
+```
+
+The available combinators are:
+
+- `bold` — renders the inner fragment in bold.
+- `italic` — renders the inner fragment in italic.
+- `family` — sets the font family (e.g., `family "monospace"`).
+- `colored` — sets the text color (e.g., `colored Color.red`).
+- `styled` — applies an arbitrary `FontStyle → FontStyle` modifier.
+
+Combinators compose naturally: `bold (family "monospace" "code")`
+produces bold monospace text. Newlines in any string fragment start a
+new line:
+
+```lean
+Diagram.styledText (base := { fontSize := 10 }) <|
+  "First line\n" ++ bold "Second" ++ " line"
+```
+
+The lower-level function `styledLines` accepts
+`List (List (FontStyle × String))` directly.
 
 ### Spatial Composition
 

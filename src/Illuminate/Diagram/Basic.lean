@@ -90,6 +90,47 @@ def text (s : String) (style : TextStyle := {})
       { name := `southwest, offset := ⟨left, -h⟩ }
     ]
 
+/--
+Multi-line styled text with per-segment font and color.
+
+Each inner list is a line of styled segments. The {name}`anchor` controls
+horizontal alignment of the whole text block.
+-/
+def styledLines (lines : List (List (FontStyle × String)))
+    (anchor : TextAnchor := .middle)
+    (name : Option Lean.Name := none) : Diagram β :=
+  let linesArr := lines.map (·.toArray) |>.toArray
+  let d : Diagram β := .prim (.styledText linesArr anchor)
+  match name with
+  | none => d
+  | some n =>
+    let maxW := linesArr.foldl (fun acc segs => max acc (estimateLineWidth segs)) 0
+    let nLines := max 1 linesArr.size
+    let maxFs := linesArr.foldl (fun acc segs => max acc (lineMaxFontSize segs)) 0
+    let h := if nLines == 1 then maxFs / 2
+             else maxFs * 1.2 * nLines.toFloat / 2
+    let (left, right) : Float × Float := match anchor with
+      | .start => (0, maxW)
+      | .«end» => (-maxW, 0)
+      | .middle => (-maxW / 2, maxW / 2)
+    withNameAndAnchors d n [
+      { name := `north, offset := ⟨(left + right) / 2, h⟩ },
+      { name := `south, offset := ⟨(left + right) / 2, -h⟩ },
+      { name := `east, offset := ⟨right, 0⟩ },
+      { name := `west, offset := ⟨left, 0⟩ },
+      { name := `northeast, offset := ⟨right, h⟩ },
+      { name := `northwest, offset := ⟨left, h⟩ },
+      { name := `southeast, offset := ⟨right, -h⟩ },
+      { name := `southwest, offset := ⟨left, -h⟩ }
+    ]
+
+/-- Styled text with an ambient base style. Bare strings inherit the base; use {name}`bold`, {name}`italic`, {name}`family`, or {name}`styled` to modify it for inner fragments. -/
+def styledText (text : StyledText)
+    (base : FontStyle := {})
+    (anchor : TextAnchor := .middle)
+    (name : Option Lean.Name := none) : Diagram β :=
+  styledLines (text.toLines base) anchor name
+
 /-- A line segment from {name}`a` to {name}`b`. -/
 def line (a b : Vec2) (stroke : Stroke := {}) : Diagram β :=
   fromStroke (PathData.line a b) stroke
