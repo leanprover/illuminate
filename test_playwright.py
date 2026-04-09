@@ -331,6 +331,21 @@ def test_stringlayout_visual():
     _run_visual_test("string-layout.svg", "stringlayout")
 
 
+def test_textmixedfonts_visual():
+    """Compare text mixed fonts diagram rendering against expected baseline."""
+    _run_visual_test("text-mixed-fonts.svg", "textmixedfonts")
+
+
+def test_bracedirections_visual():
+    """Compare brace directions diagram rendering against expected baseline."""
+    _run_visual_test("brace-directions.svg", "bracedirections")
+
+
+def test_bracedirectionsangles_visual():
+    """Compare brace directions angles diagram rendering against expected baseline."""
+    _run_visual_test("brace-directions-angles.svg", "bracedirectionsangles")
+
+
 def test_coechain_visual():
     """Compare coe-chain diagram rendering against expected baseline."""
     _run_visual_test("coe-chain.svg", "coechain")
@@ -545,6 +560,9 @@ def main():
         test_roundedrects_7_5_visual,
         test_pipeline_visual,
         test_stringlayout_visual,
+        test_textmixedfonts_visual,
+        test_bracedirections_visual,
+        test_bracedirectionsangles_visual,
         test_coechain_visual,
         test_lakeworkspace_visual,
         test_stars_visual,

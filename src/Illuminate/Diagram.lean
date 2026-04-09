@@ -7,6 +7,7 @@ module
 public import Illuminate.Diagram.Basic
 public import Illuminate.Diagram.Placement
 public import Illuminate.Diagram.Arrow
+public import Illuminate.Diagram.CurlyBrace
 public import Illuminate.Diagram.Paper
 public import Illuminate.Diagram.Compile
 public import Illuminate.Diagram.Validate

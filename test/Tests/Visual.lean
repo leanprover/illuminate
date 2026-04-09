@@ -301,6 +301,45 @@ def testVisual_stringLayout : IO Unit :=
   testVisualWrite "string-layout.svg" stringLayoutDiagram
 
 
+def textMixedFonts : Diagram SVG :=
+  .vsep 20 [
+    .styledText <| "One font " ++ styled ({· with fontSize := 7}) (family "monospace" "another font") ++ " and back"
+  ]
+
+#diagram textMixedFonts
+
+def testVisual_textMixedFonts : IO Unit :=
+  testVisualWrite "text-mixed-fonts.svg" textMixedFonts
+
+def braceDirections : Diagram SVG :=
+  let box := Diagram.rect 30 30
+  .vsep 20 [
+    .hsep 10 [
+      .braceAbove box (.text "Above"),
+      .braceBelow box (.text "Below")
+    ],
+    .hsep 10 [
+      .braceLeftOf box (.text "Left"),
+      .braceRightOf box (.text "Right")
+    ]
+  ]
+
+#diagram braceDirections
+
+def testVisual_braceDirections : IO Unit :=
+  testVisualWrite "brace-directions.svg" braceDirections
+
+def braceDirections' : Diagram SVG :=
+  let box := Diagram.rect 30 30
+  filmstrip fun i =>
+    let θ := 2 * pi * i
+    Diagram.braceBy box θ (.text s!"Hello")
+
+#diagram braceDirections'
+
+def testVisual_braceDirections' : IO Unit :=
+  testVisualWrite "brace-directions-angles.svg" braceDirections'
+
 /-!
 # Lake workspace (from Lean reference manual)
 -/
@@ -998,6 +1037,9 @@ def visualTests : List (String × IO Unit) := [
   ("Visual/roundedRects_7_5", testVisual_roundedRects_7_5),
   ("Visual/pipeline", testVisual_pipeline),
   ("Visual/stringLayout", testVisual_stringLayout),
+  ("Visual/textMixedFonts", testVisual_textMixedFonts),
+  ("Visual/braceDirections", testVisual_braceDirections),
+  ("Visual/braceDirectionsAngles", testVisual_braceDirections'),
   ("Visual/lakeWorkspace", testVisual_lakeWorkspace),
   ("Visual/coeChain", testVisual_coeChain),
   ("Visual/stars", testVisual_stars),

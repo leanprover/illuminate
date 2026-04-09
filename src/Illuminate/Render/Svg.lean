@@ -286,7 +286,7 @@ def renderCmd {β : Type} [BackendRender β] (cmd : DrawCmd β)
       let tspans := spans.foldl (fun acc (style, s) =>
         let weight := if style.bold then "bold" else "normal"
         let slant := if style.italic then "italic" else "normal"
-        acc ++ s!"<tspan font-family=\"{escapeXml style.fontFamily}\" font-size=\"{fmtNum style.fontSize}\" font-weight=\"{weight}\" font-style=\"{slant}\" fill=\"{colorToSvg style.color}\">{escapeXml s}</tspan>"
+        acc ++ s!"<tspan alignment-baseline=\"central\" font-family=\"{escapeXml style.fontFamily}\" font-size=\"{fmtNum style.fontSize}\" font-weight=\"{weight}\" font-style=\"{slant}\" fill=\"{colorToSvg style.color}\">{escapeXml s}</tspan>"
       ) ""
       s!"<text{eAttr}{attrStr} xml:space=\"preserve\">{tspans}</text>"
     else
@@ -304,7 +304,7 @@ def renderCmd {β : Type} [BackendRender β] (cmd : DrawCmd β)
           let posAttrs := if spanIdx == 0 then
             s!" x=\"{fmtNum pos.x}\" dy=\"{fmtNum dy}\""
           else ""
-          let span := s!"<tspan{posAttrs} font-family=\"{escapeXml style.fontFamily}\" font-size=\"{fmtNum style.fontSize}\" font-weight=\"{weight}\" font-style=\"{slant}\" fill=\"{colorToSvg style.color}\">{escapeXml s}</tspan>"
+          let span := s!"<tspan{posAttrs} alignment-baseline=\"central\" font-family=\"{escapeXml style.fontFamily}\" font-size=\"{fmtNum style.fontSize}\" font-weight=\"{weight}\" font-style=\"{slant}\" fill=\"{colorToSvg style.color}\">{escapeXml s}</tspan>"
           (spanIdx + 1, sacc ++ span)) (0, "")
         (lineIdx + 1, acc ++ lineStr)) (0, "")
       s!"<text{eAttr}{attrStr} xml:space=\"preserve\">{tspans}</text>"
