@@ -514,6 +514,11 @@ def closest (t : StrokeTrace) (p : Point) (v : Vec2) : Option StrokeHit :=
   let hits := t.trace p v
   if hits.isEmpty then none else some hits[0]!
 
+/-- Returns the farthest (largest edge parameter) stroke hit, if any. -/
+def farthest (t : StrokeTrace) (p : Point) (v : Vec2) : Option StrokeHit :=
+  let hits := t.trace p v
+  if hits.isEmpty then none else some hits[hits.size - 1]!
+
 /-- Inserts a stroke hit into sorted position by edge parameter. -/
 private def sortedInsertHit (arr : Array StrokeHit) (val : StrokeHit) : Array StrokeHit := Id.run do
   let mut inserted := false

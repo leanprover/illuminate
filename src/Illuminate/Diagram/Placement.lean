@@ -443,10 +443,10 @@ def getEnvelope (d : Diagram β) : Envelope :=
               else halfW
             | _ => halfW
           | none => 0
-        let src := match srcTrace.closest (Point.ofVec2 srcCenter) srcDir with
+        let src := match srcTrace.farthest (Point.ofVec2 srcCenter) srcDir with
           | some hit => srcCenter + (hit.edge + hit.width + tipOffset start.arrowhead) • srcDir + start.shift
           | none => srcCenter + start.shift
-        let tgt := match tgtTrace.closest (Point.ofVec2 tgtCenter) tgtDir with
+        let tgt := match tgtTrace.farthest (Point.ofVec2 tgtCenter) tgtDir with
           | some hit => tgtCenter + (hit.edge + hit.width + tipOffset stop.arrowhead) • tgtDir + stop.shift
           | none => tgtCenter + stop.shift
         let straightAngle := Float.atan2 (tgt.y - src.y) (tgt.x - src.x)

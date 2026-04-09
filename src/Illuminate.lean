@@ -12,4 +12,5 @@ public import Illuminate.DSL
 public import Illuminate.Backend.SVG
 public import Illuminate.Widget
 public import Illuminate.Animation
+public import Illuminate.Shapes
 public section

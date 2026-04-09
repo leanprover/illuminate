@@ -380,6 +380,75 @@ def Diagram.connectL {β : Type} [Backend β] (start stop : LineEnd)
   d.connectL' srcPoint tgtPoint start stop bend stroke
 
 /--
+Draws a U-shaped (double right-angle) line or arrow between two points.
+The path has three segments: out from the source, across, then into the target.
+The {name}`offset` controls how far the middle segment is displaced from the
+endpoints. Positive values go right/up relative to the {name}`bend` direction.
+-/
+def Diagram.connectU' {β : Type} [Backend β] (srcPoint tgtPoint : Point) (start stop : LineEnd)
+    (offset : Float)
+    (bend : BendDirection := .vertical)
+    (stroke : Stroke := .defaultArrow)
+    (label : Option (Label β) := none)
+    (d : Diagram β) : Diagram β :=
+  let src := srcPoint.toVec2 + start.shift
+  let tgt := tgtPoint.toVec2 + stop.shift
+  let startAh := start.arrowhead
+  let stopAh := stop.arrowhead
+  let (mid1, mid2) := match bend with
+    | .vertical =>
+      -- Out horizontally to offset, then vertically, then horizontally back
+      (Vec2.mk offset src.y, Vec2.mk offset tgt.y)
+    | .horizontal =>
+      -- Out vertically to offset, then horizontally, then vertically back
+      (Vec2.mk src.x offset, Vec2.mk tgt.x offset)
+  let uPath := PathData.empty
+    |>.moveTo src
+    |>.lineTo mid1
+    |>.lineTo mid2
+    |>.lineTo tgt
+  let shaft := Diagram.fromStroke uPath stroke
+  let heads := match startAh with
+    | some ah =>
+      let dir := (src - mid1).normalize
+      (ArrowDraw.drawArrowhead ah src dir stroke).1
+    | none => .empty
+  let heads := match stopAh with
+    | some ah =>
+      let dir := (tgt - mid2).normalize
+      Diagram.compose heads (ArrowDraw.drawArrowhead ah tgt dir stroke).1
+    | none => heads
+  let arrow := [shaft, heads].foldl Diagram.compose .empty
+  -- Place label at midpoint of the middle segment, offset perpendicular to it
+  let arrowWithLabel := match label with
+    | none => arrow
+    | some lbl =>
+      let midPt := (0.5 : Float) • (mid1 + mid2)
+      let segDir := (mid2 - mid1).normalize
+      let perp := Vec2.mk (-segDir.y) segDir.x
+      if let .nonempty labelEnv := lbl.label.getEnvelope then
+        let extent := labelEnv perp
+        let pos := midPt + (extent + stroke.width + 4) • perp + lbl.shift
+        Diagram.atop (Diagram.transform (Matrix.translate pos.x pos.y) lbl.label) arrow
+      else
+        Diagram.atop (Diagram.transform (Matrix.translate midPt.x midPt.y) lbl.label) arrow
+  .compose d arrowWithLabel
+
+/--
+Draws a U-shaped (double right-angle) line or arrow between two named anchor points.
+The {name}`offset` controls the position of the middle segment.
+-/
+def Diagram.connectU {β : Type} [Backend β] (start stop : LineEnd)
+    (offset : Float)
+    (bend : BendDirection := .vertical)
+    (stroke : Stroke := .defaultArrow)
+    (label : Option (Label β) := none)
+    (d : Diagram β) : Diagram β :=
+  let srcPoint := (d.find start.point).origin
+  let tgtPoint := (d.find stop.point).origin
+  d.connectU' srcPoint tgtPoint start stop offset bend stroke label
+
+/--
 Draws a line or arrow between two named shapes using trace-based boundary detection.
 Instead of connecting to explicit anchor points (like {lit}`node.north`), this finds the
 named subdiagrams, computes the direction between their centers, and uses traces to
@@ -423,10 +492,10 @@ def Diagram.connectEdge {β : Type} [Backend β] (start stop : LineEnd)
           else diagHalf
         | _ => diagHalf
       | none => 0
-    let src := match srcTrace.closest (Point.ofVec2 srcCenter) srcDir with
+    let src := match srcTrace.farthest (Point.ofVec2 srcCenter) srcDir with
       | some hit => srcCenter + (hit.edge + hit.width + tipOffset start.arrowhead) • srcDir + start.shift
       | none => srcCenter + start.shift
-    let tgt := match tgtTrace.closest (Point.ofVec2 tgtCenter) tgtDir with
+    let tgt := match tgtTrace.farthest (Point.ofVec2 tgtCenter) tgtDir with
       | some hit => tgtCenter + (hit.edge + hit.width + tipOffset stop'.arrowhead) • tgtDir + stop'.shift
       | none => tgtCenter + stop'.shift
     let stop'' := match stop'.angle with

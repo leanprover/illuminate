@@ -1029,6 +1029,305 @@ def testVisual_filmstripMorphArrows : IO Unit :=
   testVisualWrite "filmstrip-morph-arrows.svg" filmstripMorphArrows
 
 
+/-!
+# Basic shapes
+-/
+
+/-- Flowchart shapes: diamond, parallelogram, trapezoid, document, each with fill and stroke. -/
+def flowchartShapes : Diagram SVG :=
+  let fill : Fill := rgb!"#dcebff"
+  let stroke : Stroke := { color := Color.black, width := 1.5 }
+  let label := Diagram.text "Yes" { fontSize := 10 }
+  Diagram.hsep 15 [
+    Diagram.diamond 50 40 (fill := fill) (stroke := stroke)
+      (label := some label) (name := `d),
+    Diagram.parallelogram 60 35 (fill := fill) (stroke := stroke)
+      (label := some (Diagram.text "I/O" { fontSize := 10 })) (name := `p),
+    Diagram.trapezoid 50 60 35 (fill := fill) (stroke := stroke)
+      (label := some (Diagram.text "Op" { fontSize := 10 })) (name := `t),
+    Diagram.document 60 45 (fill := fill) (stroke := stroke)
+      (label := some (Diagram.text "Doc" { fontSize := 10 })) (name := `doc)
+  ]
+
+#diagram flowchartShapes
+
+def testVisual_flowchartShapes : IO Unit :=
+  testVisualWrite "flowchart-shapes.svg" flowchartShapes
+
+/-- Parallelogram skew variations: 5, 10, 20 (default), 30. -/
+def parallelogramVariations : Diagram SVG :=
+  let fill : Fill := rgb!"#e8f4e8"
+  let stroke : Stroke := { color := Color.black, width := 1 }
+  Diagram.hsep 10 [
+    Diagram.parallelogram 50 30 (skew := 5) (fill := fill) (stroke := stroke),
+    Diagram.parallelogram 50 30 (skew := 10) (fill := fill) (stroke := stroke),
+    Diagram.parallelogram 50 30 (fill := fill) (stroke := stroke),
+    Diagram.parallelogram 50 30 (skew := 30) (fill := fill) (stroke := stroke)
+  ]
+
+#diagram parallelogramVariations
+
+def testVisual_parallelogramVariations : IO Unit :=
+  testVisualWrite "parallelogram-variations.svg" parallelogramVariations
+
+/-- Arrow shapes: block arrow, double arrow, chevron. -/
+def arrowShapes : Diagram SVG :=
+  let fill : Fill := rgb!"#ffe8cc"
+  let stroke : Stroke := { color := Color.black, width := 1.5 }
+  Diagram.hsep 15 [
+    Diagram.blockArrow 80 30 (fill := fill) (stroke := stroke) (name := `ba),
+    Diagram.doubleArrow 80 30 (fill := fill) (stroke := stroke) (name := `da),
+    Diagram.chevron 60 30 (fill := fill) (stroke := stroke) (name := `ch)
+  ]
+
+#diagram arrowShapes
+
+def testVisual_arrowShapes : IO Unit :=
+  testVisualWrite "arrow-shapes.svg" arrowShapes
+
+/-- Bent arrow variations: 180° U-turn, 90° rounded, 90° square. -/
+def bentArrows : Diagram SVG :=
+  let fill : Fill := rgb!"#e0d0ff"
+  let stroke : Stroke := { color := Color.black, width := 1 }
+  Diagram.hsep 15 [
+    Diagram.bentArrow180 40 60 8 (fill := fill) (stroke := stroke) (name := `b180),
+    Diagram.bentArrow90 50 50 8 (fill := fill) (stroke := stroke) (name := `b90),
+    Diagram.squareBentArrow90 50 50 8 (fill := fill) (stroke := stroke) (name := `sq90) (headWidth := 25)
+  ]
+
+#diagram bentArrows
+
+def testVisual_bentArrows : IO Unit :=
+  testVisualWrite "bent-arrows.svg" bentArrows
+
+/-- Heart shapes: solid fills with varying cleft, then gradient fills. -/
+def heartShapes : Diagram SVG :=
+  let stroke : Stroke := { color := Color.black, width := 1.5 }
+  let solidRow := Diagram.hsep 15 [
+    Diagram.heart (fill := rgb!"#ff6b6b") (stroke := stroke) (name := `h),
+    Diagram.heart (width := 50) (height := 35) (cleft := 0.15)
+      (fill := rgb!"#ffaaaa") (stroke := stroke),
+    Diagram.heart (width := 35) (height := 45) (cleft := 0.5)
+      (fill := rgb!"#ff8888") (stroke := stroke)
+  ]
+  let gradientRow := Diagram.hsep 15 [
+    Diagram.heart (fill := .between (rgb!"#ff6b6b") (rgb!"#ffaaaa") .south)
+      (stroke := stroke),
+    Diagram.heart (fill := .radialBetween .white (rgb!"#ff6b6b"))
+      (stroke := stroke),
+    Diagram.heart (fill := .between (rgb!"#ff6b6b") (rgb!"#4285f4") .east)
+      (stroke := stroke)
+  ]
+  Diagram.vsep 15 [solidRow, gradientRow]
+
+#diagram heartShapes
+
+def testVisual_heartShapes : IO Unit :=
+  testVisualWrite "heart-shapes.svg" heartShapes
+
+/-- Decorative shapes: stadium, cylinder, plus — solid then gradient fills. -/
+def decorativeShapes : Diagram SVG :=
+  let stroke : Stroke := { color := Color.black, width := 1.5 }
+  let solidRow := Diagram.hsep 15 [
+    Diagram.stadium 60 30 (fill := rgb!"#dcebff") (stroke := stroke) (name := `s),
+    Diagram.cylinder 50 60 (topFill := rgb!"#b8d4ff") (sideFill := rgb!"#dcebff")
+      (stroke := stroke) (name := `cyl),
+    Diagram.plus 15 8 (fill := rgb!"#e8f4e8") (stroke := stroke) (name := `p4)
+  ]
+  let gradientRow := Diagram.hsep 15 [
+    Diagram.stadium 60 30 (fill := .between (rgb!"#dcebff") (rgb!"#4285f4") .east)
+      (stroke := stroke),
+    Diagram.cylinder 50 60
+      (topFill := .radialBetween .white (rgb!"#4285f4"))
+      (sideFill := .between (rgb!"#dcebff") (rgb!"#4285f4") .south)
+      (stroke := stroke),
+    Diagram.plus 15 8 (fill := .between (rgb!"#e8f4e8") (rgb!"#4285f4") .north)
+      (stroke := stroke)
+  ]
+  Diagram.vsep 15 [solidRow, gradientRow]
+
+#diagram decorativeShapes
+
+def testVisual_decorativeShapes : IO Unit :=
+  testVisualWrite "decorative-shapes.svg" decorativeShapes
+
+/-- Plus shapes with varying arm counts: 3, 4, 5, 6, 8 arms. -/
+def plusVariations : Diagram SVG :=
+  let fill : Fill := rgb!"#ffe8cc"
+  let stroke : Stroke := { color := Color.black, width := 1 }
+  Diagram.hsep 15 [
+    Diagram.plus 12 6 (arms := 3) (fill := fill) (stroke := stroke),
+    Diagram.plus 12 6 (arms := 4) (fill := fill) (stroke := stroke),
+    Diagram.plus 12 6 (arms := 5) (fill := fill) (stroke := stroke),
+    Diagram.plus 12 6 (arms := 6) (fill := fill) (stroke := stroke),
+    Diagram.plus 12 6 (arms := 8) (fill := fill) (stroke := stroke)
+  ]
+
+#diagram plusVariations
+
+def testVisual_plusVariations : IO Unit :=
+  testVisualWrite "plus-variations.svg" plusVariations
+
+/-- Cloud shapes: varying puff counts (top row) and puff sizes (bottom row). -/
+def cloudVariations : Diagram SVG :=
+  let fill : Fill := rgb!"#e8f0ff"
+  let stroke : Stroke := { color := Color.black, width := 1 }
+  let puffCountRow := Diagram.hsep 15 [
+    Diagram.cloud 60 40 (puffs := 5) (fill := fill) (stroke := stroke),
+    Diagram.cloud 60 40 (puffs := 8) (fill := fill) (stroke := stroke),
+    Diagram.cloud 60 40 (puffs := 12) (fill := fill) (stroke := stroke)
+  ]
+  let puffSizeRow := Diagram.hsep 15 [
+    Diagram.cloud 60 40 (puffSize := 0.3) (fill := fill) (stroke := stroke),
+    Diagram.cloud 60 40 (puffSize := 0.7) (fill := fill) (stroke := stroke),
+    Diagram.cloud 60 40 (puffSize := 1.0) (fill := fill) (stroke := stroke)
+  ]
+  Diagram.vsep 15 [puffCountRow, puffSizeRow]
+
+#diagram cloudVariations
+
+def testVisual_cloudVariations : IO Unit :=
+  testVisualWrite "cloud-variations.svg" cloudVariations
+
+/-- Speech and thought bubble shapes. -/
+def bubbleShapes : Diagram SVG :=
+  let fill : Fill := rgb!"#fff8e0"
+  let stroke : Stroke := { color := Color.black, width := 1.5 }
+  Diagram.hsep 20 [
+    Diagram.speechBubble 80 50 (fill := fill) (stroke := stroke) (name := `sb),
+    Diagram.speechBubble 80 50 (tailSide := .east) (fill := fill) (stroke := stroke),
+    Diagram.speechBubble 80 50 (tailSide := .north) (tailPosition := 0.7)
+      (fill := fill) (stroke := stroke),
+    Diagram.thoughtBubble 70 50 (fill := fill) (stroke := stroke) (name := `tb)
+  ]
+
+#diagram bubbleShapes
+
+def testVisual_bubbleShapes : IO Unit :=
+  testVisualWrite "bubble-shapes.svg" bubbleShapes
+
+/-- Bubble placement: speech and thought bubbles pointing at star anchors. -/
+def bubblePlacement : Diagram SVG :=
+  let starFill : Fill := rgb!"#ffe664"
+  let starStroke : Stroke := { color := Color.black, width := 1.5 }
+  let bubbleFill : Fill := rgb!"#fff8e0"
+  let bubbleStroke : Stroke := { color := Color.black, width := 1 }
+  let star := Diagram.star 5 40 20
+    (fill := starFill) (stroke := starStroke) (name := `s)
+  let hi := Diagram.text "Hi!" { fontSize := 10 }
+  let wow := Diagram.text "Wow" { fontSize := 10 }
+  let hmm := Diagram.text "Hmm" { fontSize := 9 }
+  let ok := Diagram.text "OK" { fontSize := 10 }
+  star
+    |>.addSpeechBubble `s.point0 hi 50 30
+      (position := ⟨0, 80⟩)
+      (fill := bubbleFill) (stroke := bubbleStroke)
+    |>.addSpeechBubble `s.point2 wow 50 30
+      (position := ⟨-70, -20⟩)
+      (fill := bubbleFill) (stroke := bubbleStroke)
+    |>.addThoughtBubble `s.point3 hmm 55 30
+      (position := ⟨-10, -70⟩)
+      (fill := bubbleFill) (stroke := bubbleStroke)
+    |>.addThoughtBubble `s.point4 ok 50 30
+      (position := ⟨60, -10⟩)
+      (fill := bubbleFill) (stroke := bubbleStroke)
+
+#diagram bubblePlacement
+
+def testVisual_bubblePlacement : IO Unit :=
+  testVisualWrite "bubble-placement.svg" bubblePlacement
+
+/-- Math operator shapes, all at the same size. -/
+def operatorShapes : Diagram SVG :=
+  let fill : Fill := .radialGradient #[ ⟨0.0, .green⟩, ⟨0.25, .lightGray⟩, ⟨1.0, .blue⟩]
+  let sz := 16.0
+  let lw := 3.0
+  Diagram.vsep 12 [
+    Diagram.hsep 12 [
+      Diagram.opPlus sz lw (fill := fill),
+      Diagram.opMinus sz lw (fill := fill),
+      Diagram.opTimes sz lw (fill := fill),
+      Diagram.opDivide sz lw (fill := fill)
+    ],
+    Diagram.hsep 12 [
+      Diagram.opEquals sz lw (fill := fill),
+      Diagram.opNotEquals sz lw (fill := fill),
+      Diagram.opLessThan sz lw (fill := fill),
+      Diagram.opGreaterThan sz lw (fill := fill)
+    ]
+  ]
+
+#diagram operatorShapes
+
+def testVisual_operatorShapes : IO Unit :=
+  testVisualWrite "operator-shapes.svg" operatorShapes
+
+/-- A complete flowchart using the new shapes. -/
+def flowchartDemo : Diagram SVG :=
+  let blueFill : Fill := rgb!"#dcebff"
+  let greenFill : Fill := rgb!"#e8f4e8"
+  let yellowFill : Fill := rgb!"#fff8e0"
+  let pinkFill : Fill := rgb!"#ffe8e8"
+  let stroke : Stroke := { color := Color.black, width := 1 }
+  let arrowStroke : Stroke := { color := Color.black, width := 1 }
+  -- Build nodes
+  let startNode := Diagram.stadium 70 30
+    (fill := greenFill) (stroke := stroke) (name := `start)
+  let startLabel := Diagram.text "Start" { fontSize := 10 }
+  let start := Diagram.atop startLabel startNode
+  let processNode := Diagram.rect 70 35
+    (fill := blueFill) (stroke := stroke) (name := `process)
+  let processLabel := Diagram.text "Process" { fontSize := 10 }
+  let process := Diagram.atop processLabel processNode
+  let decisionNode := Diagram.diamond 80 50
+    (fill := yellowFill) (stroke := stroke)
+    (label := some (Diagram.text "OK?" { fontSize := 10 }))
+    (name := `decision)
+  let ioNode := Diagram.parallelogram 70 30
+    (fill := pinkFill) (stroke := stroke)
+    (label := some (Diagram.text "Output" { fontSize := 10 }))
+    (name := `output)
+  let endNode := Diagram.stadium 70 30
+    (fill := greenFill) (stroke := stroke) (name := `endN)
+  let endLabel := Diagram.text "End" { fontSize := 10 }
+  let endN := Diagram.atop endLabel endNode
+  -- Layout vertically
+  let chart := Diagram.vsep 30 [start, process, decisionNode, ioNode, endN]
+  let yesLabel : Diagram SVG := .text "Yes" { fontSize := 8 }
+  let noLabel : Diagram SVG := .text "No" { fontSize := 8 }
+  -- Connect with arrows
+  chart
+    |>.connectEdge
+      { point := `start, arrowhead := none }
+      { point := `process, arrowhead := some {} }
+      (stroke := arrowStroke)
+    |>.connectEdge
+      { point := `process, arrowhead := none }
+      { point := `decision, arrowhead := some {} }
+      (stroke := arrowStroke)
+    |>.connectEdge
+      { point := `decision, arrowhead := none }
+      { point := `output, arrowhead := some {} }
+      (stroke := arrowStroke)
+      (label := some { label := yesLabel, upright := true })
+    |>.connectEdge
+      { point := `output, arrowhead := none }
+      { point := `endN, arrowhead := some {} }
+      (stroke := arrowStroke)
+    -- "No" loop: decision east → process east via U-shaped path
+    |>.connectU
+      { point := `decision.east, arrowhead := none }
+      { point := `process.east, arrowhead := some {} }
+      (offset := 60)
+      (bend := .vertical)
+      (stroke := arrowStroke)
+      (label := some { label := noLabel })
+
+#diagram flowchartDemo
+
+def testVisual_flowchartDemo : IO Unit :=
+  testVisualWrite "flowchart-demo.svg" flowchartDemo
+
 def visualTests : List (String × IO Unit) := [
   ("Visual/roundedRects", testVisual_roundedRects),
   ("Visual/roundedRects_2_5", testVisual_roundedRects_2_5),
@@ -1062,5 +1361,17 @@ def visualTests : List (String × IO Unit) := [
   ("Visual/filmstripAnimatedClip", testVisual_filmstripAnimatedClip),
   ("Visual/filmstripMorphRectCircle", testVisual_filmstripMorphRectCircle),
   ("Visual/filmstripMorphNested", testVisual_filmstripMorphNested),
-  ("Visual/filmstripMorphArrows", testVisual_filmstripMorphArrows)
+  ("Visual/filmstripMorphArrows", testVisual_filmstripMorphArrows),
+  ("Visual/flowchartShapes", testVisual_flowchartShapes),
+  ("Visual/parallelogramVariations", testVisual_parallelogramVariations),
+  ("Visual/arrowShapes", testVisual_arrowShapes),
+  ("Visual/bentArrows", testVisual_bentArrows),
+  ("Visual/heartShapes", testVisual_heartShapes),
+  ("Visual/decorativeShapes", testVisual_decorativeShapes),
+  ("Visual/plusVariations", testVisual_plusVariations),
+  ("Visual/cloudVariations", testVisual_cloudVariations),
+  ("Visual/bubbleShapes", testVisual_bubbleShapes),
+  ("Visual/bubblePlacement", testVisual_bubblePlacement),
+  ("Visual/operatorShapes", testVisual_operatorShapes),
+  ("Visual/flowchartDemo", testVisual_flowchartDemo)
 ]
