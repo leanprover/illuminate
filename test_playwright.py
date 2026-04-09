@@ -426,6 +426,65 @@ def test_filmstrip_morph_arrows_visual():
     _run_visual_test("filmstrip-morph-arrows.svg", "filmstrip-morph-arrows")
 
 
+def test_flowchart_shapes_visual():
+    """Compare flowchart shapes rendering against expected baseline."""
+    _run_visual_test("flowchart-shapes.svg", "flowchart-shapes")
+
+
+def test_parallelogram_variations_visual():
+    """Compare parallelogram variations rendering against expected baseline."""
+    _run_visual_test("parallelogram-variations.svg", "parallelogram-variations")
+
+
+def test_arrow_shapes_visual():
+    """Compare arrow shapes rendering against expected baseline."""
+    _run_visual_test("arrow-shapes.svg", "arrow-shapes")
+
+
+def test_bent_arrows_visual():
+    """Compare bent arrow shapes rendering against expected baseline."""
+    _run_visual_test("bent-arrows.svg", "bent-arrows")
+
+
+def test_heart_shapes_visual():
+    """Compare heart shapes rendering against expected baseline."""
+    _run_visual_test("heart-shapes.svg", "heart-shapes")
+
+
+def test_decorative_shapes_visual():
+    """Compare decorative shapes rendering against expected baseline."""
+    _run_visual_test("decorative-shapes.svg", "decorative-shapes")
+
+
+def test_plus_variations_visual():
+    """Compare plus shape variations rendering against expected baseline."""
+    _run_visual_test("plus-variations.svg", "plus-variations")
+
+
+def test_cloud_variations_visual():
+    """Compare cloud shape variations rendering against expected baseline."""
+    _run_visual_test("cloud-variations.svg", "cloud-variations")
+
+
+def test_bubble_shapes_visual():
+    """Compare bubble shapes rendering against expected baseline."""
+    _run_visual_test("bubble-shapes.svg", "bubble-shapes")
+
+
+def test_bubble_placement_visual():
+    """Compare bubble placement rendering against expected baseline."""
+    _run_visual_test("bubble-placement.svg", "bubble-placement")
+
+
+def test_operator_shapes_visual():
+    """Compare operator shapes rendering against expected baseline."""
+    _run_visual_test("operator-shapes.svg", "operator-shapes")
+
+
+def test_flowchart_demo_visual():
+    """Compare flowchart demo rendering against expected baseline."""
+    _run_visual_test("flowchart-demo.svg", "flowchart-demo")
+
 
 # ---------------------------------------------------------------------------
 # Standalone animation player tests
@@ -579,6 +638,18 @@ def main():
         test_filmstrip_morph_rect_circle_visual,
         test_filmstrip_morph_nested_visual,
         test_filmstrip_morph_arrows_visual,
+        test_flowchart_shapes_visual,
+        test_parallelogram_variations_visual,
+        test_arrow_shapes_visual,
+        test_bent_arrows_visual,
+        test_heart_shapes_visual,
+        test_decorative_shapes_visual,
+        test_plus_variations_visual,
+        test_cloud_variations_visual,
+        test_bubble_shapes_visual,
+        test_bubble_placement_visual,
+        test_operator_shapes_visual,
+        test_flowchart_demo_visual,
     ]
 
     passed = 0

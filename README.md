@@ -119,6 +119,89 @@ diagram with an appropriate envelope:
 
 All shapes are centered at the origin.
 
+### Extended Shapes
+
+The `Illuminate.Shapes` module provides additional shapes organized
+into five categories.
+
+#### Flowchart Shapes
+
+`Diagram.diamond` produces a rhombus with independent width and height
+control, suitable for decision nodes. `Diagram.parallelogram` produces
+a skewed rectangle for input/output nodes, with a configurable skew
+parameter. `Diagram.trapezoid` produces a shape with independent top
+and bottom widths. `Diagram.document` produces a rectangle with a wavy
+bottom edge.
+
+All four accept an optional `label` parameter. When a label is
+provided, the shape grows to ensure the label fits inside, and the
+label is centered within the shape.
+
+#### Arrow and Chevron Shapes
+
+`Diagram.blockArrow` produces a pentagonal block arrow pointing right.
+`Diagram.doubleArrow` produces a bidirectional block arrow with
+arrowheads on both ends. `Diagram.chevron` produces a shape with a
+pointed right side and a V-notch on the left, designed to chain
+together as pipeline steps.
+
+Three bent arrow shapes are available for routing indicators.
+`Diagram.bentArrow180` makes a U-turn with a semicircular arc.
+`Diagram.bentArrow90` makes a rounded 90-degree turn.
+`Diagram.squareBentArrow90` makes a sharp right-angle turn. All three
+accept `headWidth` and `headLength` parameters for the arrowhead, with
+defaults derived from the shaft width.
+
+#### Decorative Shapes
+
+`Diagram.heart` produces a heart shape. Its `width`, `height`, and
+`cleft` parameters control the overall proportions and the depth of
+the center indentation. The `cleft` parameter ranges from 0 (flush
+with the lobe tops) to 1 (reaching the bottom point).
+
+`Diagram.plus` produces an n-armed cross. The `arms` parameter
+(default 4) controls the number of arms; for three or more arms, a
+regular polygon at the center connects rectangular arms extending
+outward. Numbered anchors (`tip0`, `tip1`, etc.) are placed at each
+arm tip.
+
+`Diagram.stadium` produces a pill or capsule shape. It delegates to
+`roundedRect` with a corner radius equal to half the height.
+
+`Diagram.cylinder` produces a database symbol with separate `topFill`
+and `sideFill` parameters. The top cap is a full ellipse drawn on top
+of the cylindrical body, creating a three-dimensional appearance.
+
+`Diagram.cloud` produces a cloud shape made of circular arcs arranged
+around an elliptical perimeter. The `puffs` parameter controls the
+number of bumps and the `puffSize` parameter (0 to 1) controls how far
+they bulge outward.
+
+#### Bubble Shapes
+
+`Diagram.speechBubble` produces a rounded rectangle with a triangular
+tail. The tail's position along the edge and which edge it extends
+from are configurable via `tailPosition` and `tailSide`.
+`Diagram.thoughtBubble` produces an elliptical body with trailing
+circles that decrease in size toward the tail direction.
+
+Two placement operators compose bubbles with existing diagrams.
+`Diagram.addSpeechBubble` and `Diagram.addThoughtBubble` take a named
+anchor and a `position` for the bubble center (relative to the diagram
+origin). They automatically compute the tail direction to point at the
+anchor. If the anchor falls inside the bubble body, a warning is
+emitted.
+
+#### Math Operator Shapes
+
+Eight filled operator symbols are available: `opPlus`, `opMinus`,
+`opTimes`, `opDivide`, `opEquals`, `opNotEquals`, `opLessThan`, and
+`opGreaterThan`. Each takes a `size` parameter (the overall height)
+and a `lineWidth` parameter (the thickness of the filled regions).
+When all operators are given the same `size`, they are proportioned to
+look visually consistent side by side. Each operator is drawn as a
+single closed path so that stroking does not produce internal lines.
+
 ### Styled Text
 
 `Diagram.styledText` renders text where different segments can have
@@ -214,6 +297,14 @@ target anchor name, an optional departure or arrival angle, a pull
 factor controlling the curvature of the Bezier control points, and an
 optional arrowhead. Four arrowhead types are available: `latex` (open
 two-line), `stealth` (filled), `triangle`, and `circle`.
+
+`Diagram.connectEdge` uses stroke traces to find the boundary of named
+shapes automatically, so arrows terminate at the shape edge rather
+than its center. `Diagram.connectL` draws an L-shaped (single bend)
+connector between two anchor points. `Diagram.connectU` draws a
+U-shaped (double bend) connector, with an `offset` parameter
+controlling the position of the middle segment. All connection
+functions accept optional labels.
 
 ### Style Helpers
 
@@ -317,8 +408,11 @@ presentations (`CompiledAnimation.renderRevealHTML`).
 
 ## Module Overview
 
-- `Illuminate.Diagram` contains the `Diagram` type, shapes, spatial
-  algebra, and arrow routing.
+- `Illuminate.Diagram` contains the `Diagram` type, core shapes,
+  spatial algebra, and arrow routing.
+- `Illuminate.Shapes` provides extended shapes: flowchart nodes, block
+  arrows, hearts, cylinders, clouds, speech and thought bubbles, and
+  math operator symbols.
 - `Illuminate.Widget` provides the `#diagram` command, interactive
   parameter gadgets, and infoview integration.
 - `Illuminate.Animation` provides the `#animate` command, step-based
