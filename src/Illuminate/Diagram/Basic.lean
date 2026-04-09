@@ -356,42 +356,6 @@ where
         { name := Lean.Name.mkSimple s!"point{i}", offset := p : AnchorPos }
       withNameAndAnchors d n anchors
 
-/--
-A horizontal curly brace centered at the origin, pointing downward.
-The brace spans {name}`width` horizontally and extends {name}`depth` downward to a central tip.
-Optionally attach a {name}`label` diagram below the tip.
--/
-def curlyBrace (width : Float) (depth : Float := 0)
-    (roundness : Float := 0.25)
-    (stroke : Stroke := { color := Color.black, width := (1 : Float) })
-    (label : Option (Diagram β) := none) : Diagram β :=
-  let depth := if depth > 0 then depth else max 10 (width * 0.08)
-  let hw := width / 2
-  let mid := depth / 2
-  -- Quarter-circle bend radius, capped so bends don't overlap
-  let r := min mid (hw * roundness)
-  -- Shape: vertical drop at ends → horizontal shoulder → vertical drop to center tip
-  let path := PathData.empty
-    |>.moveTo ⟨-hw, 0⟩
-    |>.lineTo ⟨-hw, -(mid - r)⟩
-    |>.arcTo r r 0 false true ⟨-hw + r, -mid⟩
-    -- Left horizontal shoulder
-    |>.lineTo ⟨-r, -mid⟩
-    -- Bend down into center tip (elliptical: rx=r, ry=mid)
-    |>.arcTo r mid 0 false false ⟨0, -depth⟩
-    -- Bend up from center tip into right shoulder
-    |>.arcTo r mid 0 false false ⟨r, -mid⟩
-    -- Right horizontal shoulder
-    |>.lineTo ⟨hw - r, -mid⟩
-    -- Bend up into right end vertical
-    |>.arcTo r r 0 false true ⟨hw, -(mid - r)⟩
-    |>.lineTo ⟨hw, 0⟩
-  let brace : Diagram β := fromStroke path stroke
-  match label with
-  | none => brace
-  | some lbl =>
-    let labelOffset := depth + 10
-    Diagram.compose brace (Diagram.transform (Matrix.translate 0 (-labelOffset)) lbl)
 
 /-- An image primitive. -/
 def fromImage (ref : ImageRef) : Diagram β :=

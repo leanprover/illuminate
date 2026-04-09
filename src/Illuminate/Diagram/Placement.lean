@@ -1148,7 +1148,3 @@ def pinUnder (anchorName : Lean.Name) (underlay : Diagram β) (d : Diagram β) :
   let pos := (d.find anchorName).origin
   pinUnder' pos underlay d
 
-/-- Places a curly brace spanning the full width of a diagram below it, with a label. -/
-def braceBelow (d : Diagram β) (label : Diagram β)
-    (gap : Float := 3) (depth : Float := 8) : Diagram β :=
-  vsep gap [d, curlyBrace d.width (depth := depth) (label := some label)]
