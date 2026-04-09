@@ -9,6 +9,7 @@ public import Illuminate.Animation.Compile -- shake: keep
 public meta import Illuminate.Animation.Render
 public import Illuminate.Widget
 import Illuminate.Animation.Render
+import Lean.DocString.Syntax
 public section
 
 
