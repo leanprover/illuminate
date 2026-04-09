@@ -4,6 +4,7 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Author: David Thrane Christiansen
 -/
 module
+public meta import Init.System.FilePath
 public import Lean.Data.Json.Basic
 public import Illuminate.Animation.Types
 import Lean.Data.Json.Printer

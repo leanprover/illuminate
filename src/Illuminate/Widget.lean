@@ -130,7 +130,7 @@ meta initialize diagramStore : IO.Ref (Array (Nat × StoredDiagram)) ← IO.mkRe
 meta initialize nextDiagramId : IO.Ref Nat ← IO.mkRef 0
 
 /-- Request to evaluate a parameterized diagram with new parameter values. -/
-structure EvalParamRequest where
+meta structure EvalParamRequest where
   /-- The unique ID of the stored diagram. -/
   id : Nat
   /-- Parameter values as JSON (Float, String, or Bool). -/
@@ -140,13 +140,13 @@ structure EvalParamRequest where
 deriving Lean.FromJson, Lean.ToJson
 
 /-- Response containing the rendered SVG string. -/
-structure EvalParamResponse where
+meta structure EvalParamResponse where
   /-- The rendered SVG markup. -/
   svg : String
 deriving Lean.FromJson, Lean.ToJson
 
 /-- Request to hit-test a diagram at a point. -/
-structure HitTestRequest where
+meta structure HitTestRequest where
   /-- The unique ID of the stored diagram. -/
   id : Nat
   /-- X coordinate in diagram space. -/
@@ -158,7 +158,7 @@ structure HitTestRequest where
 deriving Lean.FromJson, Lean.ToJson
 
 /-- Response from a hit test. -/
-structure HitTestResponse where
+meta structure HitTestResponse where
   /-- The kind of hit: "nothing", "something", or "tag". -/
   kind : String
   /-- The tag value (only meaningful when {name (full := HitTestResponse.kind)}`kind` is "tag"). -/
