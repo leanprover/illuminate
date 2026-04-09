@@ -5,10 +5,9 @@ Author: David Thrane Christiansen
 -/
 module
 import Lean.DocString.Syntax
-import Illuminate.Geometry.Matrix
 public import Illuminate.Diagram.Types
+import Illuminate.Diagram.Placement
 import Illuminate.Style.Text
-meta import Lean.Parser.Term
 public section
 
 
@@ -117,6 +116,14 @@ def hitTest (d : Diagram β) (p : Point) : Click :=
       if fillHit || strokeHit then .something else .nothing
     | .text s style =>
       if textContains s style p then .something else .nothing
+    | .styledText lines anchor =>
+      let (hw, hh) := styledTextTraceDims lines
+      let (left, right) : Float × Float := match anchor with
+        | .start => (0, hw * 2)
+        | .«end» => (-(hw * 2), 0)
+        | .middle => (-hw, hw)
+      if p.x >= left && p.x <= right && p.y >= -hh && p.y <= hh then .something
+      else .nothing
     | .image ref =>
       let hw := ref.width / 2
       let hh := ref.height / 2

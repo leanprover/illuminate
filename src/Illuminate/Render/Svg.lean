@@ -200,6 +200,12 @@ def drawCmdAttrs {β : Type} [BackendRender β]
       ("text-anchor", anchorToSvg style.anchor),
       ("dominant-baseline", "central"),
       ("transform", "scale(1,-1)")]⟩
+  | .drawStyledText _lines anchor pos => ⟨true, #[
+      ("x", fmtNum pos.x),
+      ("y", fmtNum pos.y),
+      ("text-anchor", anchorToSvg anchor),
+      ("dominant-baseline", "central"),
+      ("transform", "scale(1,-1)")]⟩
   | .pushTransform m => ⟨true, #[("transform", matrixToSvg m)]⟩
   | .pushAnnotation tag => ⟨true, #[("data-anno-id", toString tag)]⟩
   | .pushOpacity α => ⟨true, #[("opacity", fmtNum α)]⟩
@@ -271,6 +277,37 @@ def renderCmd {β : Type} [BackendRender β] (cmd : DrawCmd β)
         let span := s!"<tspan x=\"{fmtNum pos.x}\" dy=\"{fmtNum dy}\">{escapeXml line}</tspan>"
         (i + 1, acc ++ span)) (0, "")
       s!"<text{eAttr}{attrStr}>{tspans}</text>"
+  | .drawStyledText lines _anchor pos =>
+    let attrStr := renderAttrs info.attrs
+    let nLines := lines.size
+    if nLines <= 1 then
+      -- Single line: tspans flow horizontally
+      let spans := lines[0]?.getD #[]
+      let tspans := spans.foldl (fun acc (style, s) =>
+        let weight := if style.bold then "bold" else "normal"
+        let slant := if style.italic then "italic" else "normal"
+        acc ++ s!"<tspan font-family=\"{escapeXml style.fontFamily}\" font-size=\"{fmtNum style.fontSize}\" font-weight=\"{weight}\" font-style=\"{slant}\" fill=\"{colorToSvg style.color}\">{escapeXml s}</tspan>"
+      ) ""
+      s!"<text{eAttr}{attrStr} xml:space=\"preserve\">{tspans}</text>"
+    else
+      -- Multi-line: first tspan of each line gets x and dy
+      let maxFontSize := lines.foldl (fun acc spans =>
+        spans.foldl (fun a (st, _) => max a st.fontSize) acc) 0
+      let lineHeight := maxFontSize * 1.2
+      let totalH := lineHeight * (nLines - 1).toFloat
+      let startY := -totalH / 2
+      let (_, tspans) := lines.foldl (fun (lineIdx, acc) spans =>
+        let dy := if lineIdx == 0 then startY else lineHeight
+        let (_, lineStr) := spans.foldl (fun (spanIdx, sacc) (style, s) =>
+          let weight := if style.bold then "bold" else "normal"
+          let slant := if style.italic then "italic" else "normal"
+          let posAttrs := if spanIdx == 0 then
+            s!" x=\"{fmtNum pos.x}\" dy=\"{fmtNum dy}\""
+          else ""
+          let span := s!"<tspan{posAttrs} font-family=\"{escapeXml style.fontFamily}\" font-size=\"{fmtNum style.fontSize}\" font-weight=\"{weight}\" font-style=\"{slant}\" fill=\"{colorToSvg style.color}\">{escapeXml s}</tspan>"
+          (spanIdx + 1, sacc ++ span)) (0, "")
+        (lineIdx + 1, acc ++ lineStr)) (0, "")
+      s!"<text{eAttr}{attrStr} xml:space=\"preserve\">{tspans}</text>"
   | .pushTransform .. | .pushAnnotation .. | .pushOpacity .. =>
     s!"<g{eAttr}{renderAttrs info.attrs}>"
   | .pushClip .. =>

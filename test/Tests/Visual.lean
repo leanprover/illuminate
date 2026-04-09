@@ -267,18 +267,20 @@ def stringLayoutDiagram : Diagram SVG :=
   let lenCol := fieldWithBrace `len "m_length" 70 braceDepth braceGap
     (twoLine "Characters" "size_t")
   let dataCol := fieldWithBrace `data "m_data" 180 braceDepth braceGap
-    (.vsep 1 [
-      txt "String data",
-      .hcat [.text "char" { fontSize := 8, fontFamily := "monospace" }, txt " array"]])
+    (.styledText (base := { txtStyle with }) <| "String data\n" ++ family "monospace" "char" ++ " array")
   let nulCol := field `nul "'\\0'" 30
   Diagram.hsep 0 [headerCol, sizeCol, capCol, lenCol, dataCol, nulCol] (align := .top)
 where
   monoStyle : TextStyle := { fontSize := 10, fontFamily := "monospace" }
+  txtStyle := { fontSize := 8, fontFamily := "sans-serif" }
   txt (s : String) : Diagram SVG :=
-    Diagram.text s { fontSize := 8, fontFamily := "sans-serif" }
+    Diagram.text s txtStyle
   /-- Stacks a description line above a type line. -/
   twoLine (description typeLine : String) : Diagram SVG :=
-    Diagram.vsep 1 [txt description, .text typeLine { fontSize := 8, fontFamily := "monospace" }]
+    Diagram.styledLines [
+      [({txtStyle with}, description)],
+      [({txtStyle with fontFamily := "monospace"}, typeLine)]
+    ]
   field (name : Lean.Name) (label : String) (w : Float) : Diagram SVG :=
     Diagram.atop
       (.text label monoStyle)

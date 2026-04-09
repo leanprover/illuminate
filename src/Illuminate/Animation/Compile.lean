@@ -20,6 +20,7 @@ private def drawCmdTag {β : Type} (cmd : DrawCmd β) : UInt8 :=
   | .fillPath .. => 0
   | .strokePath .. => 1
   | .drawTextRun .. => 2
+  | .drawStyledText .. => 14
   | .pushTransform .. => 3
   | .popTransform => 4
   | .pushAnnotation .. => 5

@@ -8,8 +8,8 @@ import Illuminate.Geometry.Envelope
 public import Illuminate.Geometry.Trace
 public import Illuminate.Style.Arrow
 public import Illuminate.Render.DrawCmd
-import Illuminate.Style.Color
-meta import Lean.DocString.Syntax
+import Lean.DocString.Syntax
+meta import Lean.Parser.Term
 public section
 
 namespace Illuminate
@@ -30,6 +30,8 @@ inductive CorePrimitive where
   | path : PathData → Fill → Stroke → CorePrimitive
   /-- Renders a text string. {name}`none` fields inherit style from config. -/
   | text : String → TextStyle → CorePrimitive
+  /-- Renders styled text with per-span font and color. The outer array is lines; each inner array is spans within a line. -/
+  | styledText : Array (Array (FontStyle × String)) → TextAnchor → CorePrimitive
   /-- References an external image resource for raster or vector embedding. -/
   | image : ImageRef → CorePrimitive
 deriving Repr, BEq, Inhabited, Hashable

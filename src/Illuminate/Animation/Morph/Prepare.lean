@@ -195,6 +195,8 @@ partial def matchSkeletons {β : Type} [Backend β]
     .text tA sA tB sB
       (envelopeToBBox (Diagram.prim (.text tA sA) : Diagram β))
       (envelopeToBBox (Diagram.prim (.text tB sB) : Diagram β))
+  | .prim (.styledText lA aA), .prim (.styledText lB aB) =>
+    .crossFade (skelToDiagram (.prim (.styledText lA aA))) (skelToDiagram (.prim (.styledText lB aB)))
   | .transform mA dA, .transform mB dB =>
     .transform mA mB (go dA dB)
   | .compose aL aR, .compose bL bR =>
