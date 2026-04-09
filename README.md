@@ -154,11 +154,10 @@ defaults derived from the shaft width.
 
 #### Decorative Shapes
 
-`Diagram.heart` produces a heart shape.
-Its `width`, `height`, and `cleft` parameters control the overall
-proportions and the depth of the center indentation. The `cleft`
-parameter ranges from 0 (flush with the lobe tops) to 1 (reaching the
-bottom point).
+`Diagram.heart` produces a heart shape. Its `width`, `height`, and
+`cleft` parameters control the overall proportions and the depth of
+the center indentation. The `cleft` parameter ranges from 0 (flush
+with the lobe tops) to 1 (reaching the bottom point).
 
 `Diagram.plus` produces an n-armed cross. The `arms` parameter
 (default 4) controls the number of arms; for three or more arms, a
