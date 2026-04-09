@@ -43,6 +43,8 @@ where
           (acc, gi, ci)
       | .text s style =>
         (acc.push (.drawTextRun s style ⟨0, 0⟩), gi, ci)
+      | .styledText lines anchor =>
+        (acc.push (.drawStyledText lines anchor ⟨0, 0⟩), gi, ci)
       | .image _ => (acc, gi, ci)
     | .foreign val d =>
       let (inner, gi, ci) := go d #[] gi ci

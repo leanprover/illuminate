@@ -146,6 +146,33 @@ def toEnvelope (cp : CorePrimitive) : Envelope :=
         [⟨left, cy - halfLine⟩, ⟨right, cy - halfLine⟩,
          ⟨left, cy + halfLine⟩, ⟨right, cy + halfLine⟩]
       Envelope.ofVertices (vertices.flatten)
+  | .styledText lines anchor =>
+    let nLines := max 1 lines.size
+    if nLines == 1 then
+      let spans := lines[0]?.getD #[]
+      let totalW := estimateLineWidth spans
+      let h := lineMaxFontSize spans / 2
+      match anchor with
+      | .start => Envelope.ofBounds ⟨0, -h⟩ ⟨totalW, h⟩
+      | .«end» => Envelope.ofBounds ⟨-totalW, -h⟩ ⟨0, h⟩
+      | .middle => Envelope.ofRect (totalW / 2) h
+    else
+      -- Per-line bounding boxes, same approach as multi-line plain text
+      let lineMetrics := lines.map fun spans =>
+        (estimateLineWidth spans, lineMaxFontSize spans)
+      let maxFontSize := lineMetrics.foldl (fun acc (_, fs) => max acc fs) 0
+      let lineHeight := maxFontSize * 1.2
+      let totalH := lineHeight * (nLines - 1).toFloat
+      let halfLine := maxFontSize / 2
+      let vertices := lineMetrics.mapIdx fun i (w, _) =>
+        let cy := totalH / 2 - i.toFloat * lineHeight
+        let (left, right) := match anchor with
+          | .start => (0.0, w)
+          | .«end» => (-w, 0.0)
+          | .middle => (-w / 2, w / 2)
+        [⟨left, cy - halfLine⟩, ⟨right, cy - halfLine⟩,
+         ⟨left, cy + halfLine⟩, ⟨right, cy + halfLine⟩]
+      Envelope.ofVertices (vertices.toList.flatten)
   | .image ref =>
     Envelope.ofRect (ref.width / 2) (ref.height / 2)
 
@@ -154,6 +181,15 @@ end CorePrimitive
 /-!
 # Trace computation from primitives
 -/
+
+/-- Computes bounding-box half-width and half-height for styled text. -/
+def styledTextTraceDims (lines : Array (Array (FontStyle × String))) : Float × Float :=
+  let maxW := lines.foldl (fun acc spans => max acc (estimateLineWidth spans)) 0
+  let nLines := max 1 lines.size
+  let maxFontSize := lines.foldl (fun acc spans => max acc (lineMaxFontSize spans)) 0
+  let h := if nLines == 1 then maxFontSize / 2
+           else maxFontSize * 1.2 * nLines.toFloat / 2
+  (maxW / 2, h)
 
 /-- Computes the bounding-box half-width and half-height for a text primitive. -/
 private def textTraceDims (s : String) (style : TextStyle) : Float × Float :=
@@ -180,6 +216,12 @@ def toTrace (cp : CorePrimitive) : Trace :=
     | .start => Trace.ofRect hw hh |> Trace.translateBy ⟨hw, 0⟩
     | .«end» => Trace.ofRect hw hh |> Trace.translateBy ⟨-hw, 0⟩
     | .middle => Trace.ofRect hw hh
+  | .styledText lines anchor =>
+    let (hw, hh) := styledTextTraceDims lines
+    match anchor with
+    | .start => Trace.ofRect hw hh |> Trace.translateBy ⟨hw, 0⟩
+    | .«end» => Trace.ofRect hw hh |> Trace.translateBy ⟨-hw, 0⟩
+    | .middle => Trace.ofRect hw hh
   | .image ref => Trace.ofRect (ref.width / 2) (ref.height / 2)
 
 end CorePrimitive
@@ -202,6 +244,12 @@ def toStrokeTrace (cp : CorePrimitive) : StrokeTrace :=
   | .text s style =>
     let (hw, hh) := textTraceDims s style
     match style.anchor with
+    | .start => StrokeTrace.ofRect hw hh 0 |> StrokeTrace.translateBy ⟨hw, 0⟩
+    | .«end» => StrokeTrace.ofRect hw hh 0 |> StrokeTrace.translateBy ⟨-hw, 0⟩
+    | .middle => StrokeTrace.ofRect hw hh 0
+  | .styledText lines anchor =>
+    let (hw, hh) := styledTextTraceDims lines
+    match anchor with
     | .start => StrokeTrace.ofRect hw hh 0 |> StrokeTrace.translateBy ⟨hw, 0⟩
     | .«end» => StrokeTrace.ofRect hw hh 0 |> StrokeTrace.translateBy ⟨-hw, 0⟩
     | .middle => StrokeTrace.ofRect hw hh 0
