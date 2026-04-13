@@ -113,28 +113,54 @@ CI has a Prettier bot that auto-commits formatting fixes, but pushes
 from `github-actions[bot]` do not re-trigger CI. Running Prettier
 locally avoids this problem.
 
+### README consistency
+
+When adding, removing, or renaming public API, check that `README.md`
+still accurately describes the library. Verify that referenced
+function and type names exist, code examples use correct parameter
+names, the module overview lists the right types, and new user-facing
+features have a section.
+
+The README is for humans, not machines. Keep it informal and
+approachable — give readers enough to understand what something does
+and when to reach for it, not an exhaustive catalogue of every
+parameter and edge case. Prefer short descriptions with a code example
+over long prose. If a section is getting dense, that is a sign to cut
+detail, not add more.
+
 ## Project structure
 
 ```
 src/Illuminate/          Library source
   Geometry/
     Basic.lean           Foundational constants (pi)
-    Vec2.lean            2D vector type (directions and offsets)
-    Point.lean           2D point type (positions)
-    Matrix.lean          3x3 affine transform matrix
-    Envelope.lean        Envelope (direction -> extent)
+    Types.lean           Core geometry types (Vec2, Point, Matrix, Envelope, PathData)
+    Vec2.lean            2D vector operations (directions and offsets)
+    Point.lean           2D point operations (positions)
+    Matrix.lean          3x3 affine transform matrix operations
+    Envelope.lean        Envelope operations (direction -> extent)
+    Trace.lean           Trace (ray-shape intersection for boundary detection)
     PathData.lean        Path drawing commands (line, rect, circle, roundedRect)
-  Style/                 Color, Fill, Stroke, TextStyle, FontSpec, DrawConfig
+  Style/                 Color, Fill, Stroke, TextStyle, FontStyle, StyledText
   Diagram/
-    Basic.lean           Core diagram type and smart constructors
+    Types.lean           Core Diagram type, Backend class, CorePrimitive, LineEnd
+    Basic.lean           Smart constructors (circle, rect, text, styledText, ...)
     Placement.lean       Spatial composition (beside, hcat, vcat, grid, pad, frame)
     Arrow.lean           Curved arrow routing (LineEnd, Arrowhead, connect)
+    CurlyBrace.lean      Curly brace annotation (curlyBrace, braceBelow, ...)
+    TreeLayout.lean      Automatic tree layout (treeLayout, proofTree)
     Paper.lean           Piece-of-paper diagram element
     Compile.lean         Diagram → DrawCmd compiler and SVG renderer
     Validate.lean        Diagram validation (duplicate names, malformed paths)
   Render/
     DrawCmd.lean         Display list commands
     Svg.lean             SVG backend
+  Shapes/
+    Flowchart.lean       Flowchart nodes (diamond, parallelogram, trapezoid, document)
+    Arrows.lean          Block arrows and chevron shapes
+    Decorative.lean      Heart, plus, stadium, cylinder, cloud
+    Bubbles.lean         Speech and thought bubbles
+    Operators.lean       Math operator symbols (opPlus, opMinus, ...)
   DSL/
     CommDiag.lean        Commutative diagram DSL
     StateDiagram.lean    DFA/NFA state diagram builder

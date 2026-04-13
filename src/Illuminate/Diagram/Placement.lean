@@ -266,7 +266,7 @@ private def arrowCollectNames {β : Type} [Backend β] (d : Diagram β) (xform :
   match d with
   | .empty | .prim _ => acc
   | .foreign _ d | .tag _ d | .warning _ d | .cellophane _ d | .clip _ d | .arrow _ _ _ _ d
-  | .showEnv _ _ _ d =>
+  | .showEnv _ _ _ d | .scope d =>
     arrowCollectNames d xform pfx acc
   | .named name d =>
     let pos := Matrix.apply xform ⟨0, 0⟩
@@ -297,6 +297,7 @@ def getTrace (d : Diagram β) : Trace :=
   | .cellophane _ d => d.getTrace
   | .clip _ d => d.getTrace
   | .arrow _ _ _ _ d => d.getTrace
+  | .scope d => d.getTrace
   --
   | .showEnv _ _ _ d => d.getTrace
 
@@ -319,6 +320,7 @@ def getStrokeTrace (d : Diagram β) : StrokeTrace :=
   | .cellophane _ d => d.getStrokeTrace
   | .clip _ d => d.getStrokeTrace
   | .arrow _ _ _ _ d => d.getStrokeTrace
+  | .scope d => d.getStrokeTrace
   | .showEnv _ _ _ d => d.getStrokeTrace
 
 /-!
@@ -350,6 +352,7 @@ def collectNames (d : Diagram β) (xform : Matrix) (pfx : Lean.Name)
   | .cellophane _ d => collectNames d xform pfx acc
   | .clip _ d => collectNames d xform pfx acc
   | .arrow _ _ _ _ d => collectNames d xform pfx acc
+  | .scope _ => acc
   --
   | .showEnv _ _ _ d => collectNames d xform pfx acc
 
@@ -387,6 +390,7 @@ where
     | .cellophane _ d => go target pfx xform d
     | .clip _ d => go target pfx xform d
     | .arrow _ _ _ _ d => go target pfx xform d
+    | .scope _ => none
     | .showEnv _ _ _ d => go target pfx xform d
 
 /-- Computes the origin of a diagram (where {lit}`(0,0)` maps to under accumulated transforms). -/
@@ -540,6 +544,7 @@ def getEnvelope (d : Diagram β) : Envelope :=
     let arrowEnv := Envelope.ofVertices curvePoints
     let paddedEnv := arrowEnv.modify fun f v => f v + halfDiag
     Envelope.union childEnv paddedEnv
+  | .scope d => d.getEnvelope
   | .showEnv _ _ _ d => d.getEnvelope
 
 /-- Names a diagram and adds cardinal anchors derived from its envelope. -/

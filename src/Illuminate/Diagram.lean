@@ -12,4 +12,5 @@ public import Illuminate.Diagram.Paper
 public import Illuminate.Diagram.Compile
 public import Illuminate.Diagram.Validate
 public import Illuminate.Diagram.HitTest
+public import Illuminate.Diagram.TreeLayout
 public section
