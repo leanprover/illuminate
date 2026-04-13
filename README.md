@@ -216,7 +216,7 @@ combinators modify it for their contents. Newline characters are
 respected:
 
 ```lean
-Diagram.styledText (style := { fontSize := 12 }) <|
+Diagram.styledText (base := { fontSize := 12 }) <|
   "The " ++ family "monospace" "List" ++ " type is " ++ bold "polymorphic" ++ "."
 ```
 
@@ -311,6 +311,19 @@ U-shaped (double bend) connector, with an `offset` parameter
 controlling the position of the middle segment. All connection
 functions accept optional labels.
 
+### Curly Brace Annotations
+
+`Diagram.curlyBrace` draws a curly brace centered at the origin,
+spanning a given width. The `angle` parameter (in radians) controls
+which direction the tip points; the default points downward. An
+optional `label` is placed beyond the tip.
+
+Convenience functions attach a brace to an existing diagram's
+envelope: `braceBelow`, `braceAbove`, `braceLeftOf`, and
+`braceRightOf` span the full extent of a diagram along the
+corresponding edge. The general `braceBy` places a brace along any
+direction.
+
 ### Tree Layout
 
 `treeLayout` arranges a rose tree of diagrams automatically using the
@@ -336,8 +349,6 @@ A `TreeConfig` controls the layout:
   near edge, 0.5 = center, 1 = far edge).
 - `drawEdge` — callback to draw each parent-child edge. Defaults to
   `connectEdge`; set to `none` to suppress edges.
-- `drawRule` — callback to draw a rule spanning all children of a
-  node. Useful for proof trees.
 
 Nodes are named by their path in the tree: `node_0` for the root,
 `node_0_0` for the first child, `node_0_1_5` for the sixth child of
@@ -350,9 +361,9 @@ node names are invisible from outside and multiple trees can be
 composed without conflicts. Pass `name` to make the node names
 accessible under that namespace instead.
 
-The preset `TreeConfig.proofTree` disables individual edges and draws
-horizontal inference lines, suitable for natural deduction and sequent
-calculus proof trees.
+The `proofTree` function provides a dedicated layout for natural
+deduction and sequent calculus proof trees, with horizontal inference
+lines and optional rule labels.
 
 ### Style Helpers
 
@@ -469,7 +480,7 @@ presentations (`CompiledAnimation.renderRevealHTML`).
 - `Illuminate.DSL` includes the commutative diagram and state diagram
   builders.
 - `Illuminate.Style` defines `Color`, `Fill`, `Stroke`, `TextStyle`,
-  `DrawConfig`, and arrowhead types.
+  `FontStyle`, `StyledText`, and arrowhead types.
 - `Illuminate.Geometry` provides `Vec2`, `Point`, `Matrix` (3x3 affine
   transforms), `Envelope`, and `PathData`.
 - `Illuminate.Render` contains the `DrawCmd` display list and SVG
