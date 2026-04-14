@@ -294,6 +294,117 @@ def compilationTests : List (String × IO Unit) :=
       let html := compiled.renderHTML
       IO.FS.writeFile "test_output/anim-clipshape-test.html" html
       IO.println s!"  → wrote test_output/anim-clipshape-test.html ({html.length} bytes)")
+  , ("compile: animated gradient stop colors tracked", do
+      -- A gradient-filled circle whose middle stop color varies over time.
+      -- The animation system should detect stop-color changes in the paramMap.
+      IO.FS.createDirAll "test_output"
+      let steps : List Step := [step 2.0]
+      let compiled := compileAnimation steps
+        (fun progress =>
+          let t := progress[0]
+          let midRed := (t * 255).toUInt8
+          let midColor : Color := { r := midRed, g := (255 - midRed), b := 0 }
+          Diagram.circle 40
+            (fill := .linearGradient Vec2.north
+              (stops := #[
+                { offset := 0, color := Color.blue },
+                { offset := 0.5, color := midColor },
+                { offset := 1, color := Color.white }
+              ])))
+        (fps := 10)
+      -- The gradient stop colors change every frame, so at least one
+      -- stop-color binding should appear in the paramMap.
+      let stopColorBindings := compiled.segments.foldl (fun acc s =>
+        acc ++ (s.paramMap.filter fun b => b.attr == "stop-color").toList) []
+      let allAttrs := compiled.segments.foldl (fun acc s =>
+        acc ++ (s.paramMap.map (·.attr)).toList) []
+      assertTrue (stopColorBindings.length > 0)
+        s!"gradient stop-color should be in paramMap but got 0 bindings; \
+          all tracked attrs: {allAttrs}"
+      let html := compiled.renderHTML
+      IO.FS.writeFile "test_output/anim-gradient-color-test.html" html
+      IO.println s!"  → wrote test_output/anim-gradient-color-test.html ({html.length} bytes)")
+  , ("compile: animated gradient stop offsets tracked", do
+      -- A gradient whose middle stop offset slides from 0.2 to 0.8.
+      let steps : List Step := [step 1.0]
+      let compiled := compileAnimation steps
+        (fun progress =>
+          let t := progress[0]
+          let midOff := 0.2 + 0.6 * t
+          Diagram.circle 30
+            (fill := .linearGradient Vec2.east
+              (stops := #[
+                { offset := 0, color := Color.red },
+                { offset := midOff, color := Color.white },
+                { offset := 1, color := Color.blue }
+              ])))
+        (fps := 10)
+      let offsetBindings := compiled.segments.foldl (fun acc s =>
+        acc ++ (s.paramMap.filter fun b => b.attr == "offset").toList) []
+      assertTrue (offsetBindings.length > 0)
+        s!"gradient offset should be in paramMap but got 0 bindings")
+  , ("compile: gradient stop count change forces segment split", do
+      -- First half: 3 stops. Second half: 2 stops.
+      -- Different stop counts produce different SVG child structure,
+      -- so the animation system should create a segment boundary.
+      let steps : List Step := [step 2.0]
+      let compiled := compileAnimation steps
+        (fun progress =>
+          let t := progress[0]
+          if t < 0.5 then
+            Diagram.circle 30
+              (fill := .linearGradient Vec2.north
+                (stops := #[
+                  { offset := 0, color := Color.red },
+                  { offset := 0.5, color := Color.white },
+                  { offset := 1, color := Color.blue }
+                ]))
+          else
+            Diagram.circle 30
+              (fill := .linearGradient Vec2.north
+                (stops := #[
+                  { offset := 0, color := Color.red },
+                  { offset := 1, color := Color.blue }
+                ])))
+        (fps := 10)
+      assertTrue (compiled.segments.size >= 2)
+        s!"expected ≥2 segments for stop count change, got {compiled.segments.size}")
+  , ("compile: styled text span color tracked", do
+      -- A styled text with two spans; the second span's color varies.
+      -- The per-tspan fill attribute should appear in paramMap.
+      let steps : List Step := [step 1.0]
+      let compiled := compileAnimation steps
+        (fun progress =>
+          let t := progress[0]
+          let color := Interpolate.interpolate Color.blue Color.red t
+          Diagram.styledLines [
+            [({ color := Color.black }, "Hello "),
+             ({ color }, "World")]
+          ])
+        (fps := 10)
+      -- At minimum, the varying tspan's fill should be tracked.
+      -- Count fill bindings that are NOT "none" (path strokes use fill="none").
+      let fillBindings := compiled.segments.foldl (fun acc s =>
+        acc ++ (s.paramMap.filter fun b => b.attr == "fill").toList) []
+      assertTrue (fillBindings.length > 0)
+        s!"styled text tspan fill should be in paramMap but got 0 bindings")
+  , ("compile: multiline text per-tspan content tracked", do
+      -- A drawTextRun with newlines; BOTH lines change across frames.
+      -- Each tspan should have its own textContent binding (not one on the outer <text>,
+      -- which would destroy the tspan structure when patched).
+      let steps : List Step := [step 1.0]
+      let compiled := compileAnimation steps
+        (fun progress =>
+          let t := progress[0]
+          let n := (t * 100).round.toUInt64.toNat
+          Diagram.text s!"Line 1: {n}\nLine 2: {100 - n}" { fontSize := 14 })
+        (fps := 10)
+      -- Both lines vary, so we need 2 textContent bindings (one per tspan).
+      -- Currently there's only 1 (on the outer <text>), which is wrong.
+      let textBindings := compiled.segments.foldl (fun acc s =>
+        acc ++ (s.paramMap.filter fun b => b.attr == "textContent").toList) []
+      assertTrue (textBindings.length >= 2)
+        s!"multiline text needs per-tspan textContent bindings, got {textBindings.length}")
   , ("compile: write standalone HTML for seek test", do
       IO.FS.createDirAll "test_output"
       let steps : List Step := [step 3.0]
