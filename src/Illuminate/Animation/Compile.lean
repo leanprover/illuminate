@@ -37,11 +37,13 @@ private def drawCmdTag {β : Type} (cmd : DrawCmd β) : UInt8 :=
 # Structural comparison
 -/
 
-/-- Checks whether two draw command arrays have the same structural tags. -/
-private def structurallyIdentical {β : Type}
+/-- Checks whether two draw command arrays have the same structural tags and child element counts. -/
+private def structurallyIdentical {β : Type} [BackendRender β]
     (a b : Array (DrawCmd β)) : Bool :=
   a.size == b.size &&
-  (Array.zip a b).all fun (ca, cb) => drawCmdTag ca == drawCmdTag cb
+  (Array.zip a b).all fun (ca, cb) =>
+    drawCmdTag ca == drawCmdTag cb &&
+    (Svg.drawCmdAttrs ca).elemCount == (Svg.drawCmdAttrs cb).elemCount
 
 /-!
 # Template extraction for a single segment
@@ -82,9 +84,9 @@ private def extractParams {β : Type} [BackendRender β]
     let mut elemIdx : Nat := 0
 
     for hCmd : cmdIdx in 0...cmdCount do
-      let producesElem := (Svg.drawCmdAttrs firstFrame[cmdIdx]).producesElement
-      let curElemIdx := if producesElem then some elemIdx else none
-      if producesElem then elemIdx := elemIdx + 1
+      let cmdInfo := Svg.drawCmdAttrs firstFrame[cmdIdx]
+      let baseElemIdx := if cmdInfo.elemCount > 0 then some elemIdx else none
+      elemIdx := elemIdx + cmdInfo.elemCount
       let firstAttrs := firstFrameAttrs[cmdIdx]
       let mut cmdVarying : Array Nat := #[]
       for hF : fieldIdx in 0...firstAttrs.size do
@@ -97,9 +99,13 @@ private def extractParams {β : Type} [BackendRender β]
           | none => true
         if varies then
           cmdVarying := cmdVarying.push fieldIdx
-          match curElemIdx with
-          | some eidx =>
-            paramMap := paramMap.push { elemIdx := eidx, attr := svgAttr }
+          match baseElemIdx with
+          | some base =>
+            -- Map this attr to its local element within the command
+            let localElem := match cmdInfo.attrElemMap[fieldIdx]? with
+              | some e => e
+              | none => 0
+            paramMap := paramMap.push { elemIdx := base + localElem, attr := svgAttr }
           | none => pure ()
       varyingSlots := varyingSlots.set cmdIdx cmdVarying
 

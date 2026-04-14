@@ -143,12 +143,21 @@ def gradientIdOf (gi : Nat) (clipPrefix : String) : String :=
 /--
 Extracted SVG attributes for a draw command, used by both SVG rendering
 and animation parameter extraction.
+
+A single draw command may produce multiple SVG elements (e.g. a gradient
+container plus its {lit}`<stop>` children, or a {lit}`<text>` plus its {lit}`<tspan>` children).
+Each element gets its own {lit}`data-e` index so the animation player can patch it.
 -/
 structure CmdAttrInfo where
-  /-- Whether this command produces an SVG DOM element (vs. a close tag or nothing). -/
-  producesElement : Bool
+  /-- Number of SVG elements this command produces (0 for close tags, 1+ for elements). -/
+  elemCount : Nat
   /-- Attribute name-value pairs. Text content uses the pseudo-attribute {lit}`"textContent"`. -/
   attrs : Array (String × String)
+  /--
+  Maps each entry in {name (full := CmdAttrInfo.attrs)}`attrs` to a local element index
+  (0-based within this command). When empty, all attrs belong to element 0.
+  -/
+  attrElemMap : Array Nat := #[]
 deriving Repr, Inhabited
 
 /--
@@ -164,22 +173,22 @@ def drawCmdAttrs {β : Type} [BackendRender β]
   match cmd with
   | .fillPath pd fill gradIdx =>
     match fill with
-    | .none => ⟨false, #[]⟩
-    | .solid fs => ⟨true, #[
+    | .none => { elemCount := 0, attrs := #[] }
+    | .solid fs => { elemCount := 1, attrs := #[
         ("d", pathDataToD pd),
         ("fill", colorToSvg fs.color),
-        ("fill-opacity", fmtNum fs.color.a)]⟩
+        ("fill-opacity", fmtNum fs.color.a)] }
     | .gradient _ =>
       let fillVal := match gradIdx with
         | some gi => s!"url(#{gradientIdOf gi clipPrefix})"
         | none => ""
-      ⟨true, #[
+      { elemCount := 1, attrs := #[
         ("d", pathDataToD pd),
         ("fill", fillVal),
-        ("fill-opacity", "1")]⟩
+        ("fill-opacity", "1")] }
   | .strokePath pd stroke =>
     let w := stroke.width
-    ⟨true, #[
+    { elemCount := 1, attrs := #[
       ("d", pathDataToD pd),
       ("fill", "none"),
       ("stroke", colorToSvg stroke.color),
@@ -187,51 +196,157 @@ def drawCmdAttrs {β : Type} [BackendRender β]
       ("stroke-linecap", lineCapToSvg stroke.lineCap),
       ("stroke-linejoin", lineJoinToSvg stroke.lineJoin),
       ("stroke-opacity", fmtNum stroke.color.a),
-      ("stroke-dasharray", dashArrayValue stroke.dash w)]⟩
-  | .drawTextRun s style pos => ⟨true, #[
-      ("textContent", s),
-      ("x", fmtNum pos.x),
-      ("y", fmtNum pos.y),
-      ("font-family", style.fontFamily),
-      ("font-size", fmtNum style.fontSize),
-      ("font-weight", if style.bold then "bold" else "normal"),
-      ("font-style", if style.italic then "italic" else "normal"),
-      ("fill", colorToSvg style.color),
-      ("text-anchor", anchorToSvg style.anchor),
-      ("dominant-baseline", "central"),
-      ("transform", "scale(1,-1)")]⟩
-  | .drawStyledText _lines anchor pos => ⟨true, #[
+      ("stroke-dasharray", dashArrayValue stroke.dash w)] }
+  | .drawTextRun s style pos =>
+    let lines := s.splitOn "\n"
+    if lines.length <= 1 then
+      -- Single-line: textContent lives on the outer <text>
+      { elemCount := 1, attrs := #[
+        ("textContent", s),
+        ("x", fmtNum pos.x),
+        ("y", fmtNum pos.y),
+        ("font-family", style.fontFamily),
+        ("font-size", fmtNum style.fontSize),
+        ("font-weight", if style.bold then "bold" else "normal"),
+        ("font-style", if style.italic then "italic" else "normal"),
+        ("fill", colorToSvg style.color),
+        ("text-anchor", anchorToSvg style.anchor),
+        ("dominant-baseline", "central"),
+        ("transform", "scale(1,-1)")] }
+    else
+      -- Multi-line: each <tspan> is a separate patchable element
+      let lineHeight := style.fontSize * 1.2
+      let totalH := lineHeight * (lines.length - 1).toFloat
+      let startY := -totalH / 2
+      let textAttrs : Array (String × String) := #[
+        ("x", fmtNum pos.x),
+        ("y", fmtNum pos.y),
+        ("font-family", style.fontFamily),
+        ("font-size", fmtNum style.fontSize),
+        ("font-weight", if style.bold then "bold" else "normal"),
+        ("font-style", if style.italic then "italic" else "normal"),
+        ("fill", colorToSvg style.color),
+        ("text-anchor", anchorToSvg style.anchor),
+        ("dominant-baseline", "central"),
+        ("transform", "scale(1,-1)")]
+      let textElemMap := (Array.replicate textAttrs.size 0 : Array Nat)
+      let (_, tspanAttrs, tspanElemMap) := lines.foldl
+        (fun (i, attrs, emap) line =>
+          let dy := if i == 0 then startY else lineHeight
+          let newAttrs := #[
+            ("x", fmtNum pos.x),
+            ("dy", fmtNum dy),
+            ("textContent", line)]
+          let newEmap := Array.replicate newAttrs.size (i + 1)
+          (i + 1, attrs ++ newAttrs, emap ++ newEmap))
+        (0, #[], #[])
+      { elemCount := 1 + lines.length,
+        attrs := textAttrs ++ tspanAttrs,
+        attrElemMap := textElemMap ++ tspanElemMap }
+  | .drawStyledText lines anchor pos =>
+    let textAttrs : Array (String × String) := #[
       ("x", fmtNum pos.x),
       ("y", fmtNum pos.y),
       ("text-anchor", anchorToSvg anchor),
       ("dominant-baseline", "central"),
-      ("transform", "scale(1,-1)")]⟩
-  | .pushTransform m => ⟨true, #[("transform", matrixToSvg m)]⟩
-  | .pushAnnotation tag => ⟨true, #[("data-anno-id", toString tag)]⟩
-  | .pushOpacity α => ⟨true, #[("opacity", fmtNum α)]⟩
+      ("transform", "scale(1,-1)")]
+    let textElemMap := (Array.replicate textAttrs.size 0 : Array Nat)
+    -- Flatten all spans across all lines into a linear sequence of elements
+    let allSpans := lines.foldl (fun acc lineSpans => acc ++ lineSpans) #[]
+    let nLines := lines.size
+    if nLines <= 1 then
+      -- Single-line: tspans flow horizontally, no positional attrs
+      let (_, spanAttrs, spanElemMap) := allSpans.foldl
+        (fun (i, attrs, emap) (style, s) =>
+          let weight := if style.bold then "bold" else "normal"
+          let slant := if style.italic then "italic" else "normal"
+          let newAttrs : Array (String × String) := #[
+            ("alignment-baseline", "central"),
+            ("font-family", escapeXml style.fontFamily),
+            ("font-size", fmtNum style.fontSize),
+            ("font-weight", weight),
+            ("font-style", slant),
+            ("fill", colorToSvg style.color),
+            ("textContent", s)]
+          let newEmap := Array.replicate newAttrs.size (i + 1)
+          (i + 1, attrs ++ newAttrs, emap ++ newEmap))
+        (0, #[], #[])
+      { elemCount := 1 + allSpans.size,
+        attrs := textAttrs ++ spanAttrs,
+        attrElemMap := textElemMap ++ spanElemMap }
+    else
+      -- Multi-line: first span of each line gets x and dy
+      let maxFontSize := lines.foldl (fun acc spans =>
+        spans.foldl (fun a (st, _) => max a st.fontSize) acc) 0
+      let lineHeight := maxFontSize * 1.2
+      let totalH := lineHeight * (nLines - 1).toFloat
+      let startY := -totalH / 2
+      let (_, _, spanAttrs, spanElemMap) := lines.foldl
+        (fun (lineIdx, elemOff, attrs, emap) lineSpans =>
+          let dy := if lineIdx == 0 then startY else lineHeight
+          let (_, elemOff', attrs', emap') := lineSpans.foldl
+            (fun (spanIdx, eOff, acc, em) (style, s) =>
+              let weight := if style.bold then "bold" else "normal"
+              let slant := if style.italic then "italic" else "normal"
+              let posAttrs : Array (String × String) :=
+                if spanIdx == 0 then #[("x", fmtNum pos.x), ("dy", fmtNum dy)]
+                else #[]
+              let styleAttrs : Array (String × String) := #[
+                ("alignment-baseline", "central"),
+                ("font-family", escapeXml style.fontFamily),
+                ("font-size", fmtNum style.fontSize),
+                ("font-weight", weight),
+                ("font-style", slant),
+                ("fill", colorToSvg style.color),
+                ("textContent", s)]
+              let newAttrs := posAttrs ++ styleAttrs
+              let newEmap := Array.replicate newAttrs.size eOff
+              (spanIdx + 1, eOff + 1, acc ++ newAttrs, em ++ newEmap))
+            (0, elemOff, attrs, emap)
+          (lineIdx + 1, elemOff', attrs', emap'))
+        (0, 1, #[], #[])
+      { elemCount := 1 + allSpans.size,
+        attrs := textAttrs ++ spanAttrs,
+        attrElemMap := textElemMap ++ spanElemMap }
+  | .pushTransform m => { elemCount := 1, attrs := #[("transform", matrixToSvg m)] }
+  | .pushAnnotation tag => { elemCount := 1, attrs := #[("data-anno-id", toString tag)] }
+  | .pushOpacity α => { elemCount := 1, attrs := #[("opacity", fmtNum α)] }
   | .pushClip pd clipId =>
     let cid := s!"clip{clipPrefix}{clipId}"
-    ⟨true, #[("d", pathDataToD pd), ("id", cid)]⟩
-  | .pushForeign f => ⟨true, #[("data-foreign", BackendRender.renderOpen f)]⟩
-  | .popForeign f => ⟨false, #[("data-foreign", BackendRender.renderClose f)]⟩
+    { elemCount := 1, attrs := #[("d", pathDataToD pd), ("id", cid)] }
+  | .pushForeign f => { elemCount := 1, attrs := #[("data-foreign", BackendRender.renderOpen f)] }
+  | .popForeign f => { elemCount := 0, attrs := #[("data-foreign", BackendRender.renderClose f)] }
   | .defGradient gi g =>
-    -- Gradient defs are emitted inside <defs> wrappers in the body. The animation
-    -- walker skips <defs> but indexes the gradient element inside, making these
-    -- attributes patchable.
-    match g with
-    | .linear x1 y1 x2 y2 _ spread => ⟨true, #[
-        ("id", gradientIdOf gi clipPrefix),
-        ("x1", fmtNum x1), ("y1", fmtNum y1),
-        ("x2", fmtNum x2), ("y2", fmtNum y2),
-        ("gradientUnits", "userSpaceOnUse"),
-        ("spreadMethod", spreadToSvg spread)]⟩
-    | .radial cx cy r fx fy fr _ spread => ⟨true, #[
-        ("id", gradientIdOf gi clipPrefix),
-        ("cx", fmtNum cx), ("cy", fmtNum cy), ("r", fmtNum r),
-        ("fx", fmtNum fx), ("fy", fmtNum fy), ("fr", fmtNum fr),
-        ("gradientUnits", "userSpaceOnUse"),
-        ("spreadMethod", spreadToSvg spread)]⟩
-  | .popTransform | .popAnnotation | .popOpacity | .popClip => ⟨false, #[]⟩
+    let stops := match g with
+      | .linear _ _ _ _ stops _ | .radial _ _ _ _ _ _ stops _ => stops
+    let gradAttrs := match g with
+      | .linear x1 y1 x2 y2 _ spread => #[
+          ("id", gradientIdOf gi clipPrefix),
+          ("x1", fmtNum x1), ("y1", fmtNum y1),
+          ("x2", fmtNum x2), ("y2", fmtNum y2),
+          ("gradientUnits", "userSpaceOnUse"),
+          ("spreadMethod", spreadToSvg spread)]
+      | .radial cx cy r fx fy fr _ spread => #[
+          ("id", gradientIdOf gi clipPrefix),
+          ("cx", fmtNum cx), ("cy", fmtNum cy), ("r", fmtNum r),
+          ("fx", fmtNum fx), ("fy", fmtNum fy), ("fr", fmtNum fr),
+          ("gradientUnits", "userSpaceOnUse"),
+          ("spreadMethod", spreadToSvg spread)]
+    let gradElemMap := (Array.replicate gradAttrs.size 0 : Array Nat)
+    -- Each <stop> is a separate patchable child element
+    let (_, stopAttrs, stopElemMap) := stops.foldl
+      (fun (i, attrs, emap) s =>
+        let newAttrs : Array (String × String) := #[
+          ("offset", fmtNum s.offset),
+          ("stop-color", colorToSvg s.color),
+          ("stop-opacity", fmtNum s.color.a)]
+        let newEmap := Array.replicate newAttrs.size (i + 1)
+        (i + 1, attrs ++ newAttrs, emap ++ newEmap))
+      (0, #[], #[])
+    { elemCount := 1 + stops.size,
+      attrs := gradAttrs ++ stopAttrs,
+      attrElemMap := gradElemMap ++ stopElemMap }
+  | .popTransform | .popAnnotation | .popOpacity | .popClip => { elemCount := 0, attrs := #[] }
 
 /-- Joins attribute pairs into an SVG attribute string with a leading space. -/
 private def renderAttrs (attrs : Array (String × String)) : String :=
@@ -263,32 +378,53 @@ def renderCmd {β : Type} [BackendRender β] (cmd : DrawCmd β)
   | .strokePath .. =>
     s!"<path{eAttr}{renderAttrs info.attrs}/>"
   | .drawTextRun s style pos =>
-    let textAttrs := info.attrs.filter (·.1 != "textContent")
-    let attrStr := renderAttrs textAttrs
     let lines := s.splitOn "\n"
     if lines.length <= 1 then
+      let textAttrs := info.attrs.filter (·.1 != "textContent")
+      let attrStr := renderAttrs textAttrs
       s!"<text{eAttr}{attrStr}>{escapeXml s}</text>"
     else
+      -- Multi-line: outer <text> has no textContent; each <tspan> is a patchable element
+      let textAttrStr := renderAttrs #[
+        ("x", fmtNum pos.x), ("y", fmtNum pos.y),
+        ("font-family", style.fontFamily),
+        ("font-size", fmtNum style.fontSize),
+        ("font-weight", if style.bold then "bold" else "normal"),
+        ("font-style", if style.italic then "italic" else "normal"),
+        ("fill", colorToSvg style.color),
+        ("text-anchor", anchorToSvg style.anchor),
+        ("dominant-baseline", "central"),
+        ("transform", "scale(1,-1)")]
       let lineHeight := style.fontSize * 1.2
       let totalH := lineHeight * (lines.length - 1).toFloat
       let startY := -totalH / 2
       let (_, tspans) := lines.foldl (fun (i, acc) line =>
         let dy := if i == 0 then startY else lineHeight
-        let span := s!"<tspan x=\"{fmtNum pos.x}\" dy=\"{fmtNum dy}\">{escapeXml line}</tspan>"
+        let tspanEAttr := match elemTag with
+          | some baseIdx => s!" data-e=\"{baseIdx + 1 + i}\""
+          | none => ""
+        let span := s!"<tspan{tspanEAttr} x=\"{fmtNum pos.x}\" dy=\"{fmtNum dy}\">{escapeXml line}</tspan>"
         (i + 1, acc ++ span)) (0, "")
-      s!"<text{eAttr}{attrStr}>{tspans}</text>"
+      s!"<text{eAttr}{textAttrStr}>{tspans}</text>"
   | .drawStyledText lines _anchor pos =>
-    let attrStr := renderAttrs info.attrs
+    let textAttrStr := renderAttrs #[
+      ("x", fmtNum pos.x), ("y", fmtNum pos.y),
+      ("text-anchor", anchorToSvg _anchor),
+      ("dominant-baseline", "central"),
+      ("transform", "scale(1,-1)")]
     let nLines := lines.size
     if nLines <= 1 then
       -- Single line: tspans flow horizontally
       let spans := lines[0]?.getD #[]
-      let tspans := spans.foldl (fun acc (style, s) =>
+      let (_, tspans) := spans.foldl (fun (i, acc) (style, s) =>
         let weight := if style.bold then "bold" else "normal"
         let slant := if style.italic then "italic" else "normal"
-        acc ++ s!"<tspan alignment-baseline=\"central\" font-family=\"{escapeXml style.fontFamily}\" font-size=\"{fmtNum style.fontSize}\" font-weight=\"{weight}\" font-style=\"{slant}\" fill=\"{colorToSvg style.color}\">{escapeXml s}</tspan>"
-      ) ""
-      s!"<text{eAttr}{attrStr} xml:space=\"preserve\">{tspans}</text>"
+        let tspanEAttr := match elemTag with
+          | some baseIdx => s!" data-e=\"{baseIdx + 1 + i}\""
+          | none => ""
+        let span := s!"<tspan{tspanEAttr} alignment-baseline=\"central\" font-family=\"{escapeXml style.fontFamily}\" font-size=\"{fmtNum style.fontSize}\" font-weight=\"{weight}\" font-style=\"{slant}\" fill=\"{colorToSvg style.color}\">{escapeXml s}</tspan>"
+        (i + 1, acc ++ span)) (0, "")
+      s!"<text{eAttr}{textAttrStr} xml:space=\"preserve\">{tspans}</text>"
     else
       -- Multi-line: first tspan of each line gets x and dy
       let maxFontSize := lines.foldl (fun acc spans =>
@@ -296,18 +432,21 @@ def renderCmd {β : Type} [BackendRender β] (cmd : DrawCmd β)
       let lineHeight := maxFontSize * 1.2
       let totalH := lineHeight * (nLines - 1).toFloat
       let startY := -totalH / 2
-      let (_, tspans) := lines.foldl (fun (lineIdx, acc) spans =>
+      let (_, _, tspans) := lines.foldl (fun (lineIdx, elemOff, acc) spans =>
         let dy := if lineIdx == 0 then startY else lineHeight
-        let (_, lineStr) := spans.foldl (fun (spanIdx, sacc) (style, s) =>
+        let (_, elemOff', lineStr) := spans.foldl (fun (spanIdx, eOff, sacc) (style, s) =>
           let weight := if style.bold then "bold" else "normal"
           let slant := if style.italic then "italic" else "normal"
           let posAttrs := if spanIdx == 0 then
             s!" x=\"{fmtNum pos.x}\" dy=\"{fmtNum dy}\""
           else ""
-          let span := s!"<tspan{posAttrs} alignment-baseline=\"central\" font-family=\"{escapeXml style.fontFamily}\" font-size=\"{fmtNum style.fontSize}\" font-weight=\"{weight}\" font-style=\"{slant}\" fill=\"{colorToSvg style.color}\">{escapeXml s}</tspan>"
-          (spanIdx + 1, sacc ++ span)) (0, "")
-        (lineIdx + 1, acc ++ lineStr)) (0, "")
-      s!"<text{eAttr}{attrStr} xml:space=\"preserve\">{tspans}</text>"
+          let tspanEAttr := match elemTag with
+            | some baseIdx => s!" data-e=\"{baseIdx + eOff}\""
+            | none => ""
+          let span := s!"<tspan{tspanEAttr}{posAttrs} alignment-baseline=\"central\" font-family=\"{escapeXml style.fontFamily}\" font-size=\"{fmtNum style.fontSize}\" font-weight=\"{weight}\" font-style=\"{slant}\" fill=\"{colorToSvg style.color}\">{escapeXml s}</tspan>"
+          (spanIdx + 1, eOff + 1, sacc ++ span)) (0, elemOff, "")
+        (lineIdx + 1, elemOff', acc ++ lineStr)) (0, 1, "")
+      s!"<text{eAttr}{textAttrStr} xml:space=\"preserve\">{tspans}</text>"
   | .pushTransform .. | .pushAnnotation .. | .pushOpacity .. =>
     s!"<g{eAttr}{renderAttrs info.attrs}>"
   | .pushClip .. =>
@@ -318,21 +457,41 @@ def renderCmd {β : Type} [BackendRender β] (cmd : DrawCmd β)
     s!"<defs><clipPath id=\"{cid}\"><path{eAttr} d=\"{d}\"/></clipPath></defs><g clip-path=\"url(#{cid})\">"
   | .pushForeign tag => BackendRender.renderOpen tag
   | .popForeign tag => BackendRender.renderClose tag
-  | .defGradient _ g =>
-    let stopsStr := match g with
-      | .linear _ _ _ _ stops _ | .radial _ _ _ _ _ _ stops _ => stopsToSvg stops
+  | .defGradient gi g =>
+    let stops := match g with
+      | .linear _ _ _ _ stops _ | .radial _ _ _ _ _ _ stops _ => stops
+    let gradAttrStr := match g with
+      | .linear x1 y1 x2 y2 _ spread => renderAttrs #[
+          ("id", gradientIdOf gi clipPrefix),
+          ("x1", fmtNum x1), ("y1", fmtNum y1),
+          ("x2", fmtNum x2), ("y2", fmtNum y2),
+          ("gradientUnits", "userSpaceOnUse"),
+          ("spreadMethod", spreadToSvg spread)]
+      | .radial cx cy r fx fy fr _ spread => renderAttrs #[
+          ("id", gradientIdOf gi clipPrefix),
+          ("cx", fmtNum cx), ("cy", fmtNum cy), ("r", fmtNum r),
+          ("fx", fmtNum fx), ("fy", fmtNum fy), ("fr", fmtNum fr),
+          ("gradientUnits", "userSpaceOnUse"),
+          ("spreadMethod", spreadToSvg spread)]
+    -- Each <stop> is a patchable child element with its own data-e
+    let (_, stopsStr) := stops.foldl (fun (i, acc) s =>
+      let stopEAttr := match elemTag with
+        | some baseIdx => s!" data-e=\"{baseIdx + 1 + i}\""
+        | none => ""
+      (i + 1, acc ++ s!"<stop{stopEAttr} offset=\"{fmtNum s.offset}\" stop-color=\"{colorToSvg s.color}\" stop-opacity=\"{fmtNum s.color.a}\"/>"))
+      (0, "")
     match g with
     | .linear .. =>
-      s!"<defs><linearGradient{eAttr}{renderAttrs info.attrs}>{stopsStr}</linearGradient></defs>"
+      s!"<defs><linearGradient{eAttr}{gradAttrStr}>{stopsStr}</linearGradient></defs>"
     | .radial .. =>
-      s!"<defs><radialGradient{eAttr}{renderAttrs info.attrs}>{stopsStr}</radialGradient></defs>"
+      s!"<defs><radialGradient{eAttr}{gradAttrStr}>{stopsStr}</radialGradient></defs>"
   | .popTransform | .popAnnotation | .popOpacity | .popClip => "</g>"
 
 /--
 Renders an array of draw commands to a complete SVG document string.
 The {name}`clipPrefix` distinguishes clip-path IDs when multiple SVGs share a page.
 
-When {name}`emitElemIdx` is true, each element that {name (full := CmdAttrInfo.producesElement)}`producesElement`
+When {name}`emitElemIdx` is true, each element that produces SVG output
 gets a {lit}`data-e` attribute with its element index. The animation player uses
 these to locate patchable elements by explicit ID rather than fragile DOM-walk order.
 -/
@@ -340,9 +499,9 @@ def render {β : Type} [BackendRender β] (cmds : Array (DrawCmd β)) (viewBox :
     (clipPrefix : String := "") (emitElemIdx : Bool := false) : String :=
   let header := s!"<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"{fmtNum viewBox.minX} {fmtNum viewBox.minY} {fmtNum viewBox.width} {fmtNum viewBox.height}\">"
   let (body, _) := cmds.foldl (init := ("", 0)) fun (acc, ei) cmd =>
-    let produces := (drawCmdAttrs cmd clipPrefix).producesElement
-    let tag := if emitElemIdx && produces then some ei else none
+    let ec := (drawCmdAttrs cmd clipPrefix).elemCount
+    let tag := if emitElemIdx && ec > 0 then some ei else none
     let fragment := renderCmd cmd clipPrefix tag
-    (acc ++ "\n" ++ fragment, if produces then ei + 1 else ei)
+    (acc ++ "\n" ++ fragment, ei + ec)
   -- Flip y-axis: SVG y points down, diagram y points up
   header ++ "\n<g transform=\"scale(1,-1)\">" ++ body ++ "\n</g>\n</svg>"

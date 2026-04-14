@@ -259,6 +259,21 @@ open Diagram in
 #diagram
   hsep 30 [circle 20 |>.namedWithAnchors `A, vcat [vgap 30, circle 30 |>.namedWithAnchors `B]] |>.connect `A.east `B.west
 
+
+#animate
+  [{ duration := 2.0 }]
+  (fun progress =>
+    let t := progress[0]
+    let midRed := (t * 255).toUInt8
+    let midColor : Color := { r := midRed, g := (255 - midRed), b := 0 }
+    Diagram.circle 40
+      (fill := .linearGradient Vec2.north
+        (stops := #[
+          { offset := 0, color := Color.blue },
+          { offset := 0.25 + (0.5 * t), color := midColor },
+          { offset := 1, color := Color.white }
+        ])))
+
 -- Gradient spotlight: radial gradient focal point orbits inside a drifting ellipse
 #animate
   [{ duration := 3.0, loop := true }]
@@ -281,3 +296,22 @@ open Diagram in
     let dx := 30 * Float.sin θ
     let dy := 15 * Float.sin (2 * θ)
     Diagram.translate dx dy ellipseShape)
+
+-- Animated styled text: second span color transitions from blue to red
+#animate (fps := 30)
+  [{ duration := 2.0 }]
+  (fun progress =>
+    let t := progress[0]
+    let color := Interpolate.interpolate Color.blue Color.red t
+    Diagram.styledLines [
+      [({ color := Color.black, fontSize := 18 }, "Status: "),
+       ({ color, fontSize := 18, bold := true }, "Active")]
+    ])
+
+-- Multiline text with varying content
+#animate (fps := 30)
+  [{ duration := 2.0 }]
+  (fun progress =>
+    let t := progress[0]
+    let pct := (t * 100).round.toUInt64.toNat
+    Diagram.text s!"Progress: {pct}%\nRemaining: {100 - pct}%" { fontSize := 14 })
