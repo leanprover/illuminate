@@ -6,6 +6,7 @@ Author: David Thrane Christiansen
 module
 import Illuminate.Animation.Morph.CubicSeg
 import Illuminate.Animation.Morph.Style
+import Illuminate.Animation.Morph.Prepare
 import Illuminate.Geometry.PathData
 import Tests.Helpers
 public section
@@ -271,8 +272,127 @@ def morphPlanTests : List (String × IO Unit) :=
   ]
 
 /-!
+# Skeleton normalization tests
+-/
+
+private def rectPrim : Skeleton Empty :=
+  .prim (.path (PathData.rect 20 10) (.solid Color.red) {})
+
+def normalizationTests : List (String × IO Unit) :=
+  [ ("normalize: collapse consecutive transforms", do
+      let m1 := Matrix.rotate 0.5
+      let m2 := Matrix.rotate 0.3
+      let skel : Skeleton Empty := .transform m1 (.transform m2 rectPrim)
+      let norm := normalizeSkeleton skel
+      match norm with
+      | .transform _ (.prim _) => pure ()
+      | _ => throw <| IO.userError s!"expected single transform around prim")
+  , ("normalize: collapse consecutive cellophanes", do
+      let skel : Skeleton Empty := .cellophane 0.5 (.cellophane 0.8 rectPrim)
+      let norm := normalizeSkeleton skel
+      match norm with
+      | .cellophane α (.prim _) =>
+        assertApproxEq α 0.4 "collapsed opacity" (tol := 1e-6)
+      | _ => throw <| IO.userError "expected single cellophane around prim")
+  , ("normalize: reorder transform/cellophane", do
+      let m := Matrix.rotate 1.0
+      let skel : Skeleton Empty := .transform m (.cellophane 0.5 rectPrim)
+      let norm := normalizeSkeleton skel
+      match norm with
+      | .cellophane _ (.transform _ (.prim _)) => pure ()
+      | _ => throw <| IO.userError "expected cellophane outside transform")
+  , ("normalize: push transform past clip", do
+      let m := Matrix.rotate 1.0
+      let clipPd := PathData.rect 30 30
+      let skel : Skeleton Empty := .transform m (.clip clipPd rectPrim)
+      let norm := normalizeSkeleton skel
+      match norm with
+      | .clip _ (.transform _ (.prim _)) => pure ()
+      | _ => throw <| IO.userError "expected clip outside transform")
+  , ("normalize: push clip past cellophane", do
+      let clipPd := PathData.rect 30 30
+      let skel : Skeleton Empty := .clip clipPd (.cellophane 0.5 rectPrim)
+      let norm := normalizeSkeleton skel
+      match norm with
+      | .cellophane _ (.clip _ (.prim _)) => pure ()
+      | _ => throw <| IO.userError "expected cellophane outside clip")
+  , ("normalize: complex nesting", do
+      let m1 := Matrix.rotate 0.5
+      let m2 := Matrix.rotate 0.3
+      let clipPd := PathData.rect 30 30
+      let skel : Skeleton Empty :=
+        .transform m1 (.transform m2 (.clip clipPd (.cellophane 0.7 rectPrim)))
+      let norm := normalizeSkeleton skel
+      match norm with
+      | .cellophane _ (.clip _ (.transform _ (.prim _))) => pure ()
+      | _ => throw <| IO.userError "expected cellophane > clip > transform > prim")
+  ]
+
+/-!
+# Morph plan integration tests for wrapper handling
+-/
+
+private def blueRect (w h : Float) : Diagram SVG :=
+  Diagram.rect w h (fill := Color.blue) (stroke := { color := .black, width := 1 })
+
+private def redRect (w h : Float) : Diagram SVG :=
+  Diagram.rect w h (fill := Color.red) (stroke := { color := .black, width := 1 })
+
+private def blueCircle (r : Float) : Diagram SVG :=
+  Diagram.circle r (fill := Color.blue) (stroke := { color := .black, width := 1 })
+
+private def redCircle (r : Float) : Diagram SVG :=
+  Diagram.circle r (fill := Color.red) (stroke := { color := .black, width := 1 })
+
+def morphWrapperTests : List (String × IO Unit) :=
+  [ ("morph wrapper: rotated rect to circle", do
+      let a := (blueRect 20 30).rotate 2
+      let b := redCircle 40
+      let m := a.morph b
+      let crossFades := countCrossFades m.node
+      let paths := countPaths m.node
+      IO.println s!"    crossFades={crossFades} paths={paths}"
+      assertTrue (crossFades == 0) s!"expected 0 cross-fades, got {crossFades}"
+      assertTrue (paths >= 1) s!"expected ≥1 path morph, got {paths}")
+  , ("morph wrapper: reordered transform+cellophane", do
+      let a := ((blueRect 30 30).rotate 1).cellophane 0.5
+      let b := ((redRect 30 30).cellophane 0.7).rotate 0.5
+      let m := a.morph b
+      let crossFades := countCrossFades m.node
+      IO.println s!"    crossFades={crossFades}"
+      assertTrue (crossFades == 0) s!"expected 0 cross-fades, got {crossFades}")
+  , ("morph wrapper: stacked transforms", do
+      let a := ((blueRect 30 30).rotate 1).rotate 0.5
+      let b := redRect 40 40
+      let m := a.morph b
+      let crossFades := countCrossFades m.node
+      let paths := countPaths m.node
+      IO.println s!"    crossFades={crossFades} paths={paths}"
+      assertTrue (crossFades == 0) s!"expected 0 cross-fades, got {crossFades}"
+      assertTrue (paths >= 1) s!"expected ≥1 path morph, got {paths}")
+  , ("morph wrapper: cellophane asymmetry", do
+      let a := (blueRect 40 40).cellophane 0.5
+      let b := redRect 30 30
+      let m := a.morph b
+      let crossFades := countCrossFades m.node
+      let paths := countPaths m.node
+      IO.println s!"    crossFades={crossFades} paths={paths}"
+      assertTrue (crossFades == 0) s!"expected 0 cross-fades, got {crossFades}"
+      assertTrue (paths >= 1) s!"expected ≥1 path morph, got {paths}")
+  , ("morph wrapper: clip asymmetry", do
+      let a := (blueCircle 30).clip (PathData.rect 30 30)
+      let b := redCircle 30
+      let m := a.morph b
+      let crossFades := countCrossFades m.node
+      let paths := countPaths m.node
+      IO.println s!"    crossFades={crossFades} paths={paths}"
+      assertTrue (crossFades == 0) s!"expected 0 cross-fades, got {crossFades}"
+      assertTrue (paths >= 1) s!"expected ≥1 path morph, got {paths}")
+  ]
+
+/-!
 # All morph tests
 -/
 
 def morphTests : List (String × IO Unit) :=
-  cubicSegTests ++ styleTests' ++ morphPlanTests
+  cubicSegTests ++ styleTests' ++ morphPlanTests ++ normalizationTests ++ morphWrapperTests

@@ -1028,6 +1028,39 @@ def filmstripMorphArrows : Diagram SVG :=
 def testVisual_filmstripMorphArrows : IO Unit :=
   testVisualWrite "filmstrip-morph-arrows.svg" filmstripMorphArrows
 
+/--
+Morph wrapper filmstrip: exercises transform, cellophane, and clip asymmetry,
+plus reordered and stacked wrappers. Five morph pairs stacked vertically.
+-/
+def filmstripMorphTransforms : Diagram SVG :=
+  let stroke : Stroke := { color := Color.black, width := 1 }
+  -- 1. Rotated rect → circle
+  let m1 := ((Diagram.rect 40 40 (fill := Color.blue) (stroke := stroke)).rotate 1).morph
+    (Diagram.circle 25 (fill := Color.red) (stroke := stroke))
+  -- 2. Stacked transforms → plain rect
+  let m2 := (((Diagram.rect 30 30 (fill := Color.blue) (stroke := stroke)).rotate 1).rotate 0.5).morph
+    (Diagram.rect 40 40 (fill := Color.red) (stroke := stroke))
+  -- 3. Reordered wrappers: rotate+cellophane ↔ cellophane+rotate
+  let m3 := (((Diagram.rect 30 30 (fill := Color.blue) (stroke := stroke)).rotate 1).cellophane 0.5).morph
+    (((Diagram.rect 30 30 (fill := Color.red) (stroke := stroke)).cellophane 0.8).rotate 0.3)
+  -- 4. Cellophane → opaque
+  let m4 := ((Diagram.rect 40 40 (fill := Color.blue) (stroke := stroke)).cellophane 0.4).morph
+    (Diagram.circle 25 (fill := Color.red) (stroke := stroke))
+  -- 5. Clipped → unclipped
+  let m5 := ((Diagram.circle 30 (fill := Color.blue) (stroke := stroke)).clip (PathData.rect 30 30)).morph
+    (Diagram.circle 30 (fill := Color.red) (stroke := stroke))
+  Diagram.vsep 10 [
+    .scope <| filmstrip (fun t => m1.evaluate (Easing.easeInOut t)) (rows := 1),
+    .scope <| filmstrip (fun t => m2.evaluate (Easing.easeInOut t)) (rows := 1),
+    .scope <| filmstrip (fun t => m3.evaluate (Easing.easeInOut t)) (rows := 1),
+    .scope <| filmstrip (fun t => m4.evaluate (Easing.easeInOut t)) (rows := 1),
+    .scope <| filmstrip (fun t => m5.evaluate (Easing.easeInOut t)) (rows := 1)
+  ]
+
+#diagram filmstripMorphTransforms
+
+def testVisual_filmstripMorphTransforms : IO Unit :=
+  testVisualWrite "filmstrip-morph-transforms.svg" filmstripMorphTransforms
 
 /-!
 # Basic shapes
@@ -1362,6 +1395,7 @@ def visualTests : List (String × IO Unit) := [
   ("Visual/filmstripMorphRectCircle", testVisual_filmstripMorphRectCircle),
   ("Visual/filmstripMorphNested", testVisual_filmstripMorphNested),
   ("Visual/filmstripMorphArrows", testVisual_filmstripMorphArrows),
+  ("Visual/filmstripMorphTransforms", testVisual_filmstripMorphTransforms),
   ("Visual/flowchartShapes", testVisual_flowchartShapes),
   ("Visual/parallelogramVariations", testVisual_parallelogramVariations),
   ("Visual/arrowShapes", testVisual_arrowShapes),

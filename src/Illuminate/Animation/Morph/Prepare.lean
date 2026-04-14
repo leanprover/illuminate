@@ -15,6 +15,75 @@ public section
 namespace Illuminate
 
 /-!
+# Path transform and envelope helpers
+-/
+
+/-- Transforms a {name}`PathData` by applying a matrix to all path points via cubic conversion. -/
+private def transformPathData (m : Matrix) (pd : PathData) : PathData :=
+  let np := pathToCubics pd
+  let results := np.subpaths.map fun sub =>
+    let tSegs := sub.segments.map fun seg =>
+      { p0 := m.apply seg.p0, c1 := m.apply seg.c1,
+        c2 := m.apply seg.c2, p3 := m.apply seg.p3 }
+    cubicsToPathData tSegs sub.closed
+  results.foldl (fun acc r => ⟨acc.commands ++ r.commands⟩) PathData.empty
+
+/--
+Approximates an envelope as a closed polygon {name}`PathData` by sampling support-line
+intersections at evenly spaced directions.
+-/
+private def envelopeToPathData {β : Type} [Backend β]
+    (d : Diagram β) (samples : Nat := 64) : PathData :=
+  match d.getEnvelope with
+  | .empty => PathData.rect 0 0
+  | .nonempty env =>
+    let n := max samples 8
+    let step := 2 * pi / n.toFloat
+    let dirs := List.range n |>.map fun i =>
+      let θ := i.toFloat * step
+      let dir : Vec2 := ⟨Float.cos θ, Float.sin θ⟩
+      (dir, env dir)
+    let vertices := dirs.mapIdx fun i (d1, e1) =>
+      let (d2, e2) := match dirs[((i : Nat) + 1) % n]? with
+        | some v => v
+        | none => (d1, e1)
+      let det := d1.x * d2.y - d1.y * d2.x
+      if det.abs < 1e-10 then e1 • d1
+      else ⟨(e1 * d2.y - e2 * d1.y) / det, (d1.x * e2 - d2.x * e1) / det⟩
+    match vertices with
+    | [] => PathData.rect 0 0
+    | p :: rest =>
+      let pd := PathData.empty |>.moveTo p
+      (rest.foldl (fun a pt => a.lineTo pt) pd).close
+
+/--
+Computes a semantic key for a {name}`PathData`: (signed area, centroid x, centroid y).
+
+Small path changes produce small key changes, so clips with similar geometry
+sort adjacently for better morph matching.
+-/
+private def pathDataKey (pd : PathData) : Float × Float × Float :=
+  let np := pathToCubics pd
+  let pts := np.subpaths.foldl (fun acc sub =>
+    sub.segments.foldl (fun a seg => a.push seg.p3) acc) #[]
+  if pts.size == 0 then (0, 0, 0)
+  else
+    let n := pts.size
+    let crosses := pts.mapIdx fun i p =>
+      let q := pts[(i + 1) % n]!
+      p.x * q.y - q.x * p.y
+    let area := crosses.foldl (fun a b => a + b) 0.0 / 2.0
+    let cx := pts.foldl (fun a p => a + p.x) 0.0 / n.toFloat
+    let cy := pts.foldl (fun a p => a + p.y) 0.0 / n.toFloat
+    (area, cx, cy)
+
+/-- Compares two {name}`PathData` values by (area, centroid) for canonical clip ordering. -/
+private def pathDataLt (a b : PathData) : Bool :=
+  let (a1, a2, a3) := pathDataKey a
+  let (b1, b2, b3) := pathDataKey b
+  a1 < b1 || (a1 == b1 && (a2 < b2 || (a2 == b2 && a3 < b3)))
+
+/-!
 # Skeleton type
 
 A diagram with explicit references where matched named subdiagrams were extracted.
@@ -46,6 +115,55 @@ inductive Skeleton (β : Type) where
   /-- Pass-through wrappers. -/
   | other : Diagram β → Skeleton β
 deriving Inhabited
+
+/-!
+# Skeleton normalization
+
+Normalizes wrappers to a canonical form so that structurally equivalent
+skeletons match even when wrappers appear in different orders or are
+unnecessarily nested.
+
+Canonical form (outside → inside):
+`cellophane? → clip* (sorted by area/centroid) → transform? → content`
+
+Rules:
+- Consecutive transforms collapse via {name}`Matrix.mul`.
+- Consecutive cellophanes collapse via multiplication.
+- Cellophane commutes with transform and clip (floats outward).
+- Transform commutes with clip by transforming the clip path (sinks inward).
+- Clips are sorted by a semantic key (area, centroid) for stable matching.
+-/
+
+/-- Inserts a transform at its canonical position in an already-normalized skeleton. -/
+private def pushTransform {β : Type} (m : Matrix) : Skeleton β → Skeleton β
+  | .cellophane α d => .cellophane α (pushTransform m d)
+  | .clip pd d => .clip (transformPathData m pd) (pushTransform m d)
+  | .transform m' d => .transform (Matrix.mul m m') d
+  | d => .transform m d
+
+/-- Inserts a clip at its canonical position in an already-normalized skeleton. -/
+private partial def pushClip {β : Type} (pd : PathData) : Skeleton β → Skeleton β
+  | .cellophane α d => .cellophane α (pushClip pd d)
+  | .clip pd' d =>
+    if pathDataLt pd pd' then .clip pd (.clip pd' d)
+    else .clip pd' (pushClip pd d)
+  | d => .clip pd d
+
+/-- Inserts a cellophane at its canonical position in an already-normalized skeleton. -/
+private def pushCellophane {β : Type} (α : Float) : Skeleton β → Skeleton β
+  | .cellophane α' d => .cellophane (α * α') d
+  | d => .cellophane α d
+
+/-- Normalizes a skeleton to canonical wrapper order (bottom-up). -/
+def normalizeSkeleton {β : Type} : Skeleton β → Skeleton β
+  | .transform m d => pushTransform m (normalizeSkeleton d)
+  | .cellophane α d => pushCellophane α (normalizeSkeleton d)
+  | .clip pd d => pushClip pd (normalizeSkeleton d)
+  | .compose a b => .compose (normalizeSkeleton a) (normalizeSkeleton b)
+  | .arrow s t st ut d => .arrow s t st ut (normalizeSkeleton d)
+  | .named n d => .named n (normalizeSkeleton d)
+  | .withEnv e d => .withEnv e (normalizeSkeleton d)
+  | other => other
 
 /-!
 # Diagram to Skeleton conversion
@@ -228,6 +346,33 @@ partial def matchSkeletons {β : Type} [Backend β]
   | other, .empty => .fadeOut (skelToDiagram other)
   | .ref _, other => .fadeIn (skelToDiagram other)
   | other, .ref _ => .fadeOut (skelToDiagram other)
+  -- Asymmetric wrappers: treat missing side as identity
+  | .transform mA dA, other =>
+    .transform mA Matrix.identity (go dA other)
+  | other, .transform mB dB =>
+    .transform Matrix.identity mB (go other dB)
+  | .cellophane αA dA, other =>
+    .cellophane αA 1.0 (go dA other)
+  | other, .cellophane αB dB =>
+    .cellophane 1.0 αB (go other dB)
+  | .clip pdA dA, other =>
+    let otherPd := envelopeToPathData (skelToDiagram other : Diagram β)
+    let npA := pathToCubics pdA
+    let npB := pathToCubics otherPd
+    let subA := (npA.subpaths[0]?.getD default)
+    let subB := (npB.subpaths[0]?.getD default)
+    let closed := subA.closed || subB.closed
+    let (segsA, segsB) := prepareSegments subA.segments subB.segments closed
+    .clip segsA segsB closed (go dA other)
+  | other, .clip pdB dB =>
+    let otherPd := envelopeToPathData (skelToDiagram other : Diagram β)
+    let npA := pathToCubics otherPd
+    let npB := pathToCubics pdB
+    let subA := (npA.subpaths[0]?.getD default)
+    let subB := (npB.subpaths[0]?.getD default)
+    let closed := subA.closed || subB.closed
+    let (segsA, segsB) := prepareSegments subA.segments subB.segments closed
+    .clip segsA segsB closed (go other dB)
   -- Fallback
   | x, y => .crossFade (skelToDiagram x) (skelToDiagram y)
 
@@ -243,8 +388,8 @@ partial def matchOneLevel {β : Type} [Backend β] (a b : Diagram β) :
   let shared : Std.HashSet Lean.Name :=
     namesA.foldl (fun s n => if nameSetB.contains n then s.insert n else s) {}
   if shared.isEmpty then
-    let skelA := toSkeleton a {}
-    let skelB := toSkeleton b {}
+    let skelA := normalizeSkeleton (toSkeleton a {})
+    let skelB := normalizeSkeleton (toSkeleton b {})
     return (matchSkeletons {} skelA skelB, #[])
   -- Extract matched pairs first to build the transform map
   let mut pairs : Array (MatchedPair β) := #[]
@@ -256,8 +401,8 @@ partial def matchOneLevel {β : Type} [Backend β] (a b : Diagram β) :
       refXforms := refXforms.insert name (xfA, xfB)
     | _, _ => pure ()
   -- Build skeletons with shared names extracted as refs
-  let skelA := toSkeleton a shared
-  let skelB := toSkeleton b shared
+  let skelA := normalizeSkeleton (toSkeleton a shared)
+  let skelB := normalizeSkeleton (toSkeleton b shared)
   let residual := matchSkeletons refXforms skelA skelB
   (residual, pairs)
 
