@@ -97,7 +97,10 @@ variable {β : Type} [Backend β]
 /--
 Hit-tests a diagram at the given point, returning the topmost hit.
 
-Respects front-to-back ordering: given diagrams {given}`a, b`, in {lean}`Diagram.compose a b`, {name}`b` (drawn on top) is
+{given -show}`β`
+
+Respects front-to-back ordering: given diagrams {given}`a, b : Diagram β`, in
+{lean}`Diagram.compose a b`, {name}`b` (drawn on top) is
 tested first. A {name}`ResolvedFill.solid` interior is hittable even if transparent. A
 {name}`ResolvedFill.none` interior is not hittable — only its stroke boundary is.
 Clicking within the border stroke of a shape counts as clicking the shape.
