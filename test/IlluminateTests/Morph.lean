@@ -8,7 +8,7 @@ import Illuminate.Animation.Morph.CubicSeg
 import Illuminate.Animation.Morph.Style
 import Illuminate.Animation.Morph.Prepare
 import Illuminate.Geometry.PathData
-import Tests.Helpers
+import IlluminateTests.Helpers
 public section
 
 open Illuminate

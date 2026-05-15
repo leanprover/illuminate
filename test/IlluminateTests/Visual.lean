@@ -4,8 +4,8 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Author: David Thrane Christiansen
 -/
 module
-public import Tests.Helpers
-import Tests.AnimationExamples
+public import IlluminateTests.Helpers
+import IlluminateTests.AnimationExamples
 public section
 
 set_option linter.missingDocs false
