@@ -1,0 +1,13 @@
+module
+import IlluminateTests.Geometry
+import IlluminateTests.Style
+import IlluminateTests.Diagram
+import IlluminateTests.Render
+import IlluminateTests.Layout
+import IlluminateTests.DSL
+import IlluminateTests.Trace
+import IlluminateTests.Visual
+import IlluminateTests.HitTest
+import IlluminateTests.Animation
+import IlluminateTests.Morph
+import IlluminateTests.TreeLayout
