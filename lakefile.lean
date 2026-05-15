@@ -19,7 +19,6 @@ lean_lib «Illuminate» where
   srcDir := "src"
   needs := #[playerJs]
 
-@[default_target]
 lean_lib «IlluminateTests» where
   srcDir := "test"
   leanOptions := #[⟨`linter.missingDocs, false⟩]
