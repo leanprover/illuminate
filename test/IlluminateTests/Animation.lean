@@ -5,7 +5,7 @@ Author: David Thrane Christiansen
 -/
 module
 import Illuminate
-import Tests.Helpers
+import IlluminateTests.Helpers
 public section
 
 open Illuminate

@@ -4,18 +4,18 @@ Released under Apache 2.0 license as described in the file LICENSE.
 Author: David Thrane Christiansen
 -/
 module
-import Tests.Geometry
-import Tests.Style
-import Tests.Diagram
-import Tests.Render
-import Tests.Layout
-import Tests.DSL
-import Tests.Trace
-import Tests.Visual
-import Tests.HitTest
-import Tests.Animation
-import Tests.Morph
-import Tests.TreeLayout
+import IlluminateTests.Geometry
+import IlluminateTests.Style
+import IlluminateTests.Diagram
+import IlluminateTests.Render
+import IlluminateTests.Layout
+import IlluminateTests.DSL
+import IlluminateTests.Trace
+import IlluminateTests.Visual
+import IlluminateTests.HitTest
+import IlluminateTests.Animation
+import IlluminateTests.Morph
+import IlluminateTests.TreeLayout
 public section
 
 def main : IO Unit := do
