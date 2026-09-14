@@ -6,6 +6,11 @@ jobs:
     actionlint:
         name: "Lint GitHub Actions workflows"
         runs-on: ubuntu-latest
+        permissions:
+            contents: read
+            # Needed to print the results
+            checks: write
+            pull-requests: read
         steps:
             - uses: actions/checkout@v6
 
