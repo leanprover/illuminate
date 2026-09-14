@@ -6,11 +6,16 @@ jobs:
     actionlint:
         name: "Lint GitHub Actions workflows"
         runs-on: ubuntu-latest
+        permissions:
+            contents: read
+            # Needed to print the results
+            checks: write
+            pull-requests: read
         steps:
             - uses: actions/checkout@v6
 
             - name: Run actionlint
-              uses: reviewdog/action-actionlint@v1
+              uses: reviewdog/action-actionlint@8b682e1e7e512151d73a6b9449cbff173846226e # v1.74.0
               with:
                   fail_level: any
                   actionlint_flags: ""
