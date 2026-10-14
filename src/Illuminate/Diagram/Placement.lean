@@ -5,7 +5,6 @@ Author: David Thrane Christiansen
 -/
 module
 public import Illuminate.Diagram.Basic
-import Lean.DocString.Syntax
 public import Illuminate.Geometry.Point
 public import Illuminate.Geometry.Basic
 public import Illuminate.Geometry.Envelope

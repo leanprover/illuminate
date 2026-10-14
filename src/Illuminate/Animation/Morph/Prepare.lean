@@ -8,7 +8,6 @@ public import Illuminate.Diagram.Placement
 public import Illuminate.Animation.Morph.Types
 import Illuminate.Animation.Morph.Style
 public import Std.Data.HashSet.Basic
-import Lean.DocString.Syntax
 public section
 
 

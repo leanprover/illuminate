@@ -6,7 +6,6 @@ Author: David Thrane Christiansen
 module
 public import Illuminate.Backend.SVG
 import Illuminate.Diagram.Placement
-import Lean.DocString.Syntax
 public section
 
 

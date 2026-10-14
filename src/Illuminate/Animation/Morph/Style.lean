@@ -5,7 +5,6 @@ Author: David Thrane Christiansen
 -/
 module
 import Illuminate.Animation.Interpolate
-import Lean.DocString.Syntax
 public import Illuminate.Style.Types
 import Illuminate.Style.Color
 public section

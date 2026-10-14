@@ -5,8 +5,6 @@ Author: David Thrane Christiansen
 -/
 module
 public import Illuminate.Style.Types
-import Lean.DocString.Syntax
-meta import Lean.Parser.Term
 public section
 
 namespace Illuminate

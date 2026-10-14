@@ -7,7 +7,6 @@ module
 public import Illuminate.Diagram.Types
 public import Illuminate.Style.Color
 import Illuminate.Diagram.Basic
-import Lean.DocString.Syntax
 public section
 
 namespace Illuminate

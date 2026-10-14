@@ -5,7 +5,6 @@ Author: David Thrane Christiansen
 -/
 module
 import Illuminate.Diagram.Arrow
-import Lean.DocString.Syntax
 public import Illuminate.Diagram.Types
 public section
 

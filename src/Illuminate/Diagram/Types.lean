@@ -8,8 +8,6 @@ import Illuminate.Geometry.Envelope
 public import Illuminate.Geometry.Trace
 public import Illuminate.Style.Arrow
 public import Illuminate.Render.DrawCmd
-import Lean.DocString.Syntax
-meta import Lean.Parser.Term
 public section
 
 namespace Illuminate

@@ -5,8 +5,6 @@ Author: David Thrane Christiansen
 -/
 module
 public import Illuminate.Render.DrawCmd
-import Lean.DocString.Syntax
-meta import Lean.Parser.Term
 public section
 
 

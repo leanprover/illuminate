@@ -6,7 +6,6 @@ Author: David Thrane Christiansen
 module
 public import Illuminate.Diagram.Placement
 import Illuminate.Diagram.Arrow
-import Lean.DocString.Syntax
 public section
 
 

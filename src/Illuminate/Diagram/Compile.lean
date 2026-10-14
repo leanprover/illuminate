@@ -6,7 +6,6 @@ Author: David Thrane Christiansen
 module
 public import Illuminate.Diagram.Arrow
 public import Illuminate.Render.Svg
-import Lean.DocString.Syntax
 public section
 
 namespace Illuminate

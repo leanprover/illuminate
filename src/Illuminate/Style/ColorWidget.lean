@@ -6,7 +6,7 @@ Author: David Thrane Christiansen
 module
 public meta import Lean.Widget.UserWidget
 public import Illuminate.Style.Color
-import Lean.DocString.Syntax
+import Lean.Exception
 public section
 
 namespace Illuminate
