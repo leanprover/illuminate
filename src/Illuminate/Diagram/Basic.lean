@@ -5,7 +5,6 @@ Author: David Thrane Christiansen
 -/
 module
 public import Illuminate.Diagram.Types
-import Lean.DocString.Syntax
 import Illuminate.Geometry.Basic
 import Illuminate.Geometry.Envelope
 import Illuminate.Geometry.Matrix

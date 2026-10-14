@@ -5,9 +5,7 @@ Author: David Thrane Christiansen
 -/
 module
 public import Illuminate.Render.Svg
-import Lean.DocString.Syntax
 public import Illuminate.Diagram.Types
-meta import Lean.Parser.Term
 public section
 
 

@@ -7,7 +7,6 @@ module
 public import Illuminate.Animation.Morph.Types
 public import Illuminate.Animation.Morph.Evaluate
 public import Illuminate.Animation.Morph.Prepare
-import Lean.DocString.Syntax
 public section
 
 

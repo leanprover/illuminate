@@ -5,9 +5,9 @@ Author: David Thrane Christiansen
 -/
 module
 public meta import Lean.Elab.Term.TermElabM
-import Lean.DocString.Syntax
 import Illuminate.Geometry.Envelope
 public import Illuminate.Style.Types
+import Lean.Exception
 public section
 
 namespace Illuminate

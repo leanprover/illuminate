@@ -8,7 +8,7 @@ public import Illuminate.Animation.Types
 import Illuminate.Animation.Animate
 public import Illuminate.Backend.SVG
 import Illuminate.Diagram.Compile
-import Lean.DocString.Syntax
+import Std.Data.HashSet.Basic
 public section
 
 

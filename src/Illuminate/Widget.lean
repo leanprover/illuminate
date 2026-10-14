@@ -10,7 +10,7 @@ import Illuminate.Diagram.Validate
 import Illuminate.Diagram.HitTest
 meta import Illuminate.Diagram.Types
 public import Lean.Environment
-import Lean.DocString.Syntax
+import Lean.CoreM
 public section
 
 

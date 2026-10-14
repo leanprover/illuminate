@@ -5,10 +5,8 @@ Author: David Thrane Christiansen
 -/
 module
 import Illuminate.Animation.Interpolate
-import Lean.DocString.Syntax
 import Illuminate.Geometry.Matrix
 public import Illuminate.Diagram.Types
-meta import Lean.Parser.Term
 public section
 
 
