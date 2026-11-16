@@ -516,9 +516,11 @@ lake test --wfail && uv run test_playwright.py
 
 The animation player and widget JavaScript in `player_js/` uses JSDoc
 type annotations checked by TypeScript. React type definitions are
-vendored in `vendored_js/`. To run the type checker:
+vendored in `vendored_js/`. With Node.js and npm installed, install
+the pinned development tools and run the type checker:
 
 ```sh
+npm ci
 npx tsc --noEmit -p player_js/jsconfig.json
 ```
 
