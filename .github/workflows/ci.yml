@@ -43,6 +43,14 @@ jobs:
                   build-args: --wfail
                   test-args: --wfail
 
+            - uses: actions/setup-node@v6
+              with:
+                  node-version: 24
+                  cache: npm
+
+            - name: Install JavaScript dependencies
+              run: npm ci
+
             - name: Type check player JS
               run: npx tsc --noEmit -p player_js/jsconfig.json
 

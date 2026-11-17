@@ -1,6 +1,9 @@
 # Lake build artifacts
 .lake/
 
+# JavaScript dependencies
+node_modules/
+
 # Generated SVGs from lake test
 *.svg
 

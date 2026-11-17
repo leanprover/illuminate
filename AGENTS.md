@@ -88,9 +88,11 @@ The animation player and widget JavaScript in `player_js/` uses JSDoc
 type annotations checked by TypeScript. React types are vendored in
 `vendored_js/` (excluded from language stats via `.gitattributes`).
 
-To run the type checker, use this command:
+Install the pinned development tools (TypeScript and Prettier) once
+with `npm ci`, then run the type checker:
 
 ```sh
+npm ci
 npx tsc --noEmit -p player_js/jsconfig.json
 ```
 
@@ -103,7 +105,8 @@ lake test --wfail && uv run test_playwright.py
 ### Formatting
 
 Before finishing work, run Prettier to format non-Lean files
-(Markdown, Python, JSON, YAML):
+(Markdown, Python, JSON, YAML), using the pinned version installed by
+`npm ci`:
 
 ```sh
 npx prettier --write .
