@@ -10,11 +10,12 @@
  * @returns {Segment}
  */
 var animFindSegment = function (segments, frame) {
-    for (var i = 0; i < segments.length; i++) {
-        var s = segments[i];
+    for (const s of segments) {
         if (frame >= s.sf && frame < s.sf + s.fc) return s;
     }
-    return segments[segments.length - 1];
+    const last = segments[segments.length - 1];
+    if (last === undefined) throw new Error("An animation needs at least one segment.");
+    return last;
 };
 
 /**
@@ -24,8 +25,10 @@ var animFindSegment = function (segments, frame) {
  * @returns {number}
  */
 var animFindCurrentStep = function (steps, frame) {
-    for (var i = steps.length - 1; i >= 0; i--) {
-        if (frame >= steps[i].frame) return i;
+    for (let i = steps.length - 1; i >= 0; i--) {
+        const step = steps[i];
+        if (step === undefined) throw new Error("Step " + i + " is missing.");
+        if (frame >= step.frame) return i;
     }
     return 0;
 };
@@ -49,7 +52,7 @@ var animClampFrame = function (frame, totalFrames) {
  * @returns {number}
  */
 var animComputeFrame = function (startTime, timestamp, fps, pauseFrame) {
-    var elapsed = (timestamp - startTime) / 1000;
+    const elapsed = (timestamp - startTime) / 1000;
     return pauseFrame + Math.round(elapsed * fps);
 };
 
@@ -61,7 +64,8 @@ var animComputeFrame = function (startTime, timestamp, fps, pauseFrame) {
  * @returns {number}
  */
 var animFindStepEnd = function (steps, stepIndex, totalFrames) {
-    return stepIndex + 1 < steps.length ? steps[stepIndex + 1].frame : totalFrames;
+    const next = steps[stepIndex + 1];
+    return next !== undefined ? next.frame : totalFrames;
 };
 
 /**
@@ -77,9 +81,9 @@ var animFindStepEnd = function (steps, stepIndex, totalFrames) {
  * @returns {LoopResult}
  */
 var animWrapLoop = function (frame, stepStart, stepEnd) {
-    var stepLen = stepEnd - stepStart;
+    const stepLen = stepEnd - stepStart;
     if (stepLen <= 0 || frame < stepEnd) return { wrapped: frame, didCycle: false };
-    var overshoot = (frame - stepStart) % stepLen;
+    const overshoot = (frame - stepStart) % stepLen;
     return { wrapped: stepStart + overshoot, didCycle: true };
 };
 
@@ -92,11 +96,13 @@ var animWrapLoop = function (frame, stepStart, stepEnd) {
  * @returns {{ pauseAtStep: number, pauseAtFrame: number } | null}
  */
 var animCheckPauseSteps = function (steps, currentStep, frame) {
-    var step = animFindCurrentStep(steps, frame);
+    const step = animFindCurrentStep(steps, frame);
     if (step > currentStep) {
-        for (var s = currentStep + 1; s <= step; s++) {
-            if (steps[s].pause) {
-                return { pauseAtStep: s, pauseAtFrame: steps[s].frame };
+        for (let s = currentStep + 1; s <= step; s++) {
+            const stepInfo = steps[s];
+            if (stepInfo === undefined) throw new Error("Step " + s + " is missing.");
+            if (stepInfo.pause) {
+                return { pauseAtStep: s, pauseAtFrame: stepInfo.frame };
             }
         }
     }
@@ -115,11 +121,10 @@ var animCheckPauseSteps = function (steps, currentStep, frame) {
  */
 var animIndexElements = function (container) {
     /** @type {Element[]} */
-    var elems = [];
-    var tagged = container.querySelectorAll("[data-e]");
-    for (var i = 0; i < tagged.length; i++) {
-        var el = tagged[i];
-        var idx = parseInt(el.getAttribute("data-e") || "0", 10);
+    const elems = [];
+    const tagged = container.querySelectorAll("[data-e]");
+    for (const el of tagged) {
+        const idx = parseInt(el.getAttribute("data-e") || "0", 10);
         elems[idx] = el;
     }
     return elems;
@@ -141,15 +146,15 @@ var animRenderSegFrame = function (container, seg, currentSeg, local) {
         seg._elems = animIndexElements(container);
     }
     if (seg._elems && seg.pmap && seg.params && seg.params[local]) {
-        var p = seg.params[local];
-        for (var i = 0; i < seg.pmap.length; i++) {
-            var binding = seg.pmap[i];
-            var elem = seg._elems[binding.e];
-            if (elem && p[i] !== undefined) {
+        const p = seg.params[local];
+        for (const [i, binding] of seg.pmap.entries()) {
+            const elem = seg._elems[binding.e];
+            const value = p[i];
+            if (elem && value !== undefined) {
                 if (binding.a === "textContent") {
-                    elem.textContent = p[i];
+                    elem.textContent = value;
                 } else {
-                    elem.setAttribute(binding.a, p[i]);
+                    elem.setAttribute(binding.a, value);
                 }
             }
         }
