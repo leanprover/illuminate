@@ -170,6 +170,8 @@ src/Illuminate/          Library source
   Widget.lean            #diagram command for Lean infoview
 src/Illuminate.lean      Root import (re-exports all modules)
 player_js/               Animation player and widget JavaScript (included via include_str)
+  anim_core.js           Shared animation helpers
+  anim_data.d.ts         Shape of the compiled animation data
   standalone.js          Standalone HTML player (play/pause/scrub)
   reveal.js              Reveal.js fragment-driven player
   diagram_widget.js      #diagram infoview widget

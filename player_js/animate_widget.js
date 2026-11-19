@@ -2,7 +2,7 @@
 import * as React from "react";
 const e = React.createElement;
 
-// Types: StepInfo, Segment, ParamBinding, AnimData — see globals.d.ts
+// Types: StepInfo, Segment, ParamBinding, AnimData — see anim_data.d.ts
 // Shared helpers: animFindSegment, animFindCurrentStep, etc. — see anim_core.js
 
 /**

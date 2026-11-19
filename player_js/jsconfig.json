@@ -4,6 +4,7 @@
         "target": "ES2024",
         "module": "Node16",
         "moduleResolution": "Node16",
+        "moduleDetection": "auto",
         "noEmit": true,
         "strict": true,
         "jsx": "react",
@@ -11,7 +12,7 @@
     },
     "include": [
         "anim_core.js",
-        "anim_core.d.ts",
+        "anim_data.d.ts",
         "standalone.js",
         "reveal.js",
         "color_widget.js",

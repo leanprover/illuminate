@@ -1,6 +1,6 @@
 // @ts-check
 
-// Types: StepInfo, Segment, ParamBinding, AnimData — see globals.d.ts
+// Types: StepInfo, Segment, ParamBinding, AnimData — see anim_data.d.ts
 // Shared helpers: animFindSegment, animClampFrame, etc. — see anim_core.js
 
 (function () {

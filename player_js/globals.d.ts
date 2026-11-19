@@ -1,29 +1,6 @@
 // Type declarations for template placeholders and external APIs used by player JS.
-
-interface StepInfo {
-    frame: number;
-    pause: boolean;
-    loop: boolean;
-}
-interface ParamBinding {
-    e: number;
-    a: string;
-}
-interface Segment {
-    sf: number;
-    fc: number;
-    sync: string;
-    pmap: ParamBinding[];
-    params: string[][];
-    /** Runtime cache of indexed SVG elements, populated by the widget player. */
-    _elems?: Element[];
-}
-interface AnimData {
-    fps: number;
-    totalFrames: number;
-    segments: Segment[];
-    steps: StepInfo[];
-}
+//
+// The animation data types are declared in anim_data.d.ts.
 
 // standalone.js and reveal.js use these placeholders that are
 // string-replaced before the JS is embedded in HTML.
