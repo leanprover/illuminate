@@ -3,7 +3,9 @@ import * as React from "react";
 const e = React.createElement;
 
 // Types: StepInfo, Segment, ParamBinding, AnimData — see anim_data.d.ts
-// Shared helpers: animFindSegment, animFindCurrentStep, etc. — see anim_core.js
+// Shared helpers: see anim_core.js, which the Lean build concatenates before this file.
+/* global animFindSegment, animFindCurrentStep, animClampFrame, animComputeFrame, animFindStepEnd,
+   animWrapLoop, animCheckPauseSteps, animRenderSegFrame */
 
 /**
  * @typedef {{ animData: AnimData }} AnimateProps
@@ -15,30 +17,30 @@ const e = React.createElement;
  * @returns {React.ReactElement}
  */
 export default function (props) {
-    var data = props.animData;
+    const data = props.animData;
     /** @type {React.MutableRefObject<HTMLDivElement | null>} */
-    var containerRef = React.useRef(null);
-    var playingRef = React.useRef(false);
+    const containerRef = React.useRef(null);
+    const playingRef = React.useRef(false);
     /** @type {React.MutableRefObject<number | null>} */
-    var startTimeRef = React.useRef(null);
-    var pauseFrameRef = React.useRef(0);
-    var currentStepRef = React.useRef(0);
-    var waitingRef = React.useRef(false);
-    var advancePendingRef = React.useRef(false);
+    const startTimeRef = React.useRef(null);
+    const pauseFrameRef = React.useRef(0);
+    const currentStepRef = React.useRef(0);
+    const waitingRef = React.useRef(false);
+    const advancePendingRef = React.useRef(false);
     /** @type {React.MutableRefObject<Segment | null>} */
-    var currentSegRef = React.useRef(null);
+    const currentSegRef = React.useRef(null);
     /** @type {React.MutableRefObject<number | null>} */
-    var rafRef = React.useRef(null);
-    var _playing = React.useState(false);
-    var playing = _playing[0];
-    var setPlaying = _playing[1];
-    var _looping = React.useState(false);
-    var looping = _looping[0];
-    var setLooping = _looping[1];
-    var _frame = React.useState(0);
-    var frame = _frame[0];
-    var setFrame = _frame[1];
-    var frameRef = React.useRef(0);
+    const rafRef = React.useRef(null);
+    const _playing = React.useState(false);
+    const playing = _playing[0];
+    const setPlaying = _playing[1];
+    const _looping = React.useState(false);
+    const looping = _looping[0];
+    const setLooping = _looping[1];
+    const _frame = React.useState(0);
+    const frame = _frame[0];
+    const setFrame = _frame[1];
+    const frameRef = React.useRef(0);
 
     /**
      * Renders the given frame into the container, using parameterized updates when possible.
@@ -47,8 +49,8 @@ export default function (props) {
      */
     function renderFrame(f) {
         f = animClampFrame(f, data.totalFrames);
-        var seg = animFindSegment(data.segments, f);
-        var container = containerRef.current;
+        const seg = animFindSegment(data.segments, f);
+        const container = containerRef.current;
         if (!container) return;
         currentSegRef.current = animRenderSegFrame(
             container,
@@ -68,23 +70,28 @@ export default function (props) {
     function tick(timestamp) {
         if (!playingRef.current || waitingRef.current) return;
         if (startTimeRef.current === null) startTimeRef.current = timestamp;
-        var f = animComputeFrame(startTimeRef.current, timestamp, data.fps, pauseFrameRef.current);
+        let f = animComputeFrame(startTimeRef.current, timestamp, data.fps, pauseFrameRef.current);
 
         // Handle looping steps
-        var curStep = currentStepRef.current;
-        var stepInfo = data.steps[curStep];
-        var isLooping = stepInfo && stepInfo.loop;
-        if (isLooping) {
-            var stepStart = stepInfo.frame;
-            var stepEnd = animFindStepEnd(data.steps, curStep, data.totalFrames);
-            var loop = animWrapLoop(f, stepStart, stepEnd);
+        const curStep = currentStepRef.current;
+        const stepInfo = data.steps[curStep];
+        let isLooping = false;
+        if (stepInfo && stepInfo.loop) {
+            isLooping = true;
+            const stepStart = stepInfo.frame;
+            const stepEnd = animFindStepEnd(data.steps, curStep, data.totalFrames);
+            const loop = animWrapLoop(f, stepStart, stepEnd);
             if (loop.didCycle) {
                 if (advancePendingRef.current) {
                     // Finish the loop: advance to the next step
                     advancePendingRef.current = false;
                     if (curStep + 1 < data.steps.length) {
+                        const nextStep = data.steps[curStep + 1];
+                        if (nextStep === undefined) {
+                            throw new Error(`Step ${curStep + 1} is missing.`);
+                        }
                         currentStepRef.current = curStep + 1;
-                        var nextFrame = data.steps[curStep + 1].frame;
+                        const nextFrame = nextStep.frame;
                         pauseFrameRef.current = nextFrame;
                         startTimeRef.current = null;
                         f = nextFrame;
@@ -110,7 +117,7 @@ export default function (props) {
 
         // Check for pause steps we've moved past
         if (!isLooping) {
-            var pause = animCheckPauseSteps(data.steps, currentStepRef.current, f);
+            const pause = animCheckPauseSteps(data.steps, currentStepRef.current, f);
             if (pause) {
                 f = pause.pauseAtFrame;
                 waitingRef.current = true;
@@ -141,8 +148,8 @@ export default function (props) {
             rafRef.current = requestAnimationFrame(tick);
         } else if (playingRef.current) {
             // Check if we're in a looping step — click signals to finish the cycle then advance
-            var cur = currentStepRef.current;
-            var stepInfo = data.steps[cur];
+            const cur = currentStepRef.current;
+            const stepInfo = data.steps[cur];
             if (stepInfo && stepInfo.loop && cur + 1 < data.steps.length) {
                 advancePendingRef.current = true;
                 return;
@@ -167,28 +174,25 @@ export default function (props) {
     }
 
     // Initialize or reset when animation data changes
-    React.useEffect(
-        function () {
-            playingRef.current = false;
-            setPlaying(false);
-            setLooping(false);
-            waitingRef.current = false;
-            advancePendingRef.current = false;
-            startTimeRef.current = null;
-            pauseFrameRef.current = 0;
-            currentStepRef.current = 0;
-            currentSegRef.current = null;
+    React.useEffect(() => {
+        playingRef.current = false;
+        setPlaying(false);
+        setLooping(false);
+        waitingRef.current = false;
+        advancePendingRef.current = false;
+        startTimeRef.current = null;
+        pauseFrameRef.current = 0;
+        currentStepRef.current = 0;
+        currentSegRef.current = null;
+        if (rafRef.current) cancelAnimationFrame(rafRef.current);
+        renderFrame(0);
+        return function () {
             if (rafRef.current) cancelAnimationFrame(rafRef.current);
-            renderFrame(0);
-            return function () {
-                if (rafRef.current) cancelAnimationFrame(rafRef.current);
-            };
-        },
-        [data],
-    );
+        };
+    }, [data]);
 
-    var totalSeconds = data.totalFrames / data.fps;
-    var currentSeconds = frame / data.fps;
+    const totalSeconds = data.totalFrames / data.fps;
+    const currentSeconds = frame / data.fps;
 
     return e(
         "div",
@@ -236,7 +240,7 @@ export default function (props) {
                     waitingRef.current = false;
                     advancePendingRef.current = false;
                     if (rafRef.current) cancelAnimationFrame(rafRef.current);
-                    var f = parseInt(/** @type {HTMLInputElement} */ (ev.target).value, 10);
+                    const f = parseInt(/** @type {HTMLInputElement} */ (ev.target).value, 10);
                     currentStepRef.current = animFindCurrentStep(data.steps, f);
                     pauseFrameRef.current = f;
                     renderFrame(f);
@@ -253,7 +257,7 @@ export default function (props) {
                         flexShrink: 0,
                     },
                 },
-                currentSeconds.toFixed(1) + " / " + totalSeconds.toFixed(1) + "s",
+                `${currentSeconds.toFixed(1)} / ${totalSeconds.toFixed(1)}s`,
             ),
         ),
     );

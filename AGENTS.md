@@ -88,12 +88,21 @@ The animation player and widget JavaScript in `player_js/` uses JSDoc
 type annotations checked by TypeScript. React types are vendored in
 `vendored_js/` (excluded from language stats via `.gitattributes`).
 
-Install the pinned development tools (TypeScript and Prettier) once
-with `npm ci`, then run the type checker:
+Install the pinned development tools (TypeScript, ESLint, and
+Prettier) once with `npm ci`, then run the type checker:
 
 ```sh
 npm ci
 npx tsc --noEmit -p player_js/jsconfig.json
+```
+
+### JavaScript linting
+
+ESLint checks the same JavaScript, with the configuration in
+`eslint.config.mjs`:
+
+```sh
+npm run lint
 ```
 
 ### Running both
@@ -104,8 +113,8 @@ lake test --wfail && uv run test_playwright.py
 
 ### Formatting
 
-Before finishing work, run Prettier to format non-Lean files
-(Markdown, Python, JSON, YAML), using the pinned version installed by
+Before finishing work, run Prettier to format the JavaScript,
+Markdown, JSON, and YAML files, using the pinned version installed by
 `npm ci`:
 
 ```sh
@@ -115,6 +124,19 @@ npx prettier --write .
 CI has a Prettier bot that auto-commits formatting fixes, but pushes
 from `github-actions[bot]` do not re-trigger CI. Running Prettier
 locally avoids this problem.
+
+Ruff formats the Python files. `ruff.toml` requires one version of
+ruff, and `uvx` runs that version:
+
+```sh
+uvx ruff@0.17.6 format .
+```
+
+CI also runs ShellCheck on the shell scripts:
+
+```sh
+shellcheck .github/scripts/*.sh
+```
 
 ### README consistency
 

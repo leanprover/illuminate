@@ -5,16 +5,36 @@ on:
     push:
         branches: [main]
 
+# The job pushes the formatted files to main.
+permissions:
+    contents: write
+
 jobs:
     prettier:
         runs-on: ubuntu-latest
         steps:
             - name: Checkout
-              uses: actions/checkout@v6
+              uses: actions/checkout@v7.0.1
+
+            - uses: actions/setup-node@v7.1.0
+              with:
+                  node-version: "lts/*"
+                  cache: npm
+
+            - run: npm ci
 
             - name: Format with prettier
-              uses: creyD/prettier_action@v4.6
-              with:
-                  prettier_options: "--write ."
-                  commit_message: "Run the Prettier code formatter"
-                  prettier_version: 3.7.4
+              run: npx --no-install prettier --write .
+
+            - name: Commit and push
+              run: |
+                  git checkout -- package-lock.json
+                  if [ -n "$(git status --porcelain)" ]; then
+                    git config user.name "GitHub Action"
+                    git config user.email "actions@github.com"
+                    git add -A
+                    git commit -m "Run the Prettier code formatter" --author="$GITHUB_ACTOR <$GITHUB_ACTOR@users.noreply.github.com>"
+                    git push origin
+                  else
+                    echo "No formatting changes needed"
+                  fi
