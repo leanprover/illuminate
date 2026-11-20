@@ -16,3 +16,4 @@ test_output/*
 
 .DS_Store
 /test_output/
+__pycache__/

@@ -24,6 +24,7 @@ Or for pytest mode:
 To update expected baselines:
     UPDATE_BASELINES=1 uv run test_playwright.py
 """
+
 import os
 import shutil
 import subprocess
@@ -34,10 +35,12 @@ from pathlib import Path
 # Ensure Playwright browsers are installed
 # ---------------------------------------------------------------------------
 
+
 def ensure_browsers():
     """Install Playwright Chromium if not already present."""
     try:
         from playwright.sync_api import sync_playwright
+
         with sync_playwright() as p:
             p.chromium.launch(headless=True).close()
     except Exception:
@@ -46,13 +49,18 @@ def ensure_browsers():
             check=True,
         )
 
+
 # ---------------------------------------------------------------------------
 # Generate reference SVGs by running lake test (which writes smiley.svg, commdiag.svg)
 # ---------------------------------------------------------------------------
 
 ROOT = Path(__file__).resolve().parent
 VISUAL_DIR = ROOT / "visual_tests"
-UPDATE_BASELINES = os.environ.get("UPDATE_BASELINES", "").lower() in ("1", "true", "yes")
+UPDATE_BASELINES = os.environ.get("UPDATE_BASELINES", "").lower() in (
+    "1",
+    "true",
+    "yes",
+)
 
 DOCKER_IMAGE = "illuminate-inkscape"
 
@@ -75,6 +83,7 @@ def generate_svgs():
 # ---------------------------------------------------------------------------
 # Docker-based rsvg-convert visual test helpers
 # ---------------------------------------------------------------------------
+
 
 def _ensure_docker_image():
     """Build the rsvg-convert Docker image if it doesn't exist."""
@@ -127,8 +136,10 @@ def pixel_diff_ratio(img1_bytes: bytes, img2_bytes: bytes) -> float:
     channels = 4  # RGBA
     total = len(b1) // channels
     diff = sum(
-        1 for i in range(total)
-        if b1[i*channels:(i+1)*channels] != b2[i*channels:(i+1)*channels]
+        1
+        for i in range(total)
+        if b1[i * channels : (i + 1) * channels]
+        != b2[i * channels : (i + 1) * channels]
     )
     return diff / total
 
@@ -164,6 +175,7 @@ def _run_visual_test(svg_name: str, test_name: str):
 # ---------------------------------------------------------------------------
 # Structural tests (Playwright)
 # ---------------------------------------------------------------------------
+
 
 def test_smiley_structure(page):
     """Smiley SVG has expected element counts and structure."""
@@ -274,7 +286,9 @@ def test_stars_structure(page):
 
     # Should have dash patterns
     svg_content = svg_path.read_text()
-    assert "stroke-dasharray" in svg_content, "Missing stroke-dasharray for dashed stars"
+    assert "stroke-dasharray" in svg_content, (
+        "Missing stroke-dasharray for dashed stars"
+    )
 
 
 def test_cellophane_clip_structure(page):
@@ -290,6 +304,7 @@ def test_cellophane_clip_structure(page):
 # Visual regression tests (Docker rsvg-convert)
 # ---------------------------------------------------------------------------
 
+
 def test_smiley_visual():
     """Compare smiley rendering against expected baseline."""
     _run_visual_test("smiley.svg", "smiley")
@@ -304,17 +319,21 @@ def test_roundedrects_visual():
     """Compare rounded-rects rendering against expected baseline."""
     _run_visual_test("roundedrects.svg", "roundedrects")
 
+
 def test_roundedrects_2_5_visual():
     """Compare rounded-rects rendering against expected baseline."""
     _run_visual_test("roundedrects_2_5.svg", "roundedrects_2_5")
+
 
 def test_roundedrects_2_10_visual():
     """Compare rounded-rects rendering against expected baseline."""
     _run_visual_test("roundedrects_2_10.svg", "roundedrects_2_10")
 
+
 def test_roundedrects_7_2_visual():
     """Compare rounded-rects rendering against expected baseline."""
     _run_visual_test("roundedrects_7_2.svg", "roundedrects_7_2")
+
 
 def test_roundedrects_7_5_visual():
     """Compare rounded-rects rendering against expected baseline."""
@@ -515,6 +534,7 @@ def test_proof_tree_visual():
 # Standalone animation player tests
 # ---------------------------------------------------------------------------
 
+
 def test_standalone_player_seek_updates_content(page):
     """Scrubbing the standalone player to a different frame should change the displayed SVG.
 
@@ -538,7 +558,9 @@ def test_standalone_player_seek_updates_content(page):
     """)
 
     # Get the SVG content at the last frame
-    last_frame_svg = page.evaluate("document.getElementById('anim-container').innerHTML")
+    last_frame_svg = page.evaluate(
+        "document.getElementById('anim-container').innerHTML"
+    )
     assert "<svg" in last_frame_svg, "Container should have SVG at last frame"
 
     # The circle grows from radius 10 to ~50, so the path data MUST differ.
@@ -571,7 +593,7 @@ def test_standalone_player_loop_does_not_stop(page):
     # If loop handling works, the animation should still be playing.
     # The play button text should be the pause icon (⏸ = \u23F8), not play (▶ = \u25B6).
     btn_text = page.evaluate("document.getElementById('anim-play').textContent")
-    assert btn_text == "\u23F8", (
+    assert btn_text == "\u23f8", (
         f"After 1.5s, a 1s looping animation should still be playing "
         f"(button should show ⏸), but button shows '{btn_text}' — "
         f"the standalone player does not handle looping steps"
@@ -607,6 +629,7 @@ def test_standalone_player_dual_animation_independence(page):
 # ---------------------------------------------------------------------------
 # Direct runner (not pytest)
 # ---------------------------------------------------------------------------
+
 
 def main():
     """Run all tests directly without pytest."""

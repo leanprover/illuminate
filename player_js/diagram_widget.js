@@ -22,7 +22,7 @@ const e = React.createElement;
  * @returns {React.ReactElement | null}
  */
 function renderControl(p, i, values, setValues) {
-    var val = values[i];
+    const val = values[i];
     if (p.kind === "slider") {
         return e(
             "div",
@@ -30,7 +30,7 @@ function renderControl(p, i, values, setValues) {
             e(
                 "label",
                 { style: { fontSize: "12px", display: "block", marginBottom: "2px" } },
-                p.name + ": " + Number(val).toFixed(2),
+                `${p.name}: ${Number(val).toFixed(2)}`,
             ),
             e("input", {
                 type: "range",
@@ -40,7 +40,7 @@ function renderControl(p, i, values, setValues) {
                 value: /** @type {number} */ (val),
                 style: { width: "100%" },
                 onInput: /** @param {React.FormEvent<HTMLInputElement>} ev */ function (ev) {
-                    var v = values.slice();
+                    const v = values.slice();
                     v[i] = parseFloat(/** @type {HTMLInputElement} */ (ev.target).value);
                     setValues(v);
                 },
@@ -53,14 +53,14 @@ function renderControl(p, i, values, setValues) {
             e(
                 "label",
                 { style: { fontSize: "12px", display: "block", marginBottom: "2px" } },
-                p.name + ":",
+                `${p.name}:`,
             ),
             e("input", {
                 type: "text",
                 value: /** @type {string} */ (val),
                 style: { width: "100%", fontSize: "12px", padding: "2px 4px" },
                 onInput: /** @param {React.FormEvent<HTMLInputElement>} ev */ function (ev) {
-                    var v = values.slice();
+                    const v = values.slice();
                     v[i] = /** @type {HTMLInputElement} */ (ev.target).value;
                     setValues(v);
                 },
@@ -77,7 +77,7 @@ function renderControl(p, i, values, setValues) {
                     type: "checkbox",
                     checked: !!val,
                     onChange: /** @param {React.ChangeEvent<HTMLInputElement>} ev */ function (ev) {
-                        var v = values.slice();
+                        const v = values.slice();
                         v[i] = ev.target.checked;
                         setValues(v);
                     },
@@ -96,51 +96,48 @@ function renderControl(p, i, values, setValues) {
  * @returns {React.ReactElement}
  */
 export default function (props) {
-    var rs = useRpcSession();
-    var params = props.parameters || [];
-    var hasParams = params.length > 0;
+    const rs = useRpcSession();
+    const params = props.parameters || [];
+    const hasParams = params.length > 0;
     /** @type {ParamValue[]} */
-    var initials = React.useMemo(function () {
-        return params.map(function (p) {
+    const initials = React.useMemo(() => {
+        return params.map((p) => {
             return p.initial;
         });
     }, []);
-    var _vals = React.useState(initials);
-    var values = _vals[0];
-    var setValues = _vals[1];
-    var _svg = React.useState(props.initialSvg || "");
-    var svg = _svg[0];
-    var setSvg = _svg[1];
+    const _vals = React.useState(initials);
+    const values = _vals[0];
+    const setValues = _vals[1];
+    const _svg = React.useState(props.initialSvg || "");
+    const svg = _svg[0];
+    const setSvg = _svg[1];
     // Reset SVG when switching to a different diagram
-    React.useEffect(
-        function () {
-            setSvg(props.initialSvg || "");
-        },
-        [props.exprId],
-    );
+    React.useEffect(() => {
+        setSvg(props.initialSvg || "");
+    }, [props.exprId]);
     /** @type {React.MutableRefObject<ReturnType<typeof setTimeout> | null>} */
-    var timer = React.useRef(null);
-    var latestValues = React.useRef(initials);
+    const timer = React.useRef(null);
+    const latestValues = React.useRef(initials);
     /** @type {React.MutableRefObject<HTMLDivElement | null>} */
-    var svgRef = React.useRef(null);
-    var _hitInfo = React.useState(/** @type {HitInfo | null} */ (null));
-    var hitInfo = _hitInfo[0];
-    var setHitInfo = _hitInfo[1];
+    const svgRef = React.useRef(null);
+    const _hitInfo = React.useState(/** @type {HitInfo | null} */ (null));
+    const hitInfo = _hitInfo[0];
+    const setHitInfo = _hitInfo[1];
     /** @type {React.MutableRefObject<ReturnType<typeof setTimeout> | null>} */
-    var hitTimer = React.useRef(null);
+    const hitTimer = React.useRef(null);
 
     // Track container pixel width for scale-invariant stroke resolution
-    var _pw = React.useState(0);
-    var pixelWidth = _pw[0];
-    var setPixelWidth = _pw[1];
-    var latestPixelWidth = React.useRef(0);
+    const _pw = React.useState(0);
+    const pixelWidth = _pw[0];
+    const setPixelWidth = _pw[1];
+    const latestPixelWidth = React.useRef(0);
 
     // Measure container width immediately on mount and on subsequent resizes
-    React.useEffect(function () {
-        var container = svgRef.current;
+    React.useEffect(() => {
+        const container = svgRef.current;
         if (!container) return;
-        var measure = function () {
-            var w = /** @type {HTMLDivElement} */ (container).clientWidth;
+        const measure = function () {
+            const w = /** @type {HTMLDivElement} */ (container).clientWidth;
             if (w > 0 && Math.abs(w - latestPixelWidth.current) > 1) {
                 latestPixelWidth.current = w;
                 setPixelWidth(w);
@@ -149,7 +146,7 @@ export default function (props) {
         // Fire immediately to avoid flash of unresolved px strokes
         measure();
         if (typeof ResizeObserver === "undefined") return;
-        var ro = new ResizeObserver(function () {
+        const ro = new ResizeObserver(() => {
             measure();
         });
         ro.observe(container);
@@ -159,61 +156,58 @@ export default function (props) {
     }, []);
 
     // Re-evaluate diagram when parameters or pixel width change
-    React.useEffect(
-        function () {
-            if (pixelWidth === 0 && !hasParams) return;
-            latestValues.current = values;
-            if (timer.current) clearTimeout(timer.current);
-            timer.current = setTimeout(function () {
-                rs.call("Illuminate.evalParamDiagram", {
-                    id: props.exprId,
-                    values: latestValues.current,
-                    pixelWidth: latestPixelWidth.current,
+    React.useEffect(() => {
+        if (pixelWidth === 0 && !hasParams) return;
+        latestValues.current = values;
+        if (timer.current) clearTimeout(timer.current);
+        timer.current = setTimeout(() => {
+            rs.call("Illuminate.evalParamDiagram", {
+                id: props.exprId,
+                values: latestValues.current,
+                pixelWidth: latestPixelWidth.current,
+            })
+                .then((/** @type {{ svg: string }} */ resp) => {
+                    setSvg(resp.svg);
                 })
-                    .then(function (/** @type {{ svg: string }} */ resp) {
-                        setSvg(resp.svg);
-                    })
-                    .catch(function (/** @type {unknown} */ err) {
-                        console.error("RPC error:", err);
-                    });
-            }, 50);
-            return function () {
-                if (timer.current) clearTimeout(timer.current);
-            };
-        },
-        [values, pixelWidth],
-    );
+                .catch((/** @type {unknown} */ err) => {
+                    console.error("RPC error:", err);
+                });
+        }, 50);
+        return function () {
+            if (timer.current) clearTimeout(timer.current);
+        };
+    }, [values, pixelWidth]);
 
     // Mouse move handler for hit testing
-    var onMouseMove = React.useCallback(
-        /** @param {React.MouseEvent} ev */ function (ev) {
-            var container = svgRef.current;
+    const onMouseMove = React.useCallback(
+        /** @param {React.MouseEvent} ev */ (ev) => {
+            const container = svgRef.current;
             if (!container) return;
             /** @type {SVGSVGElement | null} */
-            var svgEl = container.querySelector("svg");
+            const svgEl = container.querySelector("svg");
             if (!svgEl) return;
             // Map client coordinates to SVG user space
-            var ctm = svgEl.getScreenCTM();
+            const ctm = svgEl.getScreenCTM();
             if (!ctm) return;
-            var inv = ctm.inverse();
-            var svgX = inv.a * ev.clientX + inv.c * ev.clientY + inv.e;
-            var svgY = inv.b * ev.clientX + inv.d * ev.clientY + inv.f;
+            const inv = ctm.inverse();
+            const svgX = inv.a * ev.clientX + inv.c * ev.clientY + inv.e;
+            const svgY = inv.b * ev.clientX + inv.d * ev.clientY + inv.f;
             // The SVG wraps content in <g transform="scale(1,-1)">,
             // so negate y to get diagram coordinates
-            var diagX = svgX;
-            var diagY = -svgY;
+            const diagX = svgX;
+            const diagY = -svgY;
             if (hitTimer.current) clearTimeout(hitTimer.current);
-            hitTimer.current = setTimeout(function () {
+            hitTimer.current = setTimeout(() => {
                 rs.call("Illuminate.hitTestDiagram", {
                     id: props.exprId,
                     x: diagX,
                     y: diagY,
                     values: latestValues.current,
                 })
-                    .then(function (/** @type {HitInfo} */ resp) {
+                    .then((/** @type {HitInfo} */ resp) => {
                         setHitInfo(resp);
                     })
-                    .catch(function () {
+                    .catch(() => {
                         setHitInfo(null);
                     });
             }, 30);
@@ -221,26 +215,26 @@ export default function (props) {
         [],
     );
 
-    var onMouseLeave = React.useCallback(function () {
+    const onMouseLeave = React.useCallback(() => {
         if (hitTimer.current) clearTimeout(hitTimer.current);
         setHitInfo(null);
     }, []);
 
     // Format hit info for display
     /** @type {string | null} */
-    var hitLabel = null;
+    let hitLabel = null;
     if (hitInfo && hitInfo.kind !== "nothing") {
         if (hitInfo.label) {
             hitLabel = hitInfo.label;
         } else if (hitInfo.kind === "tag") {
-            hitLabel = "tag " + hitInfo.value;
+            hitLabel = `tag ${hitInfo.value}`;
         } else {
             hitLabel = hitInfo.kind;
         }
     }
 
-    var controls = hasParams
-        ? params.map(function (p, i) {
+    const controls = hasParams
+        ? params.map((p, i) => {
               return renderControl(p, i, values, setValues);
           })
         : null;

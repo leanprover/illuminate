@@ -1,17 +1,19 @@
 // @ts-check
 
 // Types: StepInfo, Segment, ParamBinding, AnimData — see anim_data.d.ts
-// Shared helpers: animFindSegment, animClampFrame, etc. — see anim_core.js
+// Shared helpers: see anim_core.js, which the Lean build concatenates before this file.
+/* global Reveal, animFindSegment, animFindCurrentStep, animClampFrame, animComputeFrame,
+   animFindStepEnd, animWrapLoop, animRenderSegFrame */
 
 (function () {
     /** @type {AnimData} */
-    var data = __ILLUMINATE_DATA_98712__;
+    const data = __ILLUMINATE_DATA_98712__;
     if (!data || !data.segments || data.segments.length === 0) {
         console.error("Animation: invalid or empty animation data");
         return;
     }
     /** @type {HTMLElement} */
-    var container = /** @type {HTMLElement} */ (
+    const container = /** @type {HTMLElement} */ (
         document.querySelector("__ILLUMINATE_SELECTOR_98712__")
     );
     if (!container) {
@@ -19,11 +21,11 @@
         return;
     }
     /** @type {Segment | null} */
-    var currentSeg = null;
+    let currentSeg = null;
     /** @type {number} */
-    var currentFrame = 0;
+    let currentFrame = 0;
     /** @type {number | null} */
-    var animId = null;
+    let animId = null;
 
     /**
      * Displays the SVG for the given frame.
@@ -32,7 +34,7 @@
      */
     function showFrame(frame) {
         frame = animClampFrame(frame, data.totalFrames);
-        var seg = animFindSegment(data.segments, frame);
+        const seg = animFindSegment(data.segments, frame);
         currentSeg = animRenderSegFrame(container, seg, currentSeg, frame - seg.sf);
         currentFrame = frame;
     }
@@ -55,15 +57,15 @@
      * @returns {void}
      */
     function startLoop(loopStart, loopEnd) {
-        var loopLen = loopEnd - loopStart;
+        const loopLen = loopEnd - loopStart;
         if (loopLen <= 0) return;
         /** @type {number | null} */
-        var startTime = null;
+        let startTime = null;
         /** @param {number} timestamp */
         function tick(timestamp) {
             if (startTime === null) startTime = timestamp;
-            var frame = animComputeFrame(startTime, timestamp, data.fps, loopStart);
-            var loop = animWrapLoop(frame, loopStart, loopEnd);
+            const frame = animComputeFrame(startTime, timestamp, data.fps, loopStart);
+            const loop = animWrapLoop(frame, loopStart, loopEnd);
             showFrame(loop.wrapped);
             animId = requestAnimationFrame(tick);
         }
@@ -78,14 +80,14 @@
      */
     function animateTo(targetFrame, onComplete) {
         stopAnim();
-        var startFrame = currentFrame;
+        const startFrame = currentFrame;
         /** @type {number | null} */
-        var startTime = null;
-        var dir = targetFrame > startFrame ? 1 : -1;
+        let startTime = null;
+        const dir = targetFrame > startFrame ? 1 : -1;
         /** @param {number} timestamp */
         function tick(timestamp) {
             if (startTime === null) startTime = timestamp;
-            var frame = animComputeFrame(startTime, timestamp, data.fps, startFrame);
+            let frame = animComputeFrame(startTime, timestamp, data.fps, startFrame);
             if (dir < 0) {
                 frame = startFrame - (frame - startFrame);
             }
@@ -105,52 +107,58 @@
         }
     }
 
-    var pauseSteps = data.steps.filter(function (s) {
+    const pauseSteps = data.steps.filter((s) => {
         return s.pause;
     });
-    pauseSteps.forEach(function (s, i) {
-        var frag = document.createElement("span");
+    for (const i of pauseSteps.keys()) {
+        const frag = document.createElement("span");
         frag.className = "fragment";
-        frag.dataset.fragmentIndex = String(i);
+        frag.dataset["fragmentIndex"] = String(i);
         frag.style.display = "none";
         /** @type {HTMLElement | null} */
-        var parent = container.parentElement;
+        const parent = container.parentElement;
         if (parent) parent.appendChild(frag);
-    });
+    }
 
     showFrame(0);
 
     if (typeof Reveal !== "undefined") {
+        const listen = typeof Reveal.on === "function" ? Reveal.on : Reveal.addEventListener;
+        if (listen === undefined) {
+            throw new Error("Reveal provides neither `on` nor `addEventListener`.");
+        }
         /** @type {(type: string, fn: (e: { fragment: HTMLElement }) => void) => void} */
-        var revealOn =
-            typeof Reveal.on === "function"
-                ? Reveal.on.bind(Reveal)
-                : /** @type {Function} */ (Reveal.addEventListener).bind(Reveal);
-        revealOn("fragmentshown", function (e) {
+        const revealOn = listen.bind(Reveal);
+        revealOn("fragmentshown", (e) => {
             stopAnim();
-            var idx = parseInt(e.fragment.dataset.fragmentIndex || "", 10);
+            const idx = parseInt(e.fragment.dataset["fragmentIndex"] || "", 10);
             if (!isNaN(idx) && idx < pauseSteps.length) {
-                var ps = pauseSteps[idx];
-                var stepIdx = animFindCurrentStep(data.steps, ps.frame);
-                animateTo(ps.frame, function () {
+                const ps = pauseSteps[idx];
+                if (ps === undefined) throw new Error(`Pause step ${idx} is missing.`);
+                const stepIdx = animFindCurrentStep(data.steps, ps.frame);
+                animateTo(ps.frame, () => {
                     if (ps.loop) {
                         startLoop(ps.frame, animFindStepEnd(data.steps, stepIdx, data.totalFrames));
                     }
                 });
             }
         });
-        revealOn("fragmenthidden", function (e) {
+        revealOn("fragmenthidden", (e) => {
             stopAnim();
-            var idx = parseInt(e.fragment.dataset.fragmentIndex || "", 10);
+            const idx = parseInt(e.fragment.dataset["fragmentIndex"] || "", 10);
             if (!isNaN(idx)) {
-                var prevIdx = idx - 1;
-                if (prevIdx >= 0 && pauseSteps[prevIdx].loop) {
-                    var ps = pauseSteps[prevIdx];
-                    var stepIdx = animFindCurrentStep(data.steps, ps.frame);
-                    startLoop(ps.frame, animFindStepEnd(data.steps, stepIdx, data.totalFrames));
+                const prevIdx = idx - 1;
+                if (prevIdx >= 0) {
+                    const ps = pauseSteps[prevIdx];
+                    if (ps === undefined) throw new Error(`Pause step ${prevIdx} is missing.`);
+                    if (ps.loop) {
+                        const stepIdx = animFindCurrentStep(data.steps, ps.frame);
+                        startLoop(ps.frame, animFindStepEnd(data.steps, stepIdx, data.totalFrames));
+                    } else {
+                        animateTo(ps.frame);
+                    }
                 } else {
-                    var prevFrame = prevIdx >= 0 ? pauseSteps[prevIdx].frame : 0;
-                    animateTo(prevFrame);
+                    animateTo(0);
                 }
             }
         });
