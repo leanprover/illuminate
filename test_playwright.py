@@ -85,8 +85,51 @@ def generate_svgs():
 # ---------------------------------------------------------------------------
 
 
+LOCAL_INKSCAPE = os.environ.get("ILLUMINATE_LOCAL_INKSCAPE", "").lower() in (
+    "1",
+    "true",
+    "yes",
+)
+
+
+def _render_svg_local(svg_data: bytes) -> bytes:
+    """Render SVG to PNG with the local Inkscape, using only the bundled fonts."""
+    import tempfile
+
+    rules = (VISUAL_DIR / "fonts.conf").read_text()
+    with tempfile.TemporaryDirectory() as tmp:
+        tmp_path = Path(tmp)
+        conf = tmp_path / "fonts.conf"
+        conf.write_text(
+            rules.replace(
+                "<fontconfig>",
+                f"<fontconfig>\n  <dir>{VISUAL_DIR / 'fonts'}</dir>\n"
+                f"  <cachedir>{tmp_path / 'cache'}</cachedir>",
+                1,
+            )
+        )
+        svg = tmp_path / "input.svg"
+        png = tmp_path / "out.png"
+        svg.write_bytes(svg_data)
+        result = subprocess.run(
+            [
+                "inkscape",
+                str(svg),
+                "--export-type=png",
+                f"--export-filename={png}",
+                "--export-dpi=384",
+            ],
+            capture_output=True,
+            env={**os.environ, "FONTCONFIG_FILE": str(conf)},
+        )
+        assert result.returncode == 0, f"inkscape failed: {result.stderr.decode()}"
+        return png.read_bytes()
+
+
 def _ensure_docker_image():
     """Build the rsvg-convert Docker image if it doesn't exist."""
+    if LOCAL_INKSCAPE:
+        return
     # Check if image exists
     result = subprocess.run(
         ["docker", "image", "inspect", DOCKER_IMAGE],
@@ -109,13 +152,16 @@ def _render_svg_to_png(svg_name: str) -> bytes:
     svg_path = ROOT / svg_name
     assert svg_path.exists(), f"{svg_name} not found — run lake test first"
     svg_data = svg_path.read_bytes()
-    result = subprocess.run(
-        ["docker", "run", "--rm", "-i", DOCKER_IMAGE],
-        input=svg_data,
-        capture_output=True,
-    )
-    assert result.returncode == 0, f"inkscape failed: {result.stderr.decode()}"
-    png_data = result.stdout
+    if LOCAL_INKSCAPE:
+        png_data = _render_svg_local(svg_data)
+    else:
+        result = subprocess.run(
+            ["docker", "run", "--rm", "-i", DOCKER_IMAGE],
+            input=svg_data,
+            capture_output=True,
+        )
+        assert result.returncode == 0, f"inkscape failed: {result.stderr.decode()}"
+        png_data = result.stdout
     assert len(png_data) > 100, f"inkscape produced empty output for {svg_name}"
     return png_data
 

@@ -260,7 +260,7 @@ def drawCmdAttrs {β : Type} [BackendRender β]
           let slant := if style.italic then "italic" else "normal"
           let newAttrs : Array (String × String) := #[
             ("alignment-baseline", "central"),
-            ("font-family", escapeXml style.fontFamily),
+            ("font-family", style.fontFamily),
             ("font-size", fmtNum style.fontSize),
             ("font-weight", weight),
             ("font-style", slant),
@@ -291,7 +291,7 @@ def drawCmdAttrs {β : Type} [BackendRender β]
                 else #[]
               let styleAttrs : Array (String × String) := #[
                 ("alignment-baseline", "central"),
-                ("font-family", escapeXml style.fontFamily),
+                ("font-family", style.fontFamily),
                 ("font-size", fmtNum style.fontSize),
                 ("font-weight", weight),
                 ("font-style", slant),
@@ -346,9 +346,9 @@ def drawCmdAttrs {β : Type} [BackendRender β]
       attrElemMap := gradElemMap ++ stopElemMap }
   | .popTransform | .popAnnotation | .popOpacity | .popClip => { elemCount := 0, attrs := #[] }
 
-/-- Joins attribute pairs into an SVG attribute string with a leading space. -/
+/-- Joins attribute pairs into an SVG attribute string with a leading space, escaping the values. -/
 private def renderAttrs (attrs : Array (String × String)) : String :=
-  attrs.foldl (fun acc (k, v) => acc ++ s!" {k}=\"{v}\"") ""
+  attrs.foldl (fun acc (k, v) => acc ++ s!" {k}=\"{escapeXml v}\"") ""
 
 /-- Looks up an attribute value by name, returning {lit}`""` if absent. -/
 private def findAttr (attrs : Array (String × String)) (name : String) : String :=

@@ -50,12 +50,17 @@ def compiledAnimationToLeanJson (ca : CompiledAnimation) : Json :=
     ("segments", .arr segs),
     ("steps", .arr steps)]
 
+/--
+Escapes {lit}`<` as {lit}`\u003c` in serialized JSON so that the text cannot open or close an HTML
+construct ({lit}`</script>`, {lit}`<!--`, {lit}`<script`) inside a {lit}`<script>` element.
+-/
+def escapeJsonForScript (json : String) : String :=
+  json.replace "<" "\\u003c"
+
 open Lean in
 /-- Serializes a CompiledAnimation to a JSON string safe for embedding in `<script>` tags. -/
 def compiledAnimationToJson (ca : CompiledAnimation) : String :=
-  toString (compiledAnimationToLeanJson ca)
-    |>.replace "</" "<\\/"
-    |>.replace "]]>" "]]\\>"
+  escapeJsonForScript (toString (compiledAnimationToLeanJson ca))
 
 /-!
 # HTML player
@@ -67,6 +72,7 @@ private def escapeJs (s : String) : String :=
     acc ++ match c with
     | '\\' => "\\\\"
     | '\'' => "\\'"
+    | '<' => "\\x3c"
     | '\n' => "\\n"
     | '\r' => "\\r"
     | '\t' => "\\t"
